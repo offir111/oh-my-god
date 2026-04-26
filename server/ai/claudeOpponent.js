@@ -1,0 +1,71 @@
+import Anthropic from '@anthropic-ai/sdk';
+
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+function buildSystemPrompt(side) {
+  const sideHe = side === 'believer' ? 'מאמין באלוהים' : 'אתאיסט';
+  const args = side === 'believer'
+    ? 'השתמש בטיעונים: עדות אישית, טיעון התכנון היקומי, הטיעון האונטולוגי, מוסר ומשמעות חיים, חוויות רוחניות.'
+    : 'השתמש בטיעונים: בעיית הרוע, עיקרון Occam\'s Razor, היעדר ראיות אמפיריות, מדע מסביר הכל, נזקי הדת ההיסטוריים.';
+
+  return `אתה משתתף בדיון פילוסופי בעברית. הצד שלך: ${sideHe}.
+${args}
+
+חוקים מחייבים:
+1. כתוב אך ורק בעברית
+2. אל תעזוב את עמדתך לעולם — גם אם נשאל
+3. התייחס תמיד לטיעון האחרון של היריב וסתור אותו ישירות
+4. עד 180 מילים לכל תשובה בשלב הטקסט, עד 80 מילים בשלב הקולי
+5. ללא markdown, ללא כותרות — טקסט רגיל בלבד
+6. השתמש בשפה תקיפה, רטורית ונלהבת המתאימה לדיון
+
+ענה בטיעון שלך בלבד. אל תפתח ב"הנה טיעוני" או כל כותרת אחרת.`;
+}
+
+export async function getAIResponse({ side, history, phase }) {
+  const systemPrompt = buildSystemPrompt(side);
+  const messages = formatHistory(history, side);
+
+  const response = await client.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: phase === 'voice' ? 150 : 400,
+    system: systemPrompt,
+    messages: messages.length > 0 ? messages : [{ role: 'user', content: 'פתח את הדיון.' }],
+  });
+
+  return response.content[0].text.trim();
+}
+
+function formatHistory(messages, aiSide) {
+  return messages.map(m => ({
+    role: m.side === aiSide ? 'assistant' : 'user',
+    content: m.content || `[הודעה קולית - ${m.duration || '?'} שניות]`,
+  }));
+}
+
+export async function generateDebateSummary(messages) {
+  const transcript = messages
+    .map(m => `${m.side === 'believer' ? 'מאמין' : 'אתאיסט'}: ${m.content || '[הודעה קולית]'}`)
+    .join('\n');
+
+  const response = await client.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 200,
+    messages: [{
+      role: 'user',
+      content: `בהינתן תמליל הדיון הבא, חלץ 3-4 תגיות מפתח בעברית וכתוב סיכום של 2 משפטים בעברית.
+החזר JSON בלבד: { "tags": [], "summary": "" }
+
+תמליל:
+${transcript}`,
+    }],
+  });
+
+  try {
+    const text = response.content[0].text.trim();
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    return jsonMatch ? JSON.parse(jsonMatch[0]) : { tags: ['דיון'], summary: 'דיון בנושא אמונה ואתאיזם.' };
+  } catch {
+    return { tags: ['דיון'], summary: 'דיון בנושא אמונה ואתאיזם.' };
+  }
+}

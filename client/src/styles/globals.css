@@ -1,0 +1,177 @@
+:root {
+  --bg: #000000;
+  --card: #111111;
+  --card2: #1a1a1a;
+  --border: #2a2a2a;
+  --believer: #CC0000;
+  --believer-dim: #440000;
+  --believer-glow: rgba(204,0,0,0.3);
+  --atheist: #00AA44;
+  --atheist-dim: #003318;
+  --atheist-glow: rgba(0,170,68,0.3);
+  --text: #ffffff;
+  --muted: #888888;
+  --accent: #444444;
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body, #root {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', Arial, sans-serif;
+  direction: rtl;
+}
+
+a { color: inherit; text-decoration: none; }
+
+button {
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  font-size: 1rem;
+  direction: rtl;
+}
+
+input, textarea {
+  font-family: inherit;
+  direction: rtl;
+  background: var(--card2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  outline: none;
+  font-size: 1rem;
+  width: 100%;
+  transition: border-color 0.2s;
+}
+
+input:focus, textarea:focus {
+  border-color: var(--accent);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* Navbar */
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.navbar-brand {
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--text);
+}
+
+.navbar-links {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.navbar-links a {
+  color: var(--muted);
+  font-size: 0.9rem;
+  transition: color 0.2s;
+}
+
+.navbar-links a:hover { color: var(--text); }
+
+.navbar-score {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.navbar-score span {
+  color: #FFD700;
+  font-weight: 700;
+}
+
+/* Page layout */
+.page {
+  min-height: calc(100vh - 57px);
+  display: flex;
+  flex-direction: column;
+}
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 16px;
+  width: 100%;
+}
+
+/* Side colors */
+.side-believer { color: var(--believer); }
+.side-atheist  { color: var(--atheist); }
+.bg-believer   { background: var(--believer); }
+.bg-atheist    { background: var(--atheist); }
+
+/* Card */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+
+/* Btn variants */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 1rem;
+  transition: opacity 0.2s, transform 0.1s;
+}
+
+.btn:active { transform: scale(0.97); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-believer { background: var(--believer); color: #fff; }
+.btn-atheist  { background: var(--atheist);  color: #fff; }
+.btn-ghost    { background: transparent; border: 1px solid var(--border); color: var(--text); }
+.btn-dark     { background: var(--card2); color: var(--text); }
+
+/* Spinner */
+.spinner {
+  width: 36px; height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--text);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Badge */
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 99px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.badge-believer { background: var(--believer); color: #fff; }
+.badge-atheist  { background: var(--atheist);  color: #fff; }
