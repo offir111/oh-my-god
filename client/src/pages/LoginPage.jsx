@@ -7,7 +7,6 @@ import TransparentImage from '../components/ui/TransparentImage.jsx';
 export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
-  const [pressedAI, setPressedAI] = useState(false);
   const setUser = useAppStore(s => s.setUser);
   const navigate = useNavigate();
 
@@ -18,8 +17,7 @@ export default function LoginPage() {
       return;
     }
     setError('');
-    const user = { username: name, side, score: 0, voiceDebates: 0 };
-    setUser(user);
+    setUser({ username: name, side, score: 0, voiceDebates: 0 });
     connectSocket(name, side);
     navigate('/lobby');
   }
@@ -31,165 +29,287 @@ export default function LoginPage() {
       return;
     }
     setError('');
-    const user = { username: name, side: 'believer', score: 0, voiceDebates: 0 };
-    setUser(user);
+    setUser({ username: name, side: 'believer', score: 0, voiceDebates: 0 });
     connectSocket(name, 'believer');
     navigate('/lobby?ai=1');
   }
 
   return (
-    <div style={styles.page}>
-      <div style={styles.header}>
-        <h1 style={styles.title}>oh my GOD</h1>
-        <p style={styles.subtitle}>אמונה ודת מול אתיזם ומדע</p>
-      </div>
+    <>
+      <style>{`
+        .login-page {
+          min-height: 100vh;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 20px 16px;
+          background: #000;
+          gap: 20px;
+          box-sizing: border-box;
+        }
+        .ticker-wrap {
+          width: 100%;
+          max-width: 520px;
+          border: 1px solid #444;
+          border-radius: 4px;
+          overflow: hidden;
+          padding: 3px 0;
+          background: transparent;
+          direction: ltr;
+          margin-bottom: 18px;
+        }
+        .ticker-inner {
+          display: inline-block;
+          white-space: nowrap;
+          animation: ticker-scroll 60s linear infinite;
+          will-change: transform;
+        }
+        .ticker-inner:hover {
+          animation-play-state: paused;
+        }
+        @keyframes ticker-scroll {
+          0%   { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        .ticker-item {
+          display: inline-block;
+          color: #aaa;
+          font-size: clamp(0.6rem, 2.2vw, 0.72rem);
+          padding: 0 18px;
+          direction: rtl;
+          unicode-bidi: embed;
+        }
+        .ticker-sep {
+          color: #555;
+          font-size: 0.6rem;
+        }
+        .login-title {
+          font-family: Arial, sans-serif;
+          font-size: clamp(2.4rem, 10vw, 5rem);
+          font-weight: 400;
+          letter-spacing: 2px;
+          word-spacing: -6px;
+          color: #fff;
+          text-align: center;
+          margin: 0;
+        }
+        .login-subtitle {
+          color: #d3d3d3;
+          font-size: clamp(0.85rem, 3.5vw, 1.05rem);
+          font-weight: 700;
+          text-align: center;
+          margin: 4px 0 0;
+        }
+        .login-input-wrap {
+          width: 100%;
+          max-width: 360px;
+          text-align: center;
+        }
+        .login-input {
+          width: 100%;
+          padding: 13px 16px;
+          font-size: clamp(0.95rem, 4vw, 1.1rem);
+          background: #111;
+          border: 1px solid #333;
+          border-radius: 10px;
+          color: #fff;
+          text-align: center;
+          outline: none;
+          box-sizing: border-box;
+        }
+        .login-choose {
+          color: #fff;
+          font-size: clamp(0.9rem, 3.5vw, 1rem);
+          font-weight: 700;
+          margin: 0;
+        }
+        .login-panels {
+          display: flex;
+          flex-direction: row;
+          align-items: stretch;
+          justify-content: center;
+          gap: 12px;
+          width: 100%;
+          max-width: 600px;
+        }
+        .login-panel {
+          flex: 1;
+          max-width: 240px;
+          padding: clamp(18px, 4vw, 36px) clamp(12px, 3vw, 24px);
+          border-radius: 20px;
+          cursor: pointer;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          border: none;
+          transition: transform 0.08s, box-shadow 0.08s;
+          min-width: 0;
+        }
+        .panel-believer {
+          background: linear-gradient(160deg, #aa0000 0%, #7a0000 60%, #550000 100%);
+          box-shadow: 0 8px 0 #5a0000, 0 12px 20px rgba(0,0,0,0.5), 0 0 40px rgba(204,0,0,0.35);
+          color: #fff;
+        }
+        .panel-atheist {
+          background: linear-gradient(160deg, #00aa44 0%, #007a30 60%, #005522 100%);
+          box-shadow: 0 8px 0 #004d22, 0 12px 20px rgba(0,0,0,0.5), 0 0 40px rgba(0,170,68,0.35);
+          color: #fff;
+        }
+        .panel-title {
+          font-size: clamp(1.3rem, 5.5vw, 2rem);
+          font-weight: 800;
+          letter-spacing: 1px;
+        }
+        .panel-subtitle {
+          font-size: clamp(0.75rem, 3vw, 0.95rem);
+          font-weight: 600;
+          opacity: 0.85;
+          margin-top: -4px;
+        }
+        .login-vs {
+          font-size: clamp(1.1rem, 4vw, 1.6rem);
+          font-weight: 900;
+          color: #fff;
+          text-shadow: 0 0 12px rgba(255,255,255,0.4);
+          flex-shrink: 0;
+          align-self: center;
+        }
+        .ai-button {
+          background: linear-gradient(135deg, #f2f2f2 0%, #dcdcdc 60%, #c6c6c6 100%);
+          box-shadow: 0 6px 0 #a8a8a8, 0 10px 20px rgba(0,0,0,0.35);
+          color: #000;
+          font-weight: 800;
+          font-size: clamp(0.95rem, 3.5vw, 1.1rem);
+          padding: 13px 18px;
+          border-radius: 14px;
+          border: none;
+          cursor: pointer;
+          letter-spacing: 1px;
+          transition: transform 0.08s, box-shadow 0.08s;
+          width: fit-content;
+          text-align: center;
+        }
+        .login-links {
+          display: flex;
+          gap: 24px;
+          justify-content: center;
+          flex-wrap: wrap;
+        }
+        .login-link {
+          color: #fff;
+          font-size: clamp(0.82rem, 3.2vw, 0.9rem);
+          text-decoration: none;
+          font-weight: 700;
+          text-shadow: 0 0 10px rgba(255,255,255,0.3);
+        }
+        .login-error {
+          color: #ff6666;
+          margin-top: 8px;
+          font-size: 0.88rem;
+        }
+      `}</style>
 
-      <div style={styles.inputWrap}>
-        <input
-          style={styles.input}
-          type="text"
-          placeholder="שם המשתמש שלך..."
-          value={username}
-          onChange={e => setUsername(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && username.trim() && handleSelect('believer')}
-          maxLength={20}
-          autoFocus
-        />
-        {error && <p style={styles.error}>{error}</p>}
-      </div>
+      <div className="login-page">
 
-      <p style={styles.choose}>בחר את הצד שלך:</p>
+        <div className="ticker-wrap">
+          <div className="ticker-inner">
+            {[...Array(2)].map((_, rep) =>
+              [
+                'האם יש אלוהים?',
+                'מתי נברא העולם?',
+                'תאוריית המפץ הגדול',
+                'העולם מסודר ולכן מחייב בורא',
+                'תקופת הדינוזאורים לפני שישים מיליון שנה',
+                'מתי נברא העולם עפ התנ״ך?',
+                'איך עפ האבולוציה נוצר החיים הראשון מדומם — אביוגנזה',
+                'האם נכון שארנבת מעלה גרה?',
+                'האם נכון שאין דג שיש לו סנפיר ואין לו קשקשים?',
+                'רטרו-וירוסים — הוכחה שלאדם ולקוף יש אב משותף',
+                '99% מהDNA של האדם והשימפנזה זהה',
+                'עפ תארוך פחמן 14 גיל היקום גדול בהרבה מ-5700 שנה כפי טענת התנ״ך',
+              ].map((topic, i) => (
+                <span key={`${rep}-${i}`}>
+                  <span className="ticker-item">{topic}</span>
+                  <span className="ticker-sep">◆</span>
+                </span>
+              ))
+            )}
+          </div>
+        </div>
 
-      <div style={styles.panels}>
-        {/* כפתור מאמין */}
+        <div style={{ textAlign: 'center' }}>
+          <h1 className="login-title">oh my GOD</h1>
+          <p className="login-subtitle">אמונה ודת <span style={{color:'#FFE566'}}>VS</span> אתאיזם ומדע</p>
+        </div>
+
+        <div className="login-input-wrap">
+          <input
+            className="login-input"
+            type="text"
+            placeholder="שם המשתמש שלך..."
+            value={username}
+            onChange={e => setUsername(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && username.trim() && handleSelect('believer')}
+            maxLength={20}
+            autoFocus
+          />
+          {error && <p className="login-error">{error}</p>}
+        </div>
+
+        <p className="login-choose">בחר את הצד שלך:</p>
+
+        <div className="login-panels">
+          <button
+            className="login-panel panel-believer"
+            onClick={() => handleSelect('believer')}
+            onTouchStart={e => e.currentTarget.style.transform = 'translateY(4px)'}
+            onTouchEnd={e => e.currentTarget.style.transform = 'translateY(0)'}
+            onMouseDown={e => e.currentTarget.style.transform = 'translateY(4px)'}
+            onMouseUp={e => e.currentTarget.style.transform = 'translateY(0)'}
+            onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+          >
+            <TransparentImage src="/rabbis.jpg" alt="רבנים" size={Math.min(150, window.innerWidth * 0.33)} />
+            <div className="panel-title">מאמין</div>
+            <div className="panel-subtitle">דת</div>
+          </button>
+
+          <div className="login-vs">VS</div>
+
+          <button
+            className="login-panel panel-atheist"
+            onClick={() => handleSelect('atheist')}
+            onTouchStart={e => e.currentTarget.style.transform = 'translateY(4px)'}
+            onTouchEnd={e => e.currentTarget.style.transform = 'translateY(0)'}
+            onMouseDown={e => e.currentTarget.style.transform = 'translateY(4px)'}
+            onMouseUp={e => e.currentTarget.style.transform = 'translateY(0)'}
+            onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+          >
+            <TransparentImage src="/torah.jpg" alt="איינשטיין" size={Math.min(150, window.innerWidth * 0.33)} />
+            <div className="panel-title">אתאיסט</div>
+            <div className="panel-subtitle">מדע</div>
+          </button>
+        </div>
+
         <button
-          style={{ ...styles.panel, ...styles.believerPanel }}
-          onClick={() => handleSelect('believer')}
-          onMouseDown={e => e.currentTarget.style.cssText += 'transform:translateY(5px);box-shadow:0 2px 0 #5a0000,0 4px 8px rgba(0,0,0,0.5),0 0 30px rgba(204,0,0,0.2);'}
-          onMouseUp={e => e.currentTarget.style.cssText += 'transform:translateY(0);box-shadow:0 8px 0 #5a0000,0 12px 20px rgba(0,0,0,0.5),0 0 40px rgba(204,0,0,0.35);'}
-          onMouseLeave={e => e.currentTarget.style.cssText += 'transform:translateY(0);box-shadow:0 8px 0 #5a0000,0 12px 20px rgba(0,0,0,0.5),0 0 40px rgba(204,0,0,0.35);'}
+          className="ai-button"
+          onClick={handleAI}
+          onTouchStart={e => e.currentTarget.style.transform = 'translateY(3px)'}
+          onTouchEnd={e => e.currentTarget.style.transform = 'translateY(0)'}
+          onMouseDown={e => e.currentTarget.style.transform = 'translateY(3px)'}
+          onMouseUp={e => e.currentTarget.style.transform = 'translateY(0)'}
+          onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
         >
-          <TransparentImage src="/einstein.jpg" alt="תורה" size={120} />
-          <div style={styles.panelTitle}>מאמין</div>
+          התמודד מול AI
         </button>
 
-        <div style={styles.vs}>VS</div>
-
-        {/* כפתור אתאיסט */}
-        <button
-          style={{ ...styles.panel, ...styles.atheistPanel }}
-          onClick={() => handleSelect('atheist')}
-          onMouseDown={e => e.currentTarget.style.cssText += 'transform:translateY(5px);box-shadow:0 2px 0 #004d22,0 4px 8px rgba(0,0,0,0.5),0 0 30px rgba(0,170,68,0.2);'}
-          onMouseUp={e => e.currentTarget.style.cssText += 'transform:translateY(0);box-shadow:0 8px 0 #004d22,0 12px 20px rgba(0,0,0,0.5),0 0 40px rgba(0,170,68,0.35);'}
-          onMouseLeave={e => e.currentTarget.style.cssText += 'transform:translateY(0);box-shadow:0 8px 0 #004d22,0 12px 20px rgba(0,0,0,0.5),0 0 40px rgba(0,170,68,0.35);'}
-        >
-          <TransparentImage src="/torah.jpg" alt="איינשטיין" size={120} />
-          <div style={styles.panelTitle}>אתאיסט</div>
-        </button>
+        <div className="login-links">
+          <a href="/knowledge" className="login-link">📚 בעד ונגד</a>
+          <a href="/leaderboard" className="login-link">🏆 רב VS מדען</a>
+        </div>
       </div>
-
-      {/* כפתור AI */}
-      <button
-        onClick={handleAI}
-        onMouseDown={e => e.currentTarget.style.cssText += 'transform:translateY(4px);box-shadow:0 2px 0 #b8860b,0 4px 10px rgba(0,0,0,0.5);'}
-        onMouseUp={e => e.currentTarget.style.cssText += 'transform:translateY(0);box-shadow:0 6px 0 #b8860b,0 10px 20px rgba(0,0,0,0.4);'}
-        onMouseLeave={e => e.currentTarget.style.cssText += 'transform:translateY(0);box-shadow:0 6px 0 #b8860b,0 10px 20px rgba(0,0,0,0.4);'}
-        style={styles.aiButton}
-      >
-        התמודד מול AI
-      </button>
-
-      <div style={styles.links}>
-        <a href="/knowledge" style={styles.link}>📚 מאגר ידע</a>
-        <a href="/leaderboard" style={styles.link}>🏆 טבלת מובילים</a>
-      </div>
-    </div>
+    </>
   );
 }
-
-const styles = {
-  page: {
-    minHeight: '100vh',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '24px 16px',
-    background: '#000',
-    gap: 24,
-  },
-  header: { textAlign: 'center' },
-  title: {
-    fontFamily: "Arial, sans-serif",
-    fontSize: 'clamp(2.8rem, 7vw, 5rem)',
-    fontWeight: 400,
-    letterSpacing: 2,
-    color: '#fff',
-    textShadow: '0 0 30px rgba(255,255,255,0.15), 2px 4px 0 rgba(255,255,255,0.05)',
-  },
-  subtitle: { color: '#aaa', marginTop: 10, fontSize: '1.05rem', letterSpacing: 0.5 },
-  inputWrap: { width: '100%', maxWidth: 360, textAlign: 'center' },
-  input: {
-    width: '100%',
-    padding: '14px 18px',
-    fontSize: '1.1rem',
-    background: '#111',
-    border: '1px solid #333',
-    borderRadius: 10,
-    color: '#fff',
-    textAlign: 'center',
-    outline: 'none',
-  },
-  error: { color: '#ff6666', marginTop: 8, fontSize: '0.9rem' },
-  choose: { color: '#aaa', fontSize: '1rem' },
-  panels: {
-    display: 'flex',
-    gap: 24,
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    width: '100%',
-    maxWidth: 700,
-  },
-  panel: {
-    flex: '1 1 220px',
-    maxWidth: 260,
-    padding: '36px 24px',
-    borderRadius: 20,
-    cursor: 'pointer',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 14,
-    border: 'none',
-    transition: 'transform 0.08s, box-shadow 0.08s',
-  },
-  believerPanel: {
-    background: 'linear-gradient(160deg, #aa0000 0%, #7a0000 60%, #550000 100%)',
-    boxShadow: '0 8px 0 #5a0000, 0 12px 20px rgba(0,0,0,0.5), 0 0 40px rgba(204,0,0,0.35)',
-    color: '#fff',
-  },
-  atheistPanel: {
-    background: 'linear-gradient(160deg, #00aa44 0%, #007a30 60%, #005522 100%)',
-    boxShadow: '0 8px 0 #004d22, 0 12px 20px rgba(0,0,0,0.5), 0 0 40px rgba(0,170,68,0.35)',
-    color: '#fff',
-  },
-  panelImg: { width: 120, height: 120, objectFit: 'contain', mixBlendMode: 'multiply' },
-  panelTitle: { fontSize: '2rem', fontWeight: 800, letterSpacing: 1 },
-  vs: { fontSize: '1.6rem', fontWeight: 900, color: '#fff', flexShrink: 0, textShadow: '0 0 12px rgba(255,255,255,0.4)' },
-  aiButton: {
-    background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 60%, #e8940a 100%)',
-    boxShadow: '0 6px 0 #b8860b, 0 10px 20px rgba(0,0,0,0.4)',
-    color: '#000',
-    fontWeight: 800,
-    fontSize: '1.1rem',
-    padding: '14px 48px',
-    borderRadius: 14,
-    border: 'none',
-    cursor: 'pointer',
-    letterSpacing: 1,
-    transition: 'transform 0.08s, box-shadow 0.08s',
-  },
-  links: { display: 'flex', gap: 28, marginTop: 4 },
-  link: { color: '#fff', fontSize: '0.9rem', textDecoration: 'none', fontWeight: 700, textShadow: '0 0 10px rgba(255,255,255,0.3)' },
-};
