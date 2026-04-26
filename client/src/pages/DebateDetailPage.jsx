@@ -9,7 +9,7 @@ export default function DebateDetailPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`/api/debates/${id}`)
+    fetch(`${import.meta.env.VITE_API_URL || ''}/api/debates/${id}`)
       .then(r => r.json())
       .then(d => { setDebate(d); setLoading(false); })
       .catch(() => setLoading(false));

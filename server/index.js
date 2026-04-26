@@ -13,12 +13,16 @@ import leaderboardRouter from './routes/leaderboard.js';
 const app = express();
 const httpServer = createServer(app);
 
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',')
+  : ['http://localhost:5173', 'http://localhost:3000'];
+
 const io = new Server(httpServer, {
-  cors: { origin: ['http://localhost:5173', 'http://localhost:3000'], credentials: true },
+  cors: { origin: allowedOrigins, credentials: true },
   maxHttpBufferSize: 10e6, // 10 MB for audio blobs
 });
 
-app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:3000'] }));
+app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 
 app.use('/api/debates', debatesRouter);

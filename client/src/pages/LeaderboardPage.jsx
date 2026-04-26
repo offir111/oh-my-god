@@ -6,7 +6,7 @@ export default function LeaderboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/leaderboard')
+    fetch(`${import.meta.env.VITE_API_URL || ''}/api/leaderboard`)
       .then(r => r.json())
       .then(d => { setLeaders(d); setLoading(false); })
       .catch(() => setLoading(false));

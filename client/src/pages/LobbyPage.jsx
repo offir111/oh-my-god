@@ -37,7 +37,7 @@ export default function LobbyPage() {
 
   async function fetchLive() {
     try {
-      const res = await fetch('/api/debates/live');
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/debates/live`);
       if (res.ok) setLiveDebates(await res.json());
     } catch {}
   }

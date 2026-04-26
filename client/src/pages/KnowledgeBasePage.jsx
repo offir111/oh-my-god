@@ -14,7 +14,7 @@ export default function KnowledgeBasePage() {
     setLoading(true);
     try {
       const qs = query ? `?q=${encodeURIComponent(query)}` : '';
-      const res = await fetch(`/api/debates${qs}`);
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/debates${qs}`);
       if (res.ok) {
         const data = await res.json();
         setDebates(data.items);
