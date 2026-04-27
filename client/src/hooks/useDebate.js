@@ -23,7 +23,7 @@ export function useDebate(debateId) {
         let i = 0;
         setStreamingMessage({ side: msg.side, content: '', isAI: true, timestamp: msg.timestamp });
         const interval = setInterval(() => {
-          i += 3; // add 3 chars at a time for fast typing effect
+          i += 3;
           if (i >= fullText.length) {
             clearInterval(interval);
             clearStreamingMessage();
@@ -31,7 +31,7 @@ export function useDebate(debateId) {
           } else {
             appendStreamingChunk(fullText.slice(i - 3, i));
           }
-        }, 900); // ~900ms per chunk = extremely slow typing speed
+        }, 4500); // 80% slower than before
       } else {
         addTextMessage(msg);
       }
