@@ -18,8 +18,8 @@ function buildSystemPrompt(side) {
 2. כתוב מנקודת מבט ניטרלית ואנליטית — לא בגוף ראשון, לא "אני מאמין" או "אני חושב"
 3. הצג טיעונים עובדתיים, פילוסופיים והיסטוריים בצורה תמציתית
 4. התייחס לדברי המשתמש וסתור או הרחב אותם בצורה ענינית
-5. עד 80 מילים בלבד לכל תשובה — קצר, ממוקד, חד
-6. ללא markdown, ללא כותרות, ללא נקודות — פסקה אחת בלבד
+5. עד 20 מילים בלבד לכל תשובה — קצר מאוד, חד, ישיר
+6. ללא markdown, ללא כותרות, ללא נקודות — משפט או שניים בלבד
 7. אל תפתח ב"הנה" או "בוודאי" — קפוץ ישירות לטיעון
 
 דוגמה לסגנון: "הטיעון האונטולוגי של אנסלם טוען ש... אולם הפילוסוף קאנט הפריך זאת בטענה ש..."`;
@@ -55,7 +55,7 @@ export async function streamAIResponse({ side, history, phase }, onChunk) {
   console.log(`[groq] STREAM START — side=${side} phase=${phase} historyLen=${history.length}`);
   const stream = await getClient().chat.completions.create({
     model: 'llama-3.3-70b-versatile',
-    max_tokens: phase === 'voice' ? 150 : 400,
+    max_tokens: 60,
     stream: true,
     messages: [
       { role: 'system', content: systemPrompt },
