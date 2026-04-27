@@ -54,7 +54,7 @@ process.on('SIGINT', () => {
 const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, () => {
   console.log(`[server] Running on http://localhost:${PORT}`);
-  if (!process.env.ANTHROPIC_API_KEY) {
-    console.warn('[server] ⚠️  ANTHROPIC_API_KEY not set — AI debates will fail');
+  if (!process.env.GROQ_API_KEY) {
+    console.warn('[server] ⚠️  GROQ_API_KEY not set — AI debates will fail');
   }
 });
