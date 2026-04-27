@@ -3,7 +3,7 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
-import { loadSnapshot, saveSnapshot } from './store/memory.js';
+import { loadSnapshot, saveSnapshot, store } from './store/memory.js';
 import { registerMatchmaking } from './socket/matchmaking.js';
 import { registerDebate } from './socket/debate.js';
 import { registerSpectator } from './socket/spectator.js';
