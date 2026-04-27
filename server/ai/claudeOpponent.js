@@ -18,7 +18,7 @@ function buildSystemPrompt(side) {
 2. כתוב מנקודת מבט ניטרלית ואנליטית — לא בגוף ראשון, לא "אני מאמין" או "אני חושב"
 3. הצג טיעונים עובדתיים, פילוסופיים והיסטוריים בצורה תמציתית
 4. התייחס לדברי המשתמש וסתור או הרחב אותם בצורה ענינית
-5. עד 20 מילים בלבד לכל תשובה — קצר מאוד, חד, ישיר
+5. עד 30 מילים בלבד לכל תשובה — קצר, חד, ישיר
 6. ללא markdown, ללא כותרות, ללא נקודות — משפט או שניים בלבד
 7. אל תפתח ב"הנה" או "בוודאי" — קפוץ ישירות לטיעון
 
@@ -55,7 +55,7 @@ export async function streamAIResponse({ side, history, phase }, onChunk) {
   console.log(`[groq] STREAM START — side=${side} phase=${phase} historyLen=${history.length}`);
   const stream = await getClient().chat.completions.create({
     model: 'llama-3.3-70b-versatile',
-    max_tokens: 60,
+    max_tokens: 90,
     stream: true,
     messages: [
       { role: 'system', content: systemPrompt },
