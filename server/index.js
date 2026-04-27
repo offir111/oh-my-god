@@ -18,11 +18,11 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
   : ['http://localhost:5173', 'http://localhost:3000'];
 
 const io = new Server(httpServer, {
-  cors: { origin: true, credentials: true },
+  cors: { origin: '*', methods: ['GET', 'POST'] },
   maxHttpBufferSize: 10e6, // 10 MB for audio blobs
 });
 
-app.use(cors({ origin: true }));
+app.use(cors({ origin: '*' }));
 app.use(express.json());
 
 app.use('/api/debates', debatesRouter);
