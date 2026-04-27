@@ -1,17 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/appStore.js';
-import { connectSocket } from '../socket.js';
+import { connectSocket, socket } from '../socket.js';
 import TransparentImage from '../components/ui/TransparentImage.jsx';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [selectedSide, setSelectedSide] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
   const [registered, setRegistered] = useState(() => {
     try { return JSON.parse(localStorage.getItem('omg_pending')) || null; } catch { return null; }
   });
+  const user = useAppStore(s => s.user);
   const setUser = useAppStore(s => s.setUser);
+  const setDebate = useAppStore(s => s.setDebate);
   const navigate = useNavigate();
 
   function handleRegister() {
@@ -24,22 +28,73 @@ export default function LoginPage() {
     setRegistered(pending);
   }
 
-  function handleSelect(side) {
+  function handlePanelClick(side) {
     const name = registered?.username || user?.username;
     if (!name) { setError('נא להזין שם משתמש תחילה'); return; }
+    setSelectedSide(side);
+  }
+
+  function handleHuman() {
+    const name = registered?.username || user?.username;
     localStorage.removeItem('omg_pending');
-    setUser({ username: name, side, score: 0, voiceDebates: 0 });
-    connectSocket(name, side);
+    setUser({ username: name, side: selectedSide, score: 0, voiceDebates: 0 });
+    connectSocket(name, selectedSide);
     navigate('/lobby');
+  }
+
+  function handleAIMode() {
+    const name = registered?.username || user?.username;
+    localStorage.removeItem('omg_pending');
+    const side = selectedSide;
+    setUser({ username: name, side, score: 0, voiceDebates: 0 });
+    setAiLoading(true);
+
+    // Disconnect first to ensure clean reconnect
+    socket.disconnect();
+    socket.auth = { username: name, side };
+
+    socket.off('MATCH_FOUND');
+    socket.once('MATCH_FOUND', ({ debateId, isAI, believer, atheist, aiSide }) => {
+      setDebate({
+        id: debateId, isAI, aiSide,
+        believer, atheist,
+        phase: 'text', turn: 'believer',
+        textMessages: [], voiceMessages: [],
+        textCount: { believer: 0, atheist: 0 },
+        voiceCount: { believer: 0, atheist: 0 },
+        giftsReceived: { believer: 0, atheist: 0 },
+      });
+      navigate(`/debate/${debateId}`);
+    });
+
+    // Wait for connection then emit — don't use fixed timeout
+    function sendRequest() {
+      console.log('[login] socket connected, emitting REQUEST_AI_DEBATE');
+      socket.emit('REQUEST_AI_DEBATE', { username: name, side });
+    }
+
+    if (socket.connected) {
+      sendRequest();
+    } else {
+      socket.once('connect', sendRequest);
+      // Connection timeout after 8 seconds
+      setTimeout(() => {
+        if (!socket.connected) {
+          console.error('[login] socket failed to connect after 8s');
+          setAiLoading(false);
+          setError('לא ניתן להתחבר לשרת. נסה שוב.');
+        }
+      }, 8000);
+    }
+
+    socket.connect();
   }
 
   function handleAI() {
     const name = registered?.username || user?.username;
     if (!name) { setError('נא להזין שם משתמש תחילה'); return; }
-    localStorage.removeItem('omg_pending');
-    setUser({ username: name, side: 'believer', score: 0, voiceDebates: 0 });
-    connectSocket(name, 'believer');
-    navigate('/lobby?ai=1');
+    setSelectedSide('believer');
+    setAiLoading(false);
   }
 
   return (
@@ -316,51 +371,93 @@ export default function LoginPage() {
           </div>
         ) : null}
 
-        <p className="login-choose">בחר את הצד שלך:</p>
+        {aiLoading ? (
+          <div style={{ textAlign: 'center', padding: '40px 0' }}>
+            <div className="spinner" style={{ margin: '0 auto 20px' }} />
+            <p style={{ color: '#fff', fontSize: '1.1rem', fontWeight: 700 }}>🤖 מתחבר ל-AI...</p>
+            <p style={{ color: '#888', fontSize: '0.9rem', marginTop: 8 }}>מכין את הדיון</p>
+          </div>
+        ) : !selectedSide ? (
+          <>
+            <p className="login-choose">בחר את הצד שלך:</p>
 
-        <div className="login-panels">
-          <button
-            className="login-panel panel-believer"
-            onClick={() => handleSelect('believer')}
-            onTouchStart={e => e.currentTarget.style.transform = 'translateY(4px)'}
-            onTouchEnd={e => e.currentTarget.style.transform = 'translateY(0)'}
-            onMouseDown={e => e.currentTarget.style.transform = 'translateY(4px)'}
-            onMouseUp={e => e.currentTarget.style.transform = 'translateY(0)'}
-            onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
-          >
-            <TransparentImage src="/rabbis.jpg" alt="רבנים" size={Math.min(150, window.innerWidth * 0.33)} />
-            <div className="panel-title">מאמין</div>
-            <div className="panel-subtitle">דת</div>
-          </button>
+            <div className="login-panels">
+              <button
+                className="login-panel panel-believer"
+                onClick={() => handlePanelClick('believer')}
+                onTouchStart={e => e.currentTarget.style.transform = 'translateY(4px)'}
+                onTouchEnd={e => e.currentTarget.style.transform = 'translateY(0)'}
+                onMouseDown={e => e.currentTarget.style.transform = 'translateY(4px)'}
+                onMouseUp={e => e.currentTarget.style.transform = 'translateY(0)'}
+                onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                <TransparentImage src="/rabbis.jpg" alt="רבנים" size={Math.min(150, window.innerWidth * 0.33)} />
+                <div className="panel-title">מאמין</div>
+                <div className="panel-subtitle">דת</div>
+              </button>
 
-          <div className="login-vs">VS</div>
+              <div className="login-vs">VS</div>
 
-          <button
-            className="login-panel panel-atheist"
-            onClick={() => handleSelect('atheist')}
-            onTouchStart={e => e.currentTarget.style.transform = 'translateY(4px)'}
-            onTouchEnd={e => e.currentTarget.style.transform = 'translateY(0)'}
-            onMouseDown={e => e.currentTarget.style.transform = 'translateY(4px)'}
-            onMouseUp={e => e.currentTarget.style.transform = 'translateY(0)'}
-            onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
-          >
-            <TransparentImage src="/torah.jpg" alt="איינשטיין" size={Math.min(150, window.innerWidth * 0.33)} />
-            <div className="panel-title">אתאיסט</div>
-            <div className="panel-subtitle">מדע</div>
-          </button>
-        </div>
+              <button
+                className="login-panel panel-atheist"
+                onClick={() => handlePanelClick('atheist')}
+                onTouchStart={e => e.currentTarget.style.transform = 'translateY(4px)'}
+                onTouchEnd={e => e.currentTarget.style.transform = 'translateY(0)'}
+                onMouseDown={e => e.currentTarget.style.transform = 'translateY(4px)'}
+                onMouseUp={e => e.currentTarget.style.transform = 'translateY(0)'}
+                onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                <TransparentImage src="/torah.jpg" alt="איינשטיין" size={Math.min(150, window.innerWidth * 0.33)} />
+                <div className="panel-title">אתאיסט</div>
+                <div className="panel-subtitle">מדע</div>
+              </button>
+            </div>
 
-        <button
-          className="ai-button"
-          onClick={handleAI}
-          onTouchStart={e => e.currentTarget.style.transform = 'translateY(3px)'}
-          onTouchEnd={e => e.currentTarget.style.transform = 'translateY(0)'}
-          onMouseDown={e => e.currentTarget.style.transform = 'translateY(3px)'}
-          onMouseUp={e => e.currentTarget.style.transform = 'translateY(0)'}
-          onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
-        >
-          התמודד מול AI
-        </button>
+            <button
+              className="ai-button"
+              onClick={handleAI}
+              onTouchStart={e => e.currentTarget.style.transform = 'translateY(3px)'}
+              onTouchEnd={e => e.currentTarget.style.transform = 'translateY(0)'}
+              onMouseDown={e => e.currentTarget.style.transform = 'translateY(3px)'}
+              onMouseUp={e => e.currentTarget.style.transform = 'translateY(0)'}
+              onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+            >
+              התמודד מול AI
+            </button>
+          </>
+        ) : (
+          /* Side chosen — pick mode: human or AI */
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, width: '100%', maxWidth: 360 }}>
+            <p className="login-choose" style={{ marginBottom: 4 }}>
+              בחרת: <span style={{ color: selectedSide === 'believer' ? '#CC0000' : '#00AA44', fontWeight: 900 }}>
+                {selectedSide === 'believer' ? 'מאמין' : 'אתאיסט'}
+              </span>
+            </p>
+            <p style={{ color: '#aaa', fontSize: '0.9rem', marginBottom: 8 }}>עם מי תרצה לדון?</p>
+            <button
+              className={`login-panel ${selectedSide === 'believer' ? 'panel-believer' : 'panel-atheist'}`}
+              style={{ width: '100%', maxWidth: '100%', padding: '18px 24px', borderRadius: 16, fontSize: '1.1rem', fontWeight: 800 }}
+              onClick={handleHuman}
+            >
+              👤 נגד יריב אנושי
+            </button>
+            <button
+              className="login-panel"
+              style={{ width: '100%', maxWidth: '100%', padding: '18px 24px', borderRadius: 16, fontSize: '1.1rem', fontWeight: 800,
+                background: 'linear-gradient(135deg, #f2f2f2 0%, #c6c6c6 100%)', color: '#000',
+                boxShadow: '0 6px 0 #a8a8a8, 0 10px 20px rgba(0,0,0,0.35)' }}
+              onClick={handleAIMode}
+            >
+              🤖 נגד AI
+            </button>
+            <button
+              style={{ background: 'none', border: 'none', color: '#888', fontSize: '0.9rem', cursor: 'pointer', marginTop: 4 }}
+              onClick={() => setSelectedSide(null)}
+            >
+              ← חזרה
+            </button>
+          </div>
+        )}
 
         <div className="login-links">
           <a href="/arguments" className="login-link">📚 בעד ונגד</a>

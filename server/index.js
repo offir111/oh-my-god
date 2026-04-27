@@ -52,9 +52,12 @@ process.on('SIGINT', () => {
 });
 
 const PORT = process.env.PORT || 3001;
-httpServer.listen(PORT, () => {
-  console.log(`[server] Running on http://localhost:${PORT}`);
+httpServer.listen(PORT, '0.0.0.0', () => {
+  console.log(`[server] Running on 0.0.0.0:${PORT}`);
+  console.log(`[server] NODE_ENV=${process.env.NODE_ENV || 'development'}`);
   if (!process.env.GROQ_API_KEY) {
     console.warn('[server] ⚠️  GROQ_API_KEY not set — AI debates will fail');
+  } else {
+    console.log('[server] ✅ GROQ_API_KEY is set');
   }
 });
