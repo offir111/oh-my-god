@@ -82,7 +82,8 @@ export default function DebatePage() {
           {debate.turn === mySide && <span style={styles.turnDot} />}
         </div>
         <div style={{ textAlign: 'center' }}>
-          <PhaseIndicator phase={debate.phase} />
+          {!debate.isAI && <PhaseIndicator phase={debate.phase} />}
+          {debate.isAI && <span style={{ color: 'var(--muted)', fontSize: '0.78rem' }}>🤖 AI • שיחה חופשית</span>}
           {spectatorCount > 0 && (
             <div style={{ color: 'var(--muted)', fontSize: '0.78rem' }}>
               👁 {spectatorCount} צופים
@@ -97,14 +98,21 @@ export default function DebatePage() {
       </div>
 
       <div style={styles.body}>
-        {debate.phase === 'text' && (
+        {/* AI debates: always text, no phase transitions */}
+        {debate.isAI ? (
           <TextPhase debateId={debateId} opponentTyping={opponentTyping} />
-        )}
-        {debate.phase === 'voice' && (
-          <VoicePhase debateId={debateId} opponentRecording={opponentRecording} />
-        )}
-        {debate.phase === 'live' && (
-          <LivePhase debateId={debateId} />
+        ) : (
+          <>
+            {debate.phase === 'text' && (
+              <TextPhase debateId={debateId} opponentTyping={opponentTyping} />
+            )}
+            {debate.phase === 'voice' && (
+              <VoicePhase debateId={debateId} opponentRecording={opponentRecording} />
+            )}
+            {debate.phase === 'live' && (
+              <LivePhase debateId={debateId} />
+            )}
+          </>
         )}
       </div>
 

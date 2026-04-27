@@ -38,7 +38,8 @@ export function registerDebate(io) {
       io.to(debateId).emit('TEXT_MESSAGE_RECEIVED', msg);
       io.to(debateId).emit('TURN_CHANGED', { turn: debate.turn });
 
-      if (debate.textCount.believer >= TEXT_LIMIT && debate.textCount.atheist >= TEXT_LIMIT) {
+      // For AI debates — no phase transitions, infinite text chat
+      if (!debate.isAI && debate.textCount.believer >= TEXT_LIMIT && debate.textCount.atheist >= TEXT_LIMIT) {
         await transitionToVoice(io, debate);
         return;
       }
@@ -135,9 +136,7 @@ async function handleAITextTurn(io, debate) {
     io.to(`spec:${debate.id}`).emit('AI_STREAM_END', { msg });
     io.to(debate.id).emit('TURN_CHANGED', { turn: debate.turn });
 
-    if (debate.textCount.believer >= TEXT_LIMIT && debate.textCount.atheist >= TEXT_LIMIT) {
-      await transitionToVoice(io, debate);
-    }
+    // AI debates never transition to voice — infinite text only
   } catch (e) {
     console.error('[ai] text turn error:', e.message);
     debate.isAITurn = false;
