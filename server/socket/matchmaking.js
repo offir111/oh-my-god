@@ -3,6 +3,9 @@ import { store, createDebateState } from '../store/memory.js';
 
 export function registerMatchmaking(io) {
   io.on('connection', (socket) => {
+    console.log(`[socket] connected: ${socket.id}`);
+    socket.on('disconnect', reason => console.log(`[socket] disconnected: ${socket.id} (${reason})`));
+
     socket.on('JOIN_QUEUE', ({ username, side }) => {
       store.users.set(socket.id, { username, side, score: 0, voiceDebates: 0, giftsReceived: 0 });
       const oppSide = side === 'believer' ? 'atheist' : 'believer';
