@@ -6,29 +6,30 @@ import TransparentImage from '../components/ui/TransparentImage.jsx';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const setUser = useAppStore(s => s.setUser);
   const navigate = useNavigate();
 
-  function handleSelect(side) {
+  function validate() {
     const name = username.trim();
-    if (!name || name.length < 2) {
-      setError('נא להזין שם משתמש (לפחות 2 תווים)');
-      return;
-    }
+    if (!name || name.length < 2) { setError('נא להזין שם משתמש (לפחות 2 תווים)'); return null; }
+    if (password.length !== 4) { setError('הסיסמה חייבת להיות בדיוק 4 תווים'); return null; }
     setError('');
+    return name;
+  }
+
+  function handleSelect(side) {
+    const name = validate();
+    if (!name) return;
     setUser({ username: name, side, score: 0, voiceDebates: 0 });
     connectSocket(name, side);
     navigate('/lobby');
   }
 
   function handleAI() {
-    const name = username.trim();
-    if (!name || name.length < 2) {
-      setError('נא להזין שם משתמש (לפחות 2 תווים)');
-      return;
-    }
-    setError('');
+    const name = validate();
+    if (!name) return;
     setUser({ username: name, side: 'believer', score: 0, voiceDebates: 0 });
     connectSocket(name, 'believer');
     navigate('/lobby?ai=1');
@@ -38,7 +39,7 @@ export default function LoginPage() {
     <>
       <style>{`
         .login-page {
-          min-height: 100vh;
+          min-height: calc(100vh - 52px);
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -47,6 +48,8 @@ export default function LoginPage() {
           background: #000;
           gap: 20px;
           box-sizing: border-box;
+          overflow-x: hidden;
+          width: 100%;
         }
         .ticker-wrap {
           width: 100%;
@@ -74,7 +77,8 @@ export default function LoginPage() {
         }
         .ticker-item {
           display: inline-block;
-          color: #aaa;
+          color: #fff;
+          font-weight: 700;
           font-size: clamp(0.6rem, 2.2vw, 0.72rem);
           padding: 0 18px;
           direction: rtl;
@@ -255,6 +259,16 @@ export default function LoginPage() {
             onKeyDown={e => e.key === 'Enter' && username.trim() && handleSelect('believer')}
             maxLength={20}
             autoFocus
+          />
+          <input
+            className="login-input"
+            type="password"
+            placeholder="סיסמה (4 תווים)..."
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleSelect('believer')}
+            maxLength={4}
+            style={{ marginTop: 10 }}
           />
           {error && <p className="login-error">{error}</p>}
         </div>

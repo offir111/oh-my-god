@@ -1,13 +1,21 @@
 import { create } from 'zustand';
 
+function loadUser() {
+  try { return JSON.parse(localStorage.getItem('omg_user')) || null; } catch { return null; }
+}
+
 export const useAppStore = create((set, get) => ({
-  user: null,
+  user: loadUser(),
   debateId: null,
   debate: null,
   gifts: [],
   spectatorCount: 0,
 
-  setUser: (user) => set({ user }),
+  setUser: (user) => {
+    if (user) localStorage.setItem('omg_user', JSON.stringify(user));
+    else localStorage.removeItem('omg_user');
+    set({ user });
+  },
 
   setDebate: (debate) => set({ debate, debateId: debate?.id || null }),
 

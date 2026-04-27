@@ -30,6 +30,13 @@ app.use('/api/leaderboard', leaderboardRouter);
 
 app.get('/api/health', (_, res) => res.json({ ok: true }));
 
+app.get('/api/stats', (_, res) => {
+  res.json({
+    registered: store.userScores.size,
+    online: store.users.size,
+  });
+});
+
 loadSnapshot();
 
 registerMatchmaking(io);
