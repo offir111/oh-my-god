@@ -28,7 +28,7 @@ app.use(express.json());
 app.use('/api/debates', debatesRouter);
 app.use('/api/leaderboard', leaderboardRouter);
 
-app.get('/api/health', (_, res) => res.json({ ok: true }));
+app.get('/api/health', (_, res) => res.json({ ok: true, provider: 'groq', version: 2 }));
 
 app.get('/api/stats', (_, res) => {
   res.json({
