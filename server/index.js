@@ -1,4 +1,18 @@
 import 'dotenv/config';
+
+// Catch and log any unhandled errors so they appear in Railway logs
+process.on('uncaughtException', (err) => {
+  console.error('[FATAL] uncaughtException:', err.stack || err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[FATAL] unhandledRejection:', reason);
+});
+
+console.log('[boot] starting server...');
+console.log('[boot] node version:', process.version);
+console.log('[boot] cwd:', process.cwd());
+console.log('[boot] PORT env:', process.env.PORT);
+
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
