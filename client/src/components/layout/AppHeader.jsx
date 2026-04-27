@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppStore } from '../../store/appStore.js';
 import { disconnectSocket } from '../../socket.js';
+import BibleModal from '../ui/BibleModal.jsx';
 
 export default function AppHeader() {
   const user = useAppStore(s => s.user);
@@ -11,6 +12,7 @@ export default function AppHeader() {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [avatarOpen, setAvatarOpen] = useState(false);
+  const [bibleOpen, setBibleOpen] = useState(false);
   const [stats, setStats] = useState({ registered: 0, online: 0, registeredList: [], onlineList: [] });
   const [listOpen, setListOpen] = useState(null); // 'registered' | 'online' | null
   const menuRef = useRef();
@@ -105,18 +107,18 @@ export default function AppHeader() {
         }
         .header-back-btn:hover { background: rgba(60,60,60,0.9); }
         .header-dots-menu {
-          position: absolute;
-          top: 44px;
-          left: 0;
+          position: fixed;
+          top: 52px;
+          left: 8px;
           right: auto;
           background: #1a1a1a;
           border: 1px solid #333;
           border-radius: 12px;
-          min-width: 160px;
+          min-width: 200px;
           overflow: hidden;
-          box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+          box-shadow: 0 8px 24px rgba(0,0,0,0.8);
           direction: rtl;
-          z-index: 2000;
+          z-index: 3000;
         }
         .header-dots-menu a, .header-dots-menu button {
           display: block;
@@ -274,9 +276,18 @@ export default function AppHeader() {
           <button className="header-dots-btn" onClick={() => setMenuOpen(o => !o)}>⋮</button>
           {menuOpen && (
             <div className="header-dots-menu">
-              <a href="#">⚙️ הגדרות</a>
-              <a href="#">📋 תקנון</a>
-              <a href="#">✉️ צור קשר</a>
+              <button onClick={() => { setBibleOpen(true); setMenuOpen(false); }}
+                style={{ display:'block', width:'100%', padding:'13px 18px', color:'#FFE566',
+                  background:'none', border:'none', borderBottom:'1px solid #2a2a2a',
+                  textAlign:'right', cursor:'pointer', fontFamily:'Arial, sans-serif', fontSize:'0.92rem' }}>
+                📖 ספר התנ"ך
+              </button>
+              <a href="#" style={{ display:'block', padding:'13px 18px', color:'#fff',
+                textDecoration:'none', fontSize:'0.92rem', borderBottom:'1px solid #2a2a2a' }}>⚙️ הגדרות</a>
+              <a href="#" style={{ display:'block', padding:'13px 18px', color:'#fff',
+                textDecoration:'none', fontSize:'0.92rem', borderBottom:'1px solid #2a2a2a' }}>📋 תקנון</a>
+              <a href="#" style={{ display:'block', padding:'13px 18px', color:'#fff',
+                textDecoration:'none', fontSize:'0.92rem' }}>✉️ צור קשר</a>
             </div>
           )}
         </div>
@@ -336,6 +347,8 @@ export default function AppHeader() {
           )}
         </div>
       </div>
+
+      {bibleOpen && <BibleModal onClose={() => setBibleOpen(false)} />}
     </>
   );
 }

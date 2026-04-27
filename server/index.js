@@ -45,11 +45,13 @@ app.use('/api/leaderboard', leaderboardRouter);
 app.get('/api/health', (_, res) => res.json({ ok: true, provider: 'groq', version: 2 }));
 
 app.get('/api/stats', (_, res) => {
+  // Count unique usernames online (same user from multiple devices = 1)
+  const onlineSet = new Set([...store.users.values()].map(u => u.username));
   res.json({
     registered: store.registeredCount,
-    online: store.users.size,
+    online: onlineSet.size,
     registeredList: [...store.registeredUsernames],
-    onlineList: [...store.users.values()].map(u => u.username),
+    onlineList: [...onlineSet],
   });
 });
 
