@@ -1,39 +1,42 @@
 import React, { useRef } from 'react';
 
 export default function MessageBubble({ msg, mySide }) {
-  const isMe = msg.side === mySide;
   const isBeliever = msg.side === 'believer';
   const color = isBeliever ? 'var(--believer)' : 'var(--atheist)';
   const dimColor = isBeliever ? 'var(--believer-dim)' : 'var(--atheist-dim)';
 
   if (msg.audioB64 || msg.isAIText) {
-    return <VoiceBubble msg={msg} isMe={isMe} color={color} dimColor={dimColor} />;
+    return <VoiceBubble msg={msg} color={color} dimColor={dimColor} />;
   }
 
   return (
-    <div style={{ display: 'flex', justifyContent: isMe ? 'flex-start' : 'flex-end', marginBottom: 10 }}>
+    <div style={{ marginBottom: 14, direction: 'rtl', textAlign: 'right' }}>
       <div style={{
-        maxWidth: '72%',
-        background: isMe ? dimColor : '#1e1e1e',
-        border: `1px solid ${isMe ? color : '#333'}`,
+        display: 'inline-block',
+        maxWidth: '90%',
+        background: dimColor,
+        border: `1px solid ${color}`,
         borderRadius: 14,
         padding: '12px 16px',
         color: '#fff',
-        lineHeight: 1.6,
+        lineHeight: 1.7,
         fontSize: '0.97rem',
         animation: 'fadeIn 0.25s ease',
+        textAlign: 'right',
       }}>
-        <div style={{ fontSize: '0.72rem', color, fontWeight: 700, marginBottom: 4 }}>
+        <div style={{ fontSize: '0.72rem', color, fontWeight: 700, marginBottom: 5 }}>
           {msg.side === 'believer' ? '🔴 מאמין' : '🟢 אתאיסט'}
           {msg.isAI && ' (AI)'}
         </div>
-        {msg.content}
+        <div style={{ direction: 'rtl', textAlign: 'right' }}>
+          {msg.content}
+        </div>
       </div>
     </div>
   );
 }
 
-function VoiceBubble({ msg, isMe, color, dimColor }) {
+function VoiceBubble({ msg, color, dimColor }) {
   const audioRef = useRef(null);
 
   function play() {
@@ -57,16 +60,17 @@ function VoiceBubble({ msg, isMe, color, dimColor }) {
   }
 
   return (
-    <div style={{ display: 'flex', justifyContent: isMe ? 'flex-start' : 'flex-end', marginBottom: 10 }}>
+    <div style={{ marginBottom: 14, direction: 'rtl', textAlign: 'right' }}>
       <div style={{
-        background: isMe ? dimColor : '#1e1e1e',
-        border: `1px solid ${isMe ? color : '#333'}`,
+        display: 'inline-flex',
+        background: dimColor,
+        border: `1px solid ${color}`,
         borderRadius: 14,
         padding: '10px 16px',
-        display: 'flex',
         alignItems: 'center',
         gap: 10,
         animation: 'fadeIn 0.25s ease',
+        flexDirection: 'row-reverse',
       }}>
         <div style={{ fontSize: '0.72rem', color, fontWeight: 700 }}>
           {msg.side === 'believer' ? '🔴 מאמין' : '🟢 אתאיסט'}
