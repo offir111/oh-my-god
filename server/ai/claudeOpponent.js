@@ -30,16 +30,23 @@ export async function getAIResponse({ side, history, phase }) {
   const systemPrompt = buildSystemPrompt(side);
   const messages = formatHistory(history, side);
 
-  const response = await getClient().chat.completions.create({
-    model: 'llama-3.3-70b-versatile',
-    max_tokens: phase === 'voice' ? 150 : 400,
-    messages: [
-      { role: 'system', content: systemPrompt },
-      ...(messages.length > 0 ? messages : [{ role: 'user', content: 'פתח את הדיון.' }]),
-    ],
-  });
-
-  return response.choices[0].message.content.trim();
+  console.log(`[groq] calling API — side=${side} phase=${phase} historyLen=${history.length}`);
+  try {
+    const response = await getClient().chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      max_tokens: phase === 'voice' ? 150 : 400,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...(messages.length > 0 ? messages : [{ role: 'user', content: 'פתח את הדיון.' }]),
+      ],
+    });
+    const text = response.choices[0].message.content.trim();
+    console.log(`[groq] response OK — ${text.slice(0, 60)}...`);
+    return text;
+  } catch (e) {
+    console.error('[groq] API error:', e.status, e.message);
+    throw e;
+  }
 }
 
 function formatHistory(messages, aiSide) {
