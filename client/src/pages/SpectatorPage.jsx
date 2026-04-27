@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { socket } from '../socket.js';
 import MessageBubble from '../components/debate/MessageBubble.jsx';
 import { useAppStore } from '../store/appStore.js';
@@ -8,6 +8,7 @@ const GIFTS = ['🔥', '💡', '👏', '🎯', '⚡', '🌟', '💪', '🤔', '�
 
 export default function SpectatorPage() {
   const { debateId } = useParams();
+  const navigate = useNavigate();
   const [debate, setDebate] = useState(null);
   const [count, setCount] = useState(0);
   const [messages, setMessages] = useState([]);
@@ -66,6 +67,7 @@ export default function SpectatorPage() {
 
   return (
     <div style={styles.page}>
+      <button onClick={() => navigate(-1)} style={{ background:'none', border:'none', color:'#aaa', fontSize:'0.9rem', cursor:'pointer', padding:'8px 16px', alignSelf:'flex-start' }}>← חזרה</button>
       <div style={styles.header}>
         <div style={styles.headerTitle}>
           <span style={{ color: 'var(--believer)', fontWeight: 700 }}>{debate.believer.username} (מאמין)</span>

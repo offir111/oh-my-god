@@ -16,9 +16,22 @@ export default function AppHeader() {
 
   useEffect(() => {
     const BASE = import.meta.env.VITE_API_URL || '';
-    function fetchStats() {
-      fetch(`${BASE}/api/stats`).then(r => r.ok ? r.json() : null).then(d => { if (d) setStats(d); }).catch(() => {});
+
+    function localStats() {
+      const hasUser = !!localStorage.getItem('omg_user');
+      const hasPending = !!localStorage.getItem('omg_pending');
+      const registered = hasUser || hasPending ? 1 : 0;
+      const online = hasUser || hasPending ? 1 : 0;
+      return { registered, online };
     }
+
+    function fetchStats() {
+      fetch(`${BASE}/api/stats`)
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { setStats(d || localStats()); })
+        .catch(() => setStats(localStats()));
+    }
+
     fetchStats();
     const t = setInterval(fetchStats, 15000);
     return () => clearInterval(t);
@@ -105,7 +118,18 @@ export default function AppHeader() {
         .header-dots-menu a:last-child { border-bottom: none; }
         .header-dots-menu a:hover, .header-dots-menu button:hover { background: #2a2a2a; }
 
-        .header-avatar-wrap { position: relative; }
+        .header-avatar-wrap { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+        .header-online-dot {
+          width: 8px; height: 8px;
+          border-radius: 50%;
+          background: #00DD55;
+          box-shadow: 0 0 6px #00DD55, 0 0 12px #00DD5588;
+          animation: pulse-dot 2s ease-in-out infinite;
+        }
+        @keyframes pulse-dot {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.6; transform: scale(0.8); }
+        }
         .header-avatar {
           width: 36px; height: 36px;
           border-radius: 50%;
@@ -226,6 +250,7 @@ export default function AppHeader() {
               </svg>
             )}
           </div>
+          {user && <div className="header-online-dot" />}
           {avatarOpen && user && (
             <div className="avatar-dropdown">
               <div className="avatar-dropdown-header">

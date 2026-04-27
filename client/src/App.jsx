@@ -11,6 +11,8 @@ import SpectatorPage from './pages/SpectatorPage.jsx';
 import KnowledgeBasePage from './pages/KnowledgeBasePage.jsx';
 import DebateDetailPage from './pages/DebateDetailPage.jsx';
 import LeaderboardPage from './pages/LeaderboardPage.jsx';
+import ArgumentsPage from './pages/ArgumentsPage.jsx';
+import LiveEventsPage from './pages/LiveEventsPage.jsx';
 
 function RequireAuth({ children }) {
   const user = useAppStore(s => s.user);
@@ -37,6 +39,8 @@ export default function App() {
         <Route path="/knowledge" element={<KnowledgeBasePage />} />
         <Route path="/knowledge/:id" element={<DebateDetailPage />} />
         <Route path="/leaderboard" element={<LeaderboardPage />} />
+        <Route path="/arguments" element={<ArgumentsPage />} />
+        <Route path="/live-events" element={<LiveEventsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import SideTag from '../components/ui/SideTag.jsx';
 
 export default function LeaderboardPage() {
+  const navigate = useNavigate();
   const [leaders, setLeaders] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -17,6 +19,7 @@ export default function LeaderboardPage() {
   return (
     <div className="page">
       <div className="container" style={{ maxWidth: 600 }}>
+        <button onClick={() => navigate(-1)} style={backBtn}>← חזרה</button>
         <div style={{ marginBottom: 28 }}>
           <h1 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: 6 }}>🏆 טבלת מובילים</h1>
           <p style={{ color: 'var(--muted)' }}>TOP 20 הדיינים המובילים</p>
@@ -60,3 +63,8 @@ export default function LeaderboardPage() {
     </div>
   );
 }
+
+const backBtn = {
+  background: 'none', border: 'none', color: '#aaa',
+  fontSize: '0.9rem', cursor: 'pointer', padding: '4px 0', marginBottom: 12,
+};

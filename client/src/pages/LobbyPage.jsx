@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppStore } from '../store/appStore.js';
 import { socket } from '../socket.js';
 import SideTag from '../components/ui/SideTag.jsx';
@@ -7,12 +7,41 @@ import SideTag from '../components/ui/SideTag.jsx';
 export default function LobbyPage() {
   const user = useAppStore(s => s.user);
   const setDebate = useAppStore(s => s.setDebate);
-  const [status, setStatus] = useState('idle'); // idle | waiting | found
+  const [status, setStatus] = useState('idle'); // idle | waiting | waiting-ai | found | error
+  const [connected, setConnected] = useState(socket.connected);
+  const [serverUrl, setServerUrl] = useState('');
+  const [httpOk, setHttpOk] = useState(null);
   const [liveDebates, setLiveDebates] = useState([]);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
+    const url = import.meta.env.VITE_API_URL || 'https://oh-my-god-production.up.railway.app';
+    setServerUrl(url);
+
+    // Test plain HTTP connectivity to Railway
+    fetch(`${url}/api/health`)
+      .then(r => r.json())
+      .then(d => { console.log('[lobby] HTTP health OK:', d); setHttpOk(true); })
+      .catch(e => { console.error('[lobby] HTTP health FAILED:', e.message); setHttpOk(false); });
+
     fetchLive();
+
+    const onConnect = () => { setConnected(true); console.log('[lobby] socket connected'); };
+    const onDisconnect = () => { setConnected(false); console.log('[lobby] socket disconnected'); };
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+    if (!socket.connected) socket.connect();
+
+    // Auto-start AI debate if coming from login with ?ai=1
+    const params = new URLSearchParams(location.search);
+    if (params.get('ai') === '1') {
+      setTimeout(() => {
+        console.log('[lobby] auto-starting AI, connected=', socket.connected);
+        setStatus('waiting-ai');
+        socket.emit('REQUEST_AI_DEBATE', { username: user?.username, side: user?.side });
+      }, 800);
+    }
 
     socket.on('WAITING_FOR_OPPONENT', () => setStatus('waiting'));
     socket.on('MATCH_FOUND', ({ debateId, isAI, believer, atheist, aiSide }) => {
@@ -30,6 +59,8 @@ export default function LobbyPage() {
     });
 
     return () => {
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
       socket.off('WAITING_FOR_OPPONENT');
       socket.off('MATCH_FOUND');
     };
@@ -48,7 +79,7 @@ export default function LobbyPage() {
   }
 
   function requestAI() {
-    setStatus('waiting');
+    setStatus('waiting-ai');
     socket.emit('REQUEST_AI_DEBATE', { username: user.username, side: user.side });
   }
 
@@ -99,6 +130,24 @@ export default function LobbyPage() {
             <p style={{ fontSize: '1.1rem', marginBottom: 6 }}>מחפש יריב {sideLabel === 'מאמין' ? 'אתאיסט' : 'מאמין'}...</p>
             <p style={{ color: 'var(--muted)', fontSize: '0.9rem', marginBottom: 20 }}>ממתין בתור</p>
             <button className="btn btn-ghost" onClick={cancelQueue}>ביטול</button>
+          </div>
+        )}
+
+        {status === 'waiting-ai' && (
+          <div className="card" style={{ textAlign: 'center', padding: 40 }}>
+            <div className="spinner" style={{ margin: '0 auto 20px' }} />
+            <p style={{ fontSize: '1.1rem', marginBottom: 6 }}>🤖 מתחבר ל-AI...</p>
+            <p style={{ color: connected ? '#00AA44' : '#ff6666', fontSize: '0.85rem', marginBottom: 4 }}>
+              {connected ? '✅ מחובר לשרת' : '❌ לא מחובר לשרת'}
+            </p>
+            <p style={{ color: httpOk === true ? '#00AA44' : httpOk === false ? '#ff6666' : '#888', fontSize: '0.8rem', marginBottom: 2 }}>
+              HTTP: {httpOk === null ? '⏳ בודק...' : httpOk ? '✅ שרת מגיב' : '❌ שרת לא מגיב'}
+            </p>
+            <p style={{ color: '#555', fontSize: '0.65rem', marginBottom: 4, wordBreak: 'break-all' }}>
+              {serverUrl}
+            </p>
+            <p style={{ color: 'var(--muted)', fontSize: '0.9rem', marginBottom: 20 }}>מכין את הדיון</p>
+            <button className="btn btn-ghost" onClick={() => setStatus('idle')}>ביטול</button>
           </div>
         )}
 

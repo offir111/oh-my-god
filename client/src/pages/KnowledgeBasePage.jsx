@@ -27,6 +27,7 @@ export default function KnowledgeBasePage() {
   return (
     <div className="page">
       <div className="container">
+        <button onClick={() => navigate(-1)} style={{ background:'none', border:'none', color:'#aaa', fontSize:'0.9rem', cursor:'pointer', padding:'4px 0', marginBottom: 12 }}>← חזרה</button>
         <div style={{ marginBottom: 28 }}>
           <h1 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: 8 }}>📚 מאגר הידע</h1>
           <p style={{ color: 'var(--muted)' }}>ויקיפדיה של טענות בעד ונגד האמונה — {total} דיונים שמורים</p>
