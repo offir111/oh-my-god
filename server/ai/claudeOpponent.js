@@ -1,6 +1,10 @@
 import Groq from 'groq-sdk';
 
-const client = new Groq({ apiKey: process.env.GROQ_API_KEY });
+let client = null;
+function getClient() {
+  if (!client) client = new Groq({ apiKey: process.env.GROQ_API_KEY });
+  return client;
+}
 
 function buildSystemPrompt(side) {
   const sideHe = side === 'believer' ? 'מאמין באלוהים' : 'אתאיסט';
@@ -26,7 +30,7 @@ export async function getAIResponse({ side, history, phase }) {
   const systemPrompt = buildSystemPrompt(side);
   const messages = formatHistory(history, side);
 
-  const response = await client.chat.completions.create({
+  const response = await getClient().chat.completions.create({
     model: 'llama-3.3-70b-versatile',
     max_tokens: phase === 'voice' ? 150 : 400,
     messages: [
@@ -50,7 +54,7 @@ export async function generateDebateSummary(messages) {
     .map(m => `${m.side === 'believer' ? 'מאמין' : 'אתאיסט'}: ${m.content || '[הודעה קולית]'}`)
     .join('\n');
 
-  const response = await client.chat.completions.create({
+  const response = await getClient().chat.completions.create({
     model: 'llama-3.3-70b-versatile',
     max_tokens: 200,
     messages: [{
