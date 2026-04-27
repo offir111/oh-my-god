@@ -70,15 +70,14 @@ export default function BibleModal({ onClose }) {
     setLoading(true);
     setResults(null);
     try {
-      const res = await fetch(
-        `https://www.sefaria.org/api/search-wrapper/es8?query=${encodeURIComponent(query)}&type=text&field=exact&source_language=he&slop=0&page=1&size=8`
-      );
+      const BASE = import.meta.env.VITE_API_URL || '';
+      const res = await fetch(`${BASE}/api/bible-search`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: query.trim() }),
+      });
       const data = await res.json();
-      const hits = data?.hits?.hits || [];
-      setResults(hits.map(h => ({
-        ref: h._source?.ref || h._id,
-        text: h._source?.exact || h._source?.content || '',
-      })));
+      setResults(data.results || []);
     } catch {
       setResults([]);
     }
@@ -139,12 +138,18 @@ export default function BibleModal({ onClose }) {
           {results && results.length === 0 && <p style={s.muted}>לא נמצאו תוצאות</p>}
           {results && results.length > 0 && (
             <div>
-              <p style={s.sectionLabel}>תוצאות חיפוש</p>
+              <p style={s.sectionLabel}>🤖 תוצאות AI — {results.length} פסוקים</p>
               {results.map((r, i) => (
                 <div key={i} style={s.verseCard}>
-                  <div style={{ color: '#FFE566', fontSize: '0.78rem', marginBottom: 4 }}>{r.ref}</div>
-                  <div style={{ fontSize: '0.92rem', lineHeight: 1.7, direction: 'rtl' }}
-                    dangerouslySetInnerHTML={{ __html: (r.text || '').replace(/<[^>]+>/g, '') }} />
+                  <div style={{ color: '#FFE566', fontSize: '0.8rem', fontWeight: 700, marginBottom: 6 }}>📍 {r.ref}</div>
+                  <div style={{ fontSize: '1rem', lineHeight: 1.9, direction: 'rtl', marginBottom: r.context ? 8 : 0 }}>
+                    {r.text}
+                  </div>
+                  {r.context && (
+                    <div style={{ color: '#888', fontSize: '0.78rem', borderTop: '1px solid #2a2a2a', paddingTop: 6, direction: 'rtl' }}>
+                      💡 {r.context}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

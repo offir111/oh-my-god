@@ -55,6 +55,52 @@ app.get('/api/stats', (_, res) => {
   });
 });
 
+// Bible search via Groq AI
+app.post('/api/bible-search', async (req, res) => {
+  const { query } = req.body;
+  if (!query?.trim()) return res.status(400).json({ error: 'missing query' });
+
+  try {
+    const Groq = (await import('groq-sdk')).default;
+    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
+    const response = await groq.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      max_tokens: 800,
+      messages: [
+        {
+          role: 'system',
+          content: `אתה מומחה בתנ"ך. כשמשתמש שואל על פסוק, נושא או מילה — מצא את הפסוקים הרלוונטיים ביותר מהתנ"ך.
+
+פורמט התשובה — JSON בלבד, ללא טקסט נוסף:
+{
+  "results": [
+    { "ref": "שם הספר פרק:פסוק", "text": "הטקסט המלא של הפסוק בעברית", "context": "הסבר קצר של הרלוונטיות" },
+    ...
+  ]
+}
+
+חוקים:
+- עד 5 תוצאות
+- פסוקים בעברית מקראית מדויקת
+- רלוונטיות גבוהה לשאילתה
+- ref בפורמט: "בראשית א:א" או "תהילים כג:א"`,
+        },
+        { role: 'user', content: query },
+      ],
+    });
+
+    const text = response.choices[0].message.content.trim();
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return res.json({ results: [] });
+    const parsed = JSON.parse(jsonMatch[0]);
+    res.json(parsed);
+  } catch (e) {
+    console.error('[bible-search] error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Admin: manually set registered count (one-time use)
 app.post('/api/admin/set-count', express.json(), (req, res) => {
   const { count, usernames } = req.body;
