@@ -10,6 +10,15 @@ export const useAppStore = create((set, get) => ({
   debate: null,
   gifts: [],
   spectatorCount: 0,
+  streamingMessage: null, // { side, content, isAI: true }
+
+  setStreamingMessage: (msg) => set({ streamingMessage: msg }),
+  appendStreamingChunk: (chunk) => set(s => ({
+    streamingMessage: s.streamingMessage
+      ? { ...s.streamingMessage, content: (s.streamingMessage.content || '') + chunk }
+      : s.streamingMessage,
+  })),
+  clearStreamingMessage: () => set({ streamingMessage: null }),
 
   setUser: (user) => {
     if (user) localStorage.setItem('omg_user', JSON.stringify(user));

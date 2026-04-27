@@ -61,6 +61,8 @@ export function registerMatchmaking(io) {
         : { socketId: 'ai', username: 'AI' };
 
       const debate = createDebateState(debateId, believerInfo, atheistInfo, true, aiSide);
+      // User always speaks first — set turn to the user's side regardless of believer/atheist
+      debate.turn = side;
       store.debates.set(debateId, debate);
       store.spectators.set(debateId, new Set());
       socket.join(debateId);
@@ -69,17 +71,12 @@ export function registerMatchmaking(io) {
         debateId,
         isAI: true,
         aiSide,
+        turn: side, // user starts
         believer: believerInfo,
         atheist:  atheistInfo,
       });
 
-      console.log(`[ai-match] ${username} (${side}) vs AI (${aiSide}) → ${debateId}`);
-
-      // If AI goes first (atheist goes first when user is believer... actually believer always first)
-      // Believer always starts — if user is atheist and AI is believer, AI sends first message
-      if (aiSide === 'believer') {
-        triggerAIFirstMessage(io, debate);
-      }
+      console.log(`[ai-match] ${username} (${side}) vs AI (${aiSide}) → ${debateId} — user starts`);
     });
 
     socket.on('LEAVE_QUEUE', () => {

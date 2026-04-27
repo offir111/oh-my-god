@@ -54,11 +54,11 @@ export default function LoginPage() {
     socket.auth = { username: name, side };
 
     socket.off('MATCH_FOUND');
-    socket.once('MATCH_FOUND', ({ debateId, isAI, believer, atheist, aiSide }) => {
+    socket.once('MATCH_FOUND', ({ debateId, isAI, believer, atheist, aiSide, turn }) => {
       setDebate({
         id: debateId, isAI, aiSide,
         believer, atheist,
-        phase: 'text', turn: 'believer',
+        phase: 'text', turn: turn || 'believer',
         textMessages: [], voiceMessages: [],
         textCount: { believer: 0, atheist: 0 },
         voiceCount: { believer: 0, atheist: 0 },

@@ -5,6 +5,10 @@ async function getAIResponse(...args) {
   const mod = await import('../ai/claudeOpponent.js');
   return mod.getAIResponse(...args);
 }
+async function streamAIResponse(...args) {
+  const mod = await import('../ai/claudeOpponent.js');
+  return mod.streamAIResponse(...args);
+}
 async function generateDebateSummary(...args) {
   const mod = await import('../ai/claudeOpponent.js');
   return mod.generateDebateSummary(...args);
@@ -100,20 +104,27 @@ export function registerDebate(io) {
 async function handleAITextTurn(io, debate) {
   debate.isAITurn = true;
   io.to(debate.id).emit('AI_TYPING');
-  await new Promise(r => setTimeout(r, 1500));
+  await new Promise(r => setTimeout(r, 700));
   try {
-    const text = await getAIResponse({
-      side: debate.aiSide,
-      history: debate.textMessages,
-      phase: 'text',
-    });
+    io.to(debate.id).emit('AI_STREAM_START', { side: debate.aiSide });
+    io.to(`spec:${debate.id}`).emit('AI_STREAM_START', { side: debate.aiSide });
+
+    const text = await streamAIResponse(
+      { side: debate.aiSide, history: debate.textMessages, phase: 'text' },
+      (chunk) => {
+        io.to(debate.id).emit('AI_STREAM_CHUNK', { side: debate.aiSide, chunk });
+        io.to(`spec:${debate.id}`).emit('AI_STREAM_CHUNK', { side: debate.aiSide, chunk });
+      }
+    );
+
     const msg = { side: debate.aiSide, content: text, timestamp: Date.now(), isAI: true };
     debate.textMessages.push(msg);
     debate.textCount[debate.aiSide]++;
     advanceTurn(debate);
     debate.isAITurn = false;
 
-    io.to(debate.id).emit('TEXT_MESSAGE_RECEIVED', msg);
+    io.to(debate.id).emit('AI_STREAM_END', { msg });
+    io.to(`spec:${debate.id}`).emit('AI_STREAM_END', { msg });
     io.to(debate.id).emit('TURN_CHANGED', { turn: debate.turn });
 
     if (debate.textCount.believer >= TEXT_LIMIT && debate.textCount.atheist >= TEXT_LIMIT) {
@@ -123,6 +134,7 @@ async function handleAITextTurn(io, debate) {
     console.error('[ai] text turn error:', e.message);
     debate.isAITurn = false;
     advanceTurn(debate);
+    io.to(debate.id).emit('AI_STREAM_ERROR');
     io.to(debate.id).emit('TURN_CHANGED', { turn: debate.turn });
   }
 }
@@ -159,13 +171,15 @@ async function handleAIVoiceTurn(io, debate) {
 
 async function transitionToVoice(io, debate) {
   debate.phase = 'voice';
-  debate.turn = 'believer';
-  io.to(debate.id).emit('PHASE_CHANGED', { phase: 'voice' });
-  awardPoints(io, debate, 'text');
-
-  if (debate.isAI && debate.aiSide === 'believer') {
-    await handleAIVoiceTurn(io, debate);
+  // User goes first in voice phase too
+  if (debate.isAI) {
+    debate.turn = debate.aiSide === 'believer' ? 'atheist' : 'believer';
+  } else {
+    debate.turn = 'believer';
   }
+  io.to(debate.id).emit('PHASE_CHANGED', { phase: 'voice' });
+  io.to(debate.id).emit('TURN_CHANGED', { turn: debate.turn });
+  awardPoints(io, debate, 'text');
 }
 
 async function transitionToLive(io, debate) {

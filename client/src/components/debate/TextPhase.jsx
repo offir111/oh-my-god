@@ -8,6 +8,7 @@ const TEXT_LIMIT = 5;
 export default function TextPhase({ debateId, opponentTyping }) {
   const user = useAppStore(s => s.user);
   const debate = useAppStore(s => s.debate);
+  const streamingMessage = useAppStore(s => s.streamingMessage);
   const [input, setInput] = useState('');
   const bottomRef = useRef(null);
 
@@ -17,7 +18,7 @@ export default function TextPhase({ debateId, opponentTyping }) {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [debate?.textMessages?.length, opponentTyping]);
+  }, [debate?.textMessages?.length, opponentTyping, streamingMessage?.content]);
 
   function send() {
     if (!input.trim() || !isMyTurn) return;
@@ -42,9 +43,12 @@ export default function TextPhase({ debateId, opponentTyping }) {
         {debate?.textMessages?.map((msg, i) => (
           <MessageBubble key={i} msg={msg} mySide={user?.side} />
         ))}
-        {opponentTyping && (
+        {streamingMessage && (
+          <MessageBubble msg={{ ...streamingMessage, content: streamingMessage.content + '▋' }} mySide={user?.side} />
+        )}
+        {opponentTyping && !streamingMessage && (
           <div style={{ textAlign: 'left', color: 'var(--muted)', fontSize: '0.9rem', padding: '4px 0' }}>
-            🤖 AI מקליד<span className="pulse-anim">...</span>
+            🤖 AI חושב<span className="pulse-anim">...</span>
           </div>
         )}
         <div ref={bottomRef} />

@@ -4,7 +4,8 @@ import { useAppStore } from '../store/appStore.js';
 
 export function useDebate(debateId) {
   const { addTextMessage, addVoiceMessage, setPhase, setTurn,
-          updateScore, setSpectatorCount, addGift, debate } = useAppStore();
+          updateScore, setSpectatorCount, addGift, debate,
+          setStreamingMessage, appendStreamingChunk, clearStreamingMessage } = useAppStore();
   const [opponentTyping, setOpponentTyping] = useState(false);
   const [opponentRecording, setOpponentRecording] = useState(false);
   const [finished, setFinished] = useState(false);
@@ -27,6 +28,21 @@ export function useDebate(debateId) {
     socket.on('TURN_CHANGED', ({ turn }) => setTurn(turn));
 
     socket.on('AI_TYPING', () => setOpponentTyping(true));
+
+    socket.on('AI_STREAM_START', ({ side }) => {
+      setOpponentTyping(false);
+      setStreamingMessage({ side, content: '', isAI: true, timestamp: Date.now() });
+    });
+    socket.on('AI_STREAM_CHUNK', ({ chunk }) => {
+      appendStreamingChunk(chunk);
+    });
+    socket.on('AI_STREAM_END', ({ msg }) => {
+      clearStreamingMessage();
+      addTextMessage(msg);
+    });
+    socket.on('AI_STREAM_ERROR', () => {
+      clearStreamingMessage();
+    });
 
     socket.on('OPPONENT_RECORDING', () => setOpponentRecording(true));
     socket.on('OPPONENT_STOPPED', () => setOpponentRecording(false));
@@ -55,6 +71,10 @@ export function useDebate(debateId) {
       socket.off('VOICE_MESSAGE_RECEIVED');
       socket.off('TURN_CHANGED');
       socket.off('AI_TYPING');
+      socket.off('AI_STREAM_START');
+      socket.off('AI_STREAM_CHUNK');
+      socket.off('AI_STREAM_END');
+      socket.off('AI_STREAM_ERROR');
       socket.off('OPPONENT_RECORDING');
       socket.off('OPPONENT_STOPPED');
       socket.off('PHASE_CHANGED');

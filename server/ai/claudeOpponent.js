@@ -49,6 +49,33 @@ export async function getAIResponse({ side, history, phase }) {
   }
 }
 
+export async function streamAIResponse({ side, history, phase }, onChunk) {
+  const systemPrompt = buildSystemPrompt(side);
+  const messages = formatHistory(history, side);
+
+  console.log(`[groq] STREAM — side=${side} phase=${phase} historyLen=${history.length}`);
+  const stream = await getClient().chat.completions.create({
+    model: 'llama-3.3-70b-versatile',
+    max_tokens: phase === 'voice' ? 150 : 400,
+    stream: true,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      ...(messages.length > 0 ? messages : [{ role: 'user', content: 'פתח את הדיון.' }]),
+    ],
+  });
+
+  let fullText = '';
+  for await (const chunk of stream) {
+    const delta = chunk.choices?.[0]?.delta?.content || '';
+    if (delta) {
+      fullText += delta;
+      onChunk(delta);
+    }
+  }
+  console.log(`[groq] stream done — ${fullText.length} chars`);
+  return fullText.trim();
+}
+
 function formatHistory(messages, aiSide) {
   return messages.map(m => ({
     role: m.side === aiSide ? 'assistant' : 'user',
