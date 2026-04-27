@@ -53,7 +53,7 @@ export async function streamAIResponse({ side, history, phase }, onChunk) {
   const systemPrompt = buildSystemPrompt(side);
   const messages = formatHistory(history, side);
 
-  console.log(`[groq] STREAM — side=${side} phase=${phase} historyLen=${history.length}`);
+  console.log(`[groq] STREAM START — side=${side} phase=${phase} historyLen=${history.length}`);
   const stream = await getClient().chat.completions.create({
     model: 'llama-3.3-70b-versatile',
     max_tokens: phase === 'voice' ? 150 : 400,
@@ -65,14 +65,18 @@ export async function streamAIResponse({ side, history, phase }, onChunk) {
   });
 
   let fullText = '';
+  let chunkCount = 0;
+  console.log(`[groq] Starting to iterate chunks...`);
   for await (const chunk of stream) {
     const delta = chunk.choices?.[0]?.delta?.content || '';
     if (delta) {
+      chunkCount++;
       fullText += delta;
+      console.log(`[groq] chunk #${chunkCount} — ${delta.length} chars: "${delta.substring(0, 20)}..."`);
       onChunk(delta);
     }
   }
-  console.log(`[groq] stream done — ${fullText.length} chars`);
+  console.log(`[groq] stream FINISHED — ${chunkCount} chunks, ${fullText.length} total chars`);
   return fullText.trim();
 }
 

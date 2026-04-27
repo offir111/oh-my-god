@@ -117,9 +117,10 @@ async function handleAITextTurn(io, debate) {
       { side: debate.aiSide, history: debate.textMessages, phase: 'text' },
       (chunk) => {
         chunkCount++;
-        console.log(`[ai-turn] CHUNK #${chunkCount} — ${chunk.length} chars`);
+        console.log(`[ai-turn] CHUNK #${chunkCount} callback — emitting to ${debate.id} and spec:${debate.id}`);
         io.to(debate.id).emit('AI_STREAM_CHUNK', { side: debate.aiSide, chunk });
         io.to(`spec:${debate.id}`).emit('AI_STREAM_CHUNK', { side: debate.aiSide, chunk });
+        console.log(`[ai-turn] CHUNK #${chunkCount} emitted`);
       }
     );
     console.log(`[ai-turn] DONE — ${chunkCount} chunks, ${text.length} total chars`);
