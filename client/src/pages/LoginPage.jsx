@@ -8,28 +8,35 @@ export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [registered, setRegistered] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('omg_pending')) || null; } catch { return null; }
+  });
   const setUser = useAppStore(s => s.setUser);
   const navigate = useNavigate();
 
-  function validate() {
+  function handleRegister() {
     const name = username.trim();
-    if (!name || name.length < 2) { setError('נא להזין שם משתמש (לפחות 2 תווים)'); return null; }
-    if (password.length !== 4) { setError('הסיסמה חייבת להיות בדיוק 4 תווים'); return null; }
+    if (!name || name.length < 2) { setError('נא להזין שם משתמש (לפחות 2 תווים)'); return; }
+    if (password.length !== 4) { setError('הסיסמה חייבת להיות בדיוק 4 תווים'); return; }
     setError('');
-    return name;
+    const pending = { username: name };
+    localStorage.setItem('omg_pending', JSON.stringify(pending));
+    setRegistered(pending);
   }
 
   function handleSelect(side) {
-    const name = validate();
-    if (!name) return;
+    const name = registered?.username || user?.username;
+    if (!name) { setError('נא להזין שם משתמש תחילה'); return; }
+    localStorage.removeItem('omg_pending');
     setUser({ username: name, side, score: 0, voiceDebates: 0 });
     connectSocket(name, side);
     navigate('/lobby');
   }
 
   function handleAI() {
-    const name = validate();
-    if (!name) return;
+    const name = registered?.username || user?.username;
+    if (!name) { setError('נא להזין שם משתמש תחילה'); return; }
+    localStorage.removeItem('omg_pending');
     setUser({ username: name, side: 'believer', score: 0, voiceDebates: 0 });
     connectSocket(name, 'believer');
     navigate('/lobby?ai=1');
@@ -105,15 +112,25 @@ export default function LoginPage() {
           text-align: center;
           margin: 4px 0 0;
         }
-        .login-input-wrap {
+        .login-input-row {
+          display: flex;
+          flex-direction: row;
+          align-items: center;
+          gap: 12px;
           width: 100%;
           max-width: 360px;
-          text-align: center;
+          direction: rtl;
+        }
+        .login-input-wrap {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          flex: 1;
         }
         .login-input {
           width: 100%;
-          padding: 13px 16px;
-          font-size: clamp(0.95rem, 4vw, 1.1rem);
+          padding: 10px 12px;
+          font-size: clamp(0.82rem, 3.5vw, 0.95rem);
           background: #111;
           border: 1px solid #333;
           border-radius: 10px;
@@ -121,6 +138,26 @@ export default function LoginPage() {
           text-align: center;
           outline: none;
           box-sizing: border-box;
+        }
+        .login-enter-btn {
+          width: 58px; height: 58px;
+          border-radius: 50%;
+          border: none;
+          background: #555;
+          color: #fff;
+          font-size: 0.72rem;
+          font-weight: 800;
+          cursor: pointer;
+          flex-shrink: 0;
+          transition: background 0.3s, box-shadow 0.3s;
+          font-family: Arial, sans-serif;
+          display: flex; align-items: center; justify-content: center;
+          text-align: center;
+          line-height: 1.2;
+        }
+        .login-enter-btn.ready {
+          background: #00AA44;
+          box-shadow: 0 0 16px #00AA4488;
         }
         .login-choose {
           color: #fff;
@@ -249,29 +286,35 @@ export default function LoginPage() {
           <p className="login-subtitle">אמונה ודת <span style={{color:'#FFE566'}}>VS</span> אתאיזם ומדע</p>
         </div>
 
-        <div className="login-input-wrap">
-          <input
-            className="login-input"
-            type="text"
-            placeholder="שם המשתמש שלך..."
-            value={username}
-            onChange={e => setUsername(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && username.trim() && handleSelect('believer')}
-            maxLength={20}
-            autoFocus
-          />
-          <input
-            className="login-input"
-            type="password"
-            placeholder="סיסמה (4 תווים)..."
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSelect('believer')}
-            maxLength={4}
-            style={{ marginTop: 10 }}
-          />
-          {error && <p className="login-error">{error}</p>}
-        </div>
+        {!registered ? (
+          <div className="login-input-row">
+            <div className="login-input-wrap">
+              <input
+                className="login-input"
+                type="text"
+                placeholder="שם משתמש..."
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleRegister()}
+                maxLength={20}
+                autoFocus
+              />
+              <input
+                className="login-input"
+                type="password"
+                placeholder="סיסמה (4 תווים)..."
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleRegister()}
+                maxLength={4}
+              />
+              {error && <p className="login-error">{error}</p>}
+            </div>
+            <button className="login-enter-btn" onClick={handleRegister}>
+              כניסה
+            </button>
+          </div>
+        ) : null}
 
         <p className="login-choose">בחר את הצד שלך:</p>
 
@@ -320,8 +363,8 @@ export default function LoginPage() {
         </button>
 
         <div className="login-links">
-          <a href="/knowledge" className="login-link">📚 בעד ונגד</a>
-          <a href="/leaderboard" className="login-link">🏆 רב VS מדען</a>
+          <a href="/arguments" className="login-link">📚 בעד ונגד</a>
+          <a href="/live-events" className="login-link">🏆 רב VS מדען</a>
         </div>
       </div>
     </>

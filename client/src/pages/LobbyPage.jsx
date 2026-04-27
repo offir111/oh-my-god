@@ -48,6 +48,7 @@ export default function LobbyPage() {
   }
 
   function requestAI() {
+    setStatus('waiting');
     socket.emit('REQUEST_AI_DEBATE', { username: user.username, side: user.side });
   }
 
