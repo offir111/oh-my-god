@@ -1,6 +1,6 @@
-import Anthropic from '@anthropic-ai/sdk';
+import Groq from 'groq-sdk';
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const client = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 function buildSystemPrompt(side) {
   const sideHe = side === 'believer' ? 'מאמין באלוהים' : 'אתאיסט';
@@ -26,14 +26,16 @@ export async function getAIResponse({ side, history, phase }) {
   const systemPrompt = buildSystemPrompt(side);
   const messages = formatHistory(history, side);
 
-  const response = await client.messages.create({
-    model: 'claude-sonnet-4-6',
+  const response = await client.chat.completions.create({
+    model: 'llama-3.3-70b-versatile',
     max_tokens: phase === 'voice' ? 150 : 400,
-    system: systemPrompt,
-    messages: messages.length > 0 ? messages : [{ role: 'user', content: 'פתח את הדיון.' }],
+    messages: [
+      { role: 'system', content: systemPrompt },
+      ...(messages.length > 0 ? messages : [{ role: 'user', content: 'פתח את הדיון.' }]),
+    ],
   });
 
-  return response.content[0].text.trim();
+  return response.choices[0].message.content.trim();
 }
 
 function formatHistory(messages, aiSide) {
@@ -48,8 +50,8 @@ export async function generateDebateSummary(messages) {
     .map(m => `${m.side === 'believer' ? 'מאמין' : 'אתאיסט'}: ${m.content || '[הודעה קולית]'}`)
     .join('\n');
 
-  const response = await client.messages.create({
-    model: 'claude-sonnet-4-6',
+  const response = await client.chat.completions.create({
+    model: 'llama-3.3-70b-versatile',
     max_tokens: 200,
     messages: [{
       role: 'user',
@@ -62,7 +64,7 @@ ${transcript}`,
   });
 
   try {
-    const text = response.content[0].text.trim();
+    const text = response.choices[0].message.content.trim();
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     return jsonMatch ? JSON.parse(jsonMatch[0]) : { tags: ['דיון'], summary: 'דיון בנושא אמונה ואתאיזם.' };
   } catch {
