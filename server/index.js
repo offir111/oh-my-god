@@ -48,6 +48,8 @@ app.get('/api/stats', (_, res) => {
   res.json({
     registered: store.registeredCount,
     online: store.users.size,
+    registeredList: [...store.registeredUsernames],
+    onlineList: [...store.users.values()].map(u => u.username),
   });
 });
 

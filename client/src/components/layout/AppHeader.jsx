@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppStore } from '../../store/appStore.js';
 import { disconnectSocket } from '../../socket.js';
 
@@ -8,11 +8,14 @@ export default function AppHeader() {
   const setUser = useAppStore(s => s.setUser);
   const resetDebate = useAppStore(s => s.resetDebate);
   const navigate = useNavigate();
+  const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [avatarOpen, setAvatarOpen] = useState(false);
-  const [stats, setStats] = useState({ registered: 0, online: 0 });
+  const [stats, setStats] = useState({ registered: 0, online: 0, registeredList: [], onlineList: [] });
+  const [listOpen, setListOpen] = useState(null); // 'registered' | 'online' | null
   const menuRef = useRef();
   const avatarRef = useRef();
+  const listRef = useRef();
 
   useEffect(() => {
     const BASE = import.meta.env.VITE_API_URL || '';
@@ -41,6 +44,7 @@ export default function AppHeader() {
     function handleClick(e) {
       if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
       if (avatarRef.current && !avatarRef.current.contains(e.target)) setAvatarOpen(false);
+      if (listRef.current && !listRef.current.contains(e.target)) setListOpen(null);
     }
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
@@ -86,6 +90,20 @@ export default function AppHeader() {
           backdrop-filter: blur(6px);
           line-height: 1;
         }
+        .header-back-btn {
+          width: 36px; height: 36px;
+          border-radius: 50%;
+          border: none;
+          background: rgba(30,30,30,0.85);
+          color: #fff;
+          font-size: 1rem;
+          cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          backdrop-filter: blur(6px);
+          line-height: 1;
+          margin-right: 6px;
+        }
+        .header-back-btn:hover { background: rgba(60,60,60,0.9); }
         .header-dots-menu {
           position: absolute;
           top: 44px;
@@ -190,13 +208,19 @@ export default function AppHeader() {
           gap: 14px;
           align-items: center;
           direction: rtl;
+          position: relative;
         }
         .header-stat {
           display: flex;
           flex-direction: column;
           align-items: center;
           line-height: 1.3;
+          cursor: pointer;
+          padding: 3px 6px;
+          border-radius: 8px;
+          transition: background 0.2s;
         }
+        .header-stat:hover { background: rgba(255,255,255,0.08); }
         .header-stat-num {
           font-weight: 700;
           font-size: 0.78rem;
@@ -208,10 +232,44 @@ export default function AppHeader() {
           color: #aaa;
           font-family: Arial, sans-serif;
         }
+        .stats-list-popup {
+          position: absolute;
+          top: 44px;
+          left: 50%;
+          transform: translateX(-50%);
+          background: #1a1a1a;
+          border: 1px solid #333;
+          border-radius: 12px;
+          min-width: 180px;
+          max-height: 260px;
+          overflow-y: auto;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.7);
+          direction: rtl;
+          z-index: 2000;
+          padding: 8px 0;
+        }
+        .stats-list-title {
+          padding: 8px 16px 6px;
+          font-size: 0.72rem;
+          color: #888;
+          font-family: Arial, sans-serif;
+          border-bottom: 1px solid #2a2a2a;
+          margin-bottom: 4px;
+        }
+        .stats-list-item {
+          padding: 7px 16px;
+          font-size: 0.88rem;
+          color: #fff;
+          font-family: Arial, sans-serif;
+        }
       `}</style>
 
       <div className="app-header">
-        {/* Three dots — left, opens rightward into page */}
+        {/* Left side: back arrow + three dots */}
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          {location.pathname !== '/' && (
+            <button className="header-back-btn" onClick={() => navigate(-1)} title="חזור">&#9664;</button>
+          )}
         <div ref={menuRef} style={{ position: 'relative' }}>
           <button className="header-dots-btn" onClick={() => setMenuOpen(o => !o)}>⋮</button>
           {menuOpen && (
@@ -222,17 +280,33 @@ export default function AppHeader() {
             </div>
           )}
         </div>
+        </div>
 
         {/* Stats — center */}
-        <div className="header-stats">
-          <div className="header-stat">
+        <div className="header-stats" ref={listRef}>
+          <div className="header-stat" onClick={() => setListOpen(l => l === 'registered' ? null : 'registered')}>
             <span className="header-stat-num">{stats.registered}</span>
             <span className="header-stat-label">רשומים</span>
           </div>
-          <div className="header-stat">
+          <div className="header-stat" onClick={() => setListOpen(l => l === 'online' ? null : 'online')}>
             <span className="header-stat-num">{stats.online}</span>
             <span className="header-stat-label">אונליין</span>
           </div>
+
+          {listOpen && (
+            <div className="stats-list-popup">
+              <div className="stats-list-title">
+                {listOpen === 'registered' ? `👥 נרשמו (${stats.registered})` : `🟢 אונליין (${stats.online})`}
+              </div>
+              {(listOpen === 'registered' ? stats.registeredList : stats.onlineList).length === 0 ? (
+                <div className="stats-list-item" style={{ color: '#555' }}>אין עדיין</div>
+              ) : (
+                (listOpen === 'registered' ? stats.registeredList : stats.onlineList).map((name, i) => (
+                  <div key={i} className="stats-list-item">👤 {name}</div>
+                ))
+              )}
+            </div>
+          )}
         </div>
 
         {/* Avatar — right */}
