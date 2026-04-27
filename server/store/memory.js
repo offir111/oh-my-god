@@ -21,6 +21,7 @@ export function createDebateState(debateId, believer, atheist, isAI = false, aiS
     atheist,
     isAI,
     aiSide,
+    isAITurn: false,
     phase: 'text',
     turn: 'believer',
     textMessages: [],
