@@ -16,8 +16,25 @@ export function useDebate(debateId) {
     if (!debateId) return;
 
     socket.on('TEXT_MESSAGE_RECEIVED', (msg) => {
-      addTextMessage(msg);
       setOpponentTyping(false);
+      // Simulate streaming animation for AI messages (works even with old server)
+      if (msg.isAI && msg.content) {
+        const fullText = msg.content;
+        let i = 0;
+        setStreamingMessage({ side: msg.side, content: '', isAI: true, timestamp: msg.timestamp });
+        const interval = setInterval(() => {
+          i += 3; // add 3 chars at a time for fast typing effect
+          if (i >= fullText.length) {
+            clearInterval(interval);
+            clearStreamingMessage();
+            addTextMessage(msg);
+          } else {
+            appendStreamingChunk(fullText.slice(i - 3, i));
+          }
+        }, 18); // ~18ms per chunk = fast typing speed
+      } else {
+        addTextMessage(msg);
+      }
     });
 
     socket.on('VOICE_MESSAGE_RECEIVED', (msg) => {
