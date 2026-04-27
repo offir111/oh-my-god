@@ -17,6 +17,12 @@ export default function TextPhase({ debateId, opponentTyping }) {
   const remaining = TEXT_LIMIT - myCount;
 
   useEffect(() => {
+    console.log('[TextPhase] render', {
+      myCount,
+      isMyTurn,
+      streamingMessage: streamingMessage ? `${streamingMessage.content.length} chars` : null,
+      opponentTyping,
+    });
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [debate?.textMessages?.length, opponentTyping, streamingMessage?.content]);
 

@@ -30,17 +30,21 @@ export function useDebate(debateId) {
     socket.on('AI_TYPING', () => setOpponentTyping(true));
 
     socket.on('AI_STREAM_START', ({ side }) => {
+      console.log('[stream] START', side);
       setOpponentTyping(false);
       setStreamingMessage({ side, content: '', isAI: true, timestamp: Date.now() });
     });
     socket.on('AI_STREAM_CHUNK', ({ chunk }) => {
+      console.log('[stream] CHUNK', chunk.length, 'chars:', chunk.substring(0, 30));
       appendStreamingChunk(chunk);
     });
     socket.on('AI_STREAM_END', ({ msg }) => {
+      console.log('[stream] END', msg.content.length, 'chars');
       clearStreamingMessage();
       addTextMessage(msg);
     });
     socket.on('AI_STREAM_ERROR', () => {
+      console.log('[stream] ERROR');
       clearStreamingMessage();
     });
 
