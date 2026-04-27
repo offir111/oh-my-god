@@ -9,6 +9,7 @@ export function registerDebate(io) {
 
     socket.on('SEND_TEXT_MESSAGE', async ({ debateId, content }) => {
       const debate = store.debates.get(debateId);
+      console.log(`[debate] SEND_TEXT_MESSAGE debateId=${debateId} found=${!!debate} phase=${debate?.phase} validTurn=${debate ? isValidTurn(debate, socket.id, store) : 'n/a'}`);
       if (!debate || debate.phase !== 'text') return;
       if (!isValidTurn(debate, socket.id, store)) return;
       if (!content?.trim()) return;

@@ -45,6 +45,7 @@ export function registerMatchmaking(io) {
     });
 
     socket.on('REQUEST_AI_DEBATE', ({ username, side }) => {
+      console.log(`[match] REQUEST_AI_DEBATE from ${username} (${side})`);
       store.users.set(socket.id, { username, side, score: 0, voiceDebates: 0, giftsReceived: 0 });
       const aiSide = side === 'believer' ? 'atheist' : 'believer';
       const debateId = uuid();
