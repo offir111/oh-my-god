@@ -12,6 +12,8 @@ export const store = {
   spectators: new Map(),   // debateId → Set<socketId>
   userScores: new Map(),   // username → { score, voiceDebates, giftsReceived, side }
   archivedDebates: [],     // finished debates for knowledge base
+  registeredCount: 0,      // persistent total registered users count
+  registeredUsernames: new Set(), // track unique usernames to avoid double-counting
 };
 
 export function createDebateState(debateId, believer, atheist, isAI = false, aiSide = null) {
@@ -66,11 +68,21 @@ export function updateUserScore(store, username, delta, options = {}) {
   if (options.side) profile.side = options.side;
 }
 
+export function registerUser(username) {
+  if (!store.registeredUsernames.has(username)) {
+    store.registeredUsernames.add(username);
+    store.registeredCount++;
+    saveSnapshot();
+  }
+}
+
 export function saveSnapshot() {
   try {
     const data = {
       archivedDebates: store.archivedDebates,
       userScores: Object.fromEntries(store.userScores),
+      registeredCount: store.registeredCount,
+      registeredUsernames: [...store.registeredUsernames],
       savedAt: new Date().toISOString(),
     };
     fs.writeFileSync(SNAPSHOT_PATH, JSON.stringify(data, null, 2), 'utf8');
@@ -89,7 +101,11 @@ export function loadSnapshot() {
         store.userScores.set(k, v);
       }
     }
-    console.log(`[store] Loaded ${store.archivedDebates.length} archived debates`);
+    if (data.registeredCount) store.registeredCount = data.registeredCount;
+    if (data.registeredUsernames) {
+      store.registeredUsernames = new Set(data.registeredUsernames);
+    }
+    console.log(`[store] Loaded ${store.archivedDebates.length} archived debates, ${store.registeredCount} registered users`);
   } catch (e) {
     console.error('[store] Failed to load snapshot:', e.message);
   }

@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid';
-import { store, createDebateState } from '../store/memory.js';
+import { store, createDebateState, registerUser } from '../store/memory.js';
 
 export function registerMatchmaking(io) {
   io.on('connection', (socket) => {
@@ -8,6 +8,7 @@ export function registerMatchmaking(io) {
 
     socket.on('JOIN_QUEUE', ({ username, side }) => {
       store.users.set(socket.id, { username, side, score: 0, voiceDebates: 0, giftsReceived: 0 });
+      registerUser(username);
       const oppSide = side === 'believer' ? 'atheist' : 'believer';
 
       if (store.queue[oppSide] && store.queue[oppSide].id !== socket.id) {
@@ -50,6 +51,7 @@ export function registerMatchmaking(io) {
     socket.on('REQUEST_AI_DEBATE', ({ username, side }) => {
       console.log(`[match] REQUEST_AI_DEBATE from ${username} (${side})`);
       store.users.set(socket.id, { username, side, score: 0, voiceDebates: 0, giftsReceived: 0 });
+      registerUser(username);
       const aiSide = side === 'believer' ? 'atheist' : 'believer';
       const debateId = uuid();
 

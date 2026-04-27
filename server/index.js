@@ -17,7 +17,7 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
-import { loadSnapshot, saveSnapshot, store } from './store/memory.js';
+import { loadSnapshot, saveSnapshot, store, registerUser } from './store/memory.js';
 import { registerMatchmaking } from './socket/matchmaking.js';
 import { registerDebate } from './socket/debate.js';
 import { registerSpectator } from './socket/spectator.js';
@@ -46,9 +46,18 @@ app.get('/api/health', (_, res) => res.json({ ok: true, provider: 'groq', versio
 
 app.get('/api/stats', (_, res) => {
   res.json({
-    registered: store.userScores.size,
+    registered: store.registeredCount,
     online: store.users.size,
   });
+});
+
+// Admin: manually set registered count (one-time use)
+app.post('/api/admin/set-count', express.json(), (req, res) => {
+  const { count, usernames } = req.body;
+  if (count) store.registeredCount = count;
+  if (usernames) usernames.forEach(u => store.registeredUsernames.add(u));
+  saveSnapshot();
+  res.json({ ok: true, registeredCount: store.registeredCount });
 });
 
 loadSnapshot();
