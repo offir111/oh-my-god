@@ -13,10 +13,17 @@ export default function LoginPage() {
   const [registered, setRegistered] = useState(() => {
     try { return JSON.parse(localStorage.getItem('omg_pending')) || null; } catch { return null; }
   });
-  const user = useAppStore(s => s.user);
   const setUser = useAppStore(s => s.setUser);
   const setDebate = useAppStore(s => s.setDebate);
   const navigate = useNavigate();
+
+  // Always start fresh — clear any saved session so each visitor enters their own name
+  useEffect(() => {
+    localStorage.removeItem('omg_user');
+    localStorage.removeItem('omg_pending');
+    setUser(null);
+    setRegistered(null);
+  }, []);
 
   function handleRegister() {
     const name = username.trim();
@@ -29,13 +36,13 @@ export default function LoginPage() {
   }
 
   function handlePanelClick(side) {
-    const name = registered?.username || user?.username;
+    const name = registered?.username;
     if (!name) { setError('נא להזין שם משתמש תחילה'); return; }
     setSelectedSide(side);
   }
 
   function handleHuman() {
-    const name = registered?.username || user?.username;
+    const name = registered?.username;
     localStorage.removeItem('omg_pending');
     setUser({ username: name, side: selectedSide, score: 0, voiceDebates: 0 });
     connectSocket(name, selectedSide);
@@ -43,7 +50,7 @@ export default function LoginPage() {
   }
 
   function handleAIMode() {
-    const name = registered?.username || user?.username;
+    const name = registered?.username;
     localStorage.removeItem('omg_pending');
     const side = selectedSide;
     setUser({ username: name, side, score: 0, voiceDebates: 0 });
@@ -91,7 +98,7 @@ export default function LoginPage() {
   }
 
   function handleAI() {
-    const name = registered?.username || user?.username;
+    const name = registered?.username;
     if (!name) { setError('נא להזין שם משתמש תחילה'); return; }
     setSelectedSide('believer');
     setAiLoading(false);

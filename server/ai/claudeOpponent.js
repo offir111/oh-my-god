@@ -16,13 +16,13 @@ function buildSystemPrompt(side) {
 חוקים מחייבים:
 1. כתוב אך ורק בעברית
 2. כתוב מנקודת מבט ניטרלית ואנליטית — לא בגוף ראשון, לא "אני מאמין" או "אני חושב"
-3. הצג טיעונים עובדתיים, פילוסופיים והיסטוריים בצורה תמציתית
+3. הצג טיעונים עובדתיים, פילוסופיים והיסטוריים בצורה מעמיקה ומפורטת
 4. התייחס לדברי המשתמש וסתור או הרחב אותם בצורה ענינית
-5. עד 30 מילים לכל תשובה — תן נימוק מבוסס, לא סתם טענה
-6. ללא markdown, ללא כותרות, ללא נקודות — פסקה אחת בלבד
+5. כתוב תשובה מלאה ומנומקת — אל תחתוך באמצע משפט, סיים כל טיעון עד תומו
+6. ללא markdown, ללא כותרות, ללא נקודות — פסקאות רציפות בלבד
 7. אל תפתח ב"הנה" או "בוודאי" — קפוץ ישירות לטיעון המנומק
 
-דוגמה לסגנון: "הטיעון האונטולוגי קורס כי קיום אינו תכונה לוגית — כך הפריך קאנט את אנסלם במאה ה-18."`;
+דוגמה לסגנון: "הטיעון האונטולוגי קורס כי קיום אינו תכונה לוגית — כך הפריך קאנט את אנסלם במאה ה-18. הפילוסוף הגרמני טען שמהעובדה שניתן להעלות על הדעת ישות מושלמת, אין להסיק שהיא בהכרח קיימת במציאות, שכן קיום הוא עובדה אמפירית ולא הכרחיות לוגית."`;
 }
 
 export async function getAIResponse({ side, history, phase }) {
@@ -33,7 +33,7 @@ export async function getAIResponse({ side, history, phase }) {
   try {
     const response = await getClient().chat.completions.create({
       model: 'llama-3.3-70b-versatile',
-      max_tokens: phase === 'voice' ? 150 : 400,
+      max_tokens: phase === 'voice' ? 400 : 1200,
       messages: [
         { role: 'system', content: systemPrompt },
         ...(messages.length > 0 ? messages : [{ role: 'user', content: 'פתח את הדיון.' }]),
@@ -55,7 +55,7 @@ export async function streamAIResponse({ side, history, phase }, onChunk) {
   console.log(`[groq] STREAM START — side=${side} phase=${phase} historyLen=${history.length}`);
   const stream = await getClient().chat.completions.create({
     model: 'llama-3.3-70b-versatile',
-    max_tokens: 90,
+    max_tokens: 1200,
     stream: true,
     messages: [
       { role: 'system', content: systemPrompt },
