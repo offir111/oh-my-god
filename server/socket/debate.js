@@ -112,6 +112,8 @@ async function handleAITextTurn(io, debate) {
   } catch (e) {
     console.error('[ai] text turn error:', e.message);
     debate.isAITurn = false;
+    advanceTurn(debate);
+    io.to(debate.id).emit('TURN_CHANGED', { turn: debate.turn });
   }
 }
 
@@ -140,6 +142,8 @@ async function handleAIVoiceTurn(io, debate) {
   } catch (e) {
     console.error('[ai] voice turn error:', e.message);
     debate.isAITurn = false;
+    advanceTurn(debate);
+    io.to(debate.id).emit('TURN_CHANGED', { turn: debate.turn });
   }
 }
 

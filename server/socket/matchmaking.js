@@ -113,5 +113,7 @@ async function triggerAIFirstMessage(io, debate) {
   } catch (e) {
     console.error('[ai] first message error:', e.message);
     debate.isAITurn = false;
+    debate.turn = debate.aiSide === 'believer' ? 'atheist' : 'believer';
+    io.to(debate.id).emit('TURN_CHANGED', { turn: debate.turn });
   }
 }
