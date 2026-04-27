@@ -31,7 +31,7 @@ export function useDebate(debateId) {
           } else {
             appendStreamingChunk(fullText.slice(i - 3, i));
           }
-        }, 81); // ~81ms per chunk = very slow typing speed
+        }, 900); // ~900ms per chunk = extremely slow typing speed
       } else {
         addTextMessage(msg);
       }
