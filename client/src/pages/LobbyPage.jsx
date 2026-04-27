@@ -44,12 +44,12 @@ export default function LobbyPage() {
     }
 
     socket.on('WAITING_FOR_OPPONENT', () => setStatus('waiting'));
-    socket.on('MATCH_FOUND', ({ debateId, isAI, believer, atheist, aiSide }) => {
+    socket.on('MATCH_FOUND', ({ debateId, isAI, believer, atheist, aiSide, turn }) => {
       setStatus('found');
       setDebate({
         id: debateId, isAI, aiSide,
         believer, atheist,
-        phase: 'text', turn: 'believer',
+        phase: 'text', turn: turn || 'believer',
         textMessages: [], voiceMessages: [],
         textCount: { believer: 0, atheist: 0 },
         voiceCount: { believer: 0, atheist: 0 },
