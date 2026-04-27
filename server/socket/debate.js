@@ -1,5 +1,14 @@
 import { store, isValidTurn, advanceTurn, updateUserScore, saveSnapshot } from '../store/memory.js';
-import { getAIResponse, generateDebateSummary } from '../ai/claudeOpponent.js';
+
+// Lazy-load AI functions to prevent startup crash if groq-sdk has issues
+async function getAIResponse(...args) {
+  const mod = await import('../ai/claudeOpponent.js');
+  return mod.getAIResponse(...args);
+}
+async function generateDebateSummary(...args) {
+  const mod = await import('../ai/claudeOpponent.js');
+  return mod.generateDebateSummary(...args);
+}
 
 const TEXT_LIMIT = 5;
 const VOICE_LIMIT = 5;
