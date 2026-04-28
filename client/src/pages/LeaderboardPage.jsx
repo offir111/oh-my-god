@@ -26,21 +26,22 @@ export default function LeaderboardPage() {
 
   return (
     <div className="page">
-      <div className="container" style={{ maxWidth: 600 }}>
-        <button type="button" onClick={() => navigate('/')} style={backBtn}>← חזרה</button>
-        <div style={{ marginBottom: 28 }}>
-          <h1 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: 6 }}>🏆 טבלת מובילים</h1>
-          <p style={{ color: 'var(--muted)' }}>TOP 20 הדיינים המובילים</p>
+      <div className="container container-narrow">
+        <button type="button" onClick={() => navigate('/')} className="ui-back-button" style={{ marginBottom: 14 }}>← חזרה</button>
+        <div className="page-hero">
+          <span className="page-kicker">דירוג חי</span>
+          <h1 className="page-title">🏆 טבלת מובילים</h1>
+          <p className="page-subtitle">הדיינים הבולטים לפי ניקוד, דיוני קול, מתנות ואיכות השתתפות.</p>
         </div>
 
         {loading ? (
           <div style={{ textAlign: 'center', padding: 60 }}><div className="spinner" style={{ margin: '0 auto' }} /></div>
         ) : error ? (
-          <div style={{ textAlign: 'center', padding: 60, color: 'var(--muted)' }}>
+          <div className="state-card">
             {error}
           </div>
         ) : leaders.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 60, color: 'var(--muted)' }}>
+          <div className="state-card">
             עדיין אין דיינים ברשימה
           </div>
         ) : (
@@ -76,7 +77,3 @@ export default function LeaderboardPage() {
   );
 }
 
-const backBtn = {
-  background: 'none', border: 'none', color: '#aaa',
-  fontSize: '0.9rem', cursor: 'pointer', padding: '4px 0', marginBottom: 12,
-};

@@ -31,11 +31,12 @@ export default function KnowledgeBasePage() {
 
   return (
     <div className="page">
-      <div className="container">
-        <button type="button" onClick={() => navigate('/')} style={{ background:'none', border:'none', color:'#aaa', fontSize:'0.9rem', cursor:'pointer', padding:'4px 0', marginBottom: 12 }}>← חזרה</button>
-        <div style={{ marginBottom: 28 }}>
-          <h1 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: 8 }}>📚 מאגר הידע</h1>
-          <p style={{ color: 'var(--muted)' }}>ויקיפדיה של טענות בעד ונגד האמונה — {total} דיונים שמורים</p>
+      <div className="container container-wide">
+        <button type="button" className="ui-back-button" onClick={() => navigate('/')} style={{ marginBottom: 14 }}>← חזרה</button>
+        <div className="page-hero">
+          <span className="page-kicker">מאגר ידע</span>
+          <h1 className="page-title">📚 ספריית דיונים וטענות</h1>
+          <p className="page-subtitle">ויקיפדיה חיה של טענות בעד ונגד האמונה, עם חיפוש מהיר וסיכומי דיונים. כרגע שמורים {total} דיונים.</p>
         </div>
 
         <input
@@ -48,11 +49,11 @@ export default function KnowledgeBasePage() {
         {loading ? (
           <div style={{ textAlign: 'center', padding: 40 }}><div className="spinner" style={{ margin: '0 auto' }} /></div>
         ) : error ? (
-          <div style={{ textAlign: 'center', padding: 60, color: 'var(--muted)' }}>
+          <div className="state-card">
             {error}
           </div>
         ) : debates.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 60, color: 'var(--muted)' }}>
+          <div className="state-card">
             {query ? 'לא נמצאו תוצאות' : 'עדיין אין דיונים שמורים'}
           </div>
         ) : (

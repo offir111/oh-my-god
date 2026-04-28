@@ -92,6 +92,7 @@ export default function LoginPage() {
   const matchErrorHandlerRef = useRef(null);
   const aiTimeoutRef = useRef(null);
   const shouldPlayHomePanels = homeAnimationRun > 0 && Boolean(registered || currentUser);
+  const homeStep = !registered ? 1 : !selectedSide ? 2 : 3;
 
   function playHomeAnimationSequence() {
     setHomeAnimationRun(run => run + 1);
@@ -287,12 +288,89 @@ export default function LoginPage() {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          padding: 24px 16px 32px;
+          padding: clamp(18px, 4vw, 34px) 16px 32px;
           background: transparent;
-          gap: 22px;
+          gap: 16px;
           box-sizing: border-box;
           overflow-x: hidden;
           width: 100%;
+        }
+        .login-hero-card {
+          position: relative;
+          width: min(100%, 520px);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 18px;
+          padding: clamp(18px, 4vw, 30px);
+          border: 1px solid rgba(255,255,255,0.12);
+          border-radius: 28px;
+          background:
+            radial-gradient(circle at 50% 0%, rgba(251,191,36,0.1), transparent 34%),
+            linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.035));
+          box-shadow: 0 24px 70px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.08);
+          backdrop-filter: blur(18px);
+          -webkit-backdrop-filter: blur(18px);
+        }
+        .login-hero-card::before {
+          content: '';
+          position: absolute;
+          inset: -1px;
+          z-index: -1;
+          border-radius: inherit;
+          background: linear-gradient(135deg, rgba(229,57,53,0.28), transparent 35%, rgba(0,200,83,0.22));
+          opacity: 0.75;
+        }
+        .login-brand-block {
+          text-align: center;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 6px;
+        }
+        .login-status-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 7px 12px;
+          border-radius: 999px;
+          border: 1px solid rgba(255,255,255,0.14);
+          background: rgba(0,0,0,0.22);
+          color: var(--text-secondary, #b4b4c0);
+          font-size: 0.78rem;
+          font-weight: 700;
+        }
+        .login-stepper {
+          width: min(100%, 380px);
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 8px;
+          direction: rtl;
+        }
+        .login-step {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          padding: 8px 6px;
+          border-radius: 999px;
+          border: 1px solid rgba(255,255,255,0.09);
+          background: rgba(255,255,255,0.045);
+          color: var(--muted, #8a8a9a);
+          font-size: 0.72rem;
+          font-weight: 800;
+          transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.2s;
+        }
+        .login-step.is-active {
+          color: var(--text, #fff);
+          background: rgba(251,191,36,0.12);
+          border-color: rgba(251,191,36,0.28);
+          transform: translateY(-1px);
+        }
+        .login-step.is-done {
+          color: #b9f6ca;
+          background: rgba(0,200,83,0.08);
+          border-color: rgba(0,200,83,0.18);
         }
         .ticker-wrap {
           width: 100%;
@@ -415,7 +493,7 @@ export default function LoginPage() {
           align-items: center;
           gap: 12px;
           width: 100%;
-          max-width: 360px;
+          max-width: 390px;
           direction: rtl;
         }
         .login-input-wrap {
@@ -426,16 +504,16 @@ export default function LoginPage() {
         }
         .login-input {
           width: 100%;
-          padding: 12px 14px;
+          padding: 13px 15px;
           font-size: clamp(0.84rem, 3.5vw, 0.96rem);
-          background: var(--card2, #1a1a24);
+          background: rgba(10,10,16,0.68);
           border: 1px solid var(--border-strong, rgba(255,255,255,0.14));
-          border-radius: 12px;
+          border-radius: 14px;
           color: var(--text, #f4f4f8);
           text-align: center;
           outline: none;
           box-sizing: border-box;
-          transition: border-color 0.2s, box-shadow 0.2s;
+          transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
         }
         .login-input:focus {
           border-color: var(--accent, #6366f1);
@@ -475,13 +553,13 @@ export default function LoginPage() {
           flex-direction: row;
           align-items: stretch;
           justify-content: center;
-          gap: 8px;
+          gap: 10px;
           width: 100%;
-          max-width: 360px;
+          max-width: 390px;
         }
         .login-panel {
           flex: 1;
-          max-width: 148px;
+          max-width: 160px;
           padding: clamp(10px, 2.4vw, 21px) clamp(7px, 1.8vw, 14px);
           border-radius: 18px;
           cursor: pointer;
@@ -491,8 +569,12 @@ export default function LoginPage() {
           justify-content: center;
           gap: 4px;
           border: 1px solid rgba(255,255,255,0.08);
-          transition: transform 0.12s, box-shadow 0.2s;
+          transition: transform 0.16s, box-shadow 0.2s, filter 0.2s, border-color 0.2s;
           min-width: 0;
+        }
+        .login-panel:hover {
+          filter: brightness(1.06) saturate(1.04);
+          border-color: rgba(255,255,255,0.18);
         }
         .panel-believer {
           position: relative;
@@ -675,6 +757,25 @@ export default function LoginPage() {
           text-align: center;
         }
         .ai-button:hover { filter: brightness(1.06); }
+        .login-mode-card {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 14px;
+          width: 100%;
+          max-width: 390px;
+          padding: 16px;
+          border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 22px;
+          background: rgba(0,0,0,0.16);
+        }
+        .login-secondary-copy {
+          color: var(--text-secondary, #b4b4c0);
+          font-size: 0.86rem;
+          text-align: center;
+          line-height: 1.55;
+          margin: -4px 0 2px;
+        }
         .login-links {
           display: flex;
           gap: 24px;
@@ -730,204 +831,216 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <div style={{ textAlign: 'center' }}>
-          <h1 className="login-title" dir="ltr">
-            <Link
-              to="/login"
-              className="login-title-homelink login-title-phrase"
-              aria-label="דף הכניסה"
-              onClick={() => {
-                resetHomePage();
-                window.scrollTo(0, 0);
-              }}
-            >
-              {TITLE_WAVE_CHARS.map((ch, index) => {
-                const intensity = 0.9 + (index / (TITLE_WAVE_CHARS.length - 1)) * 0.1;
+        <section className="login-hero-card" aria-label="דף הבית והרשמה">
+          <div className="login-brand-block">
+            <span className="login-status-pill">
+              {currentUser ? `מחובר כ-${currentUser.username}` : registered ? `שלום ${registered.username}` : 'כניסה מהירה לדיון'}
+            </span>
+            <h1 className="login-title" dir="ltr">
+              <Link
+                to="/login"
+                className="login-title-homelink login-title-phrase"
+                aria-label="דף הכניסה"
+                onClick={() => {
+                  resetHomePage();
+                  window.scrollTo(0, 0);
+                }}
+              >
+                {TITLE_WAVE_CHARS.map((ch, index) => {
+                  const intensity = 0.9 + (index / (TITLE_WAVE_CHARS.length - 1)) * 0.1;
+                  return (
+                    <span
+                      key={`${ch}-${index}`}
+                      className={ch === ' ' ? 'login-title-sp login-title-ch' : 'login-title-ch'}
+                      style={{
+                        '--wave-delay': `${index * 0.16}s`,
+                        '--wave-color': `rgb(${Math.round(220 + 35 * intensity)}, ${Math.round(206 + 49 * intensity)}, ${Math.round(88 * intensity)})`,
+                        '--wave-glow': `${10 + 10 * intensity}px`,
+                        '--wave-glow-alpha': 0.35 + 0.2 * intensity,
+                      }}
+                    >
+                      {ch}
+                    </span>
+                  );
+                })}
+              </Link>
+            </h1>
+            <p className="login-subtitle login-subtitle-wave">
+              {SUBTITLE_WAVE_CHARS.map((ch, index) => {
+                const intensity = 0.9 + (index / (SUBTITLE_WAVE_CHARS.length - 1)) * 0.1;
                 return (
                   <span
                     key={`${ch}-${index}`}
-                    className={ch === ' ' ? 'login-title-sp login-title-ch' : 'login-title-ch'}
+                    className={`login-subtitle-ch${ch === 'V' || ch === 'S' ? ' login-subtitle-ch--strong' : ''}`}
                     style={{
-                      '--wave-delay': `${index * 0.16}s`,
+                      '--wave-delay': `${(TITLE_WAVE_CHARS.length + index) * 0.16}s`,
                       '--wave-color': `rgb(${Math.round(220 + 35 * intensity)}, ${Math.round(206 + 49 * intensity)}, ${Math.round(88 * intensity)})`,
-                      '--wave-glow': `${10 + 10 * intensity}px`,
-                      '--wave-glow-alpha': 0.35 + 0.2 * intensity,
+                      '--wave-glow': `${8 + 8 * intensity}px`,
+                      '--wave-glow-alpha': 0.3 + 0.18 * intensity,
                     }}
                   >
-                    {ch}
+                    {ch === ' ' ? '\u00A0' : ch}
                   </span>
                 );
               })}
-            </Link>
-          </h1>
-          <p className="login-subtitle login-subtitle-wave">
-            {SUBTITLE_WAVE_CHARS.map((ch, index) => {
-              const intensity = 0.9 + (index / (SUBTITLE_WAVE_CHARS.length - 1)) * 0.1;
-              return (
-                <span
-                  key={`${ch}-${index}`}
-                  className={`login-subtitle-ch${ch === 'V' || ch === 'S' ? ' login-subtitle-ch--strong' : ''}`}
-                  style={{
-                    '--wave-delay': `${(TITLE_WAVE_CHARS.length + index) * 0.16}s`,
-                    '--wave-color': `rgb(${Math.round(220 + 35 * intensity)}, ${Math.round(206 + 49 * intensity)}, ${Math.round(88 * intensity)})`,
-                    '--wave-glow': `${8 + 8 * intensity}px`,
-                    '--wave-glow-alpha': 0.3 + 0.18 * intensity,
-                  }}
-                >
-                  {ch === ' ' ? '\u00A0' : ch}
-                </span>
-              );
-            })}
-          </p>
-        </div>
-
-        {!registered ? (
-          <div className="login-input-row">
-            <div className="login-input-wrap">
-              <input
-                className="login-input"
-                type="text"
-                placeholder="שם משתמש..."
-                value={username}
-                onChange={handleUsernameChange}
-                onKeyDown={e => e.key === 'Enter' && handleRegister()}
-                maxLength={20}
-                autoComplete="off"
-                autoFocus
-              />
-              <input
-                className="login-input"
-                type="password"
-                placeholder="סיסמה (4 תווים)..."
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleRegister()}
-                maxLength={4}
-                autoComplete="new-password"
-              />
-              {error && <p className="login-error">{error}</p>}
-            </div>
-            <button className={`login-enter-btn${password.length === 4 ? ' ready' : ''}`} onClick={handleRegister}>
-              כניסה
-            </button>
-          </div>
-        ) : null}
-
-        {aiLoading ? (
-          <div style={{ textAlign: 'center', padding: '40px 0' }}>
-            <div className="spinner" style={{ margin: '0 auto 20px' }} />
-            <p style={{ color: '#fff', fontSize: '1.1rem', fontWeight: 700 }}>🤖 מתחבר ל-AI...</p>
-            <p style={{ color: '#888', fontSize: '0.9rem', marginTop: 8 }}>מכין את הדיון</p>
-          </div>
-        ) : !selectedSide ? (
-          <>
-            <p className="login-choose">בחר את הצד שלך:</p>
-
-            <div className="login-panels">
-              <button
-                className="login-panel panel-believer"
-                onClick={() => handlePanelClick('believer')}
-                onTouchStart={e => e.currentTarget.style.transform = 'translateY(4px)'}
-                onTouchEnd={e => e.currentTarget.style.transform = 'translateY(0)'}
-                onMouseDown={e => e.currentTarget.style.transform = 'translateY(4px)'}
-                onMouseUp={e => e.currentTarget.style.transform = 'translateY(0)'}
-                onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
-              >
-                {shouldPlayHomePanels && (
-                  <span
-                    key={`believer-ripple-${homeAnimationRun}`}
-                    className="believer-water-ripple is-home-animating"
-                    aria-hidden="true"
-                  />
-                )}
-                <span
-                  key={`believer-dancers-${homeAnimationRun}`}
-                  className={`believer-dancers${shouldPlayHomePanels ? ' is-home-animating' : ''}`}
-                >
-                  <TransparentImage src="/rabbis.jpg" alt="רבנים" size={Math.min(126, window.innerWidth * 0.28)} />
-                </span>
-                <div className="panel-title">מאמין</div>
-                <div className="panel-subtitle">דת</div>
-              </button>
-
-              <div className="login-vs">VS</div>
-
-              <button
-                className="login-panel panel-atheist"
-                onClick={() => handlePanelClick('atheist')}
-                onTouchStart={e => e.currentTarget.style.transform = 'translateY(4px)'}
-                onTouchEnd={e => e.currentTarget.style.transform = 'translateY(0)'}
-                onMouseDown={e => e.currentTarget.style.transform = 'translateY(4px)'}
-                onMouseUp={e => e.currentTarget.style.transform = 'translateY(0)'}
-                onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
-              >
-                {shouldPlayHomePanels && (
-                  <span key={`einstein-sparkles-${homeAnimationRun}`} className="einstein-sparkles" aria-hidden="true">
-                    {EINSTEIN_SPARKLES.map((sparkle, index) => (
-                      <span
-                        key={`${sparkle.x}-${sparkle.y}`}
-                        className="einstein-sparkle"
-                        style={{
-                          '--sparkle-index': index,
-                          '--sparkle-x': `${sparkle.x * 3}px`,
-                          '--sparkle-y': `${sparkle.y * 3}px`,
-                          '--sparkle-scale': sparkle.s,
-                        }}
-                      />
-                    ))}
-                  </span>
-                )}
-                <TransparentImage src="/torah.jpg" alt="איינשטיין" size={Math.min(126, window.innerWidth * 0.28)} />
-                <div className="panel-title">אתאיסט</div>
-                <div className="panel-subtitle">מדע</div>
-              </button>
-            </div>
-
-            <button
-              className="ai-button"
-              onClick={handleAI}
-              onTouchStart={e => e.currentTarget.style.transform = 'translateY(3px)'}
-              onTouchEnd={e => e.currentTarget.style.transform = 'translateY(0)'}
-              onMouseDown={e => e.currentTarget.style.transform = 'translateY(3px)'}
-              onMouseUp={e => e.currentTarget.style.transform = 'translateY(0)'}
-              onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
-            >
-              כל התשובות ב AI
-            </button>
-          </>
-        ) : (
-          /* Side chosen — pick mode: human or AI */
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, width: '100%', maxWidth: 360 }}>
-            <p className="login-choose" style={{ marginBottom: 4 }}>
-              בחרת: <span style={{ color: selectedSide === 'believer' ? 'var(--believer)' : 'var(--atheist)', fontWeight: 900 }}>
-                {selectedSide === 'believer' ? 'מאמין' : 'אתאיסט'}
-              </span>
             </p>
-            <p style={{ color: '#aaa', fontSize: '0.9rem', marginBottom: 8 }}>עם מי תרצה לדון?</p>
-            <button
-              className={`login-panel ${selectedSide === 'believer' ? 'panel-believer' : 'panel-atheist'}`}
-              style={{ width: '100%', maxWidth: '100%', padding: '18px 24px', borderRadius: 16, fontSize: '1.1rem', fontWeight: 800 }}
-              onClick={handleHuman}
-            >
-              👤 נגד יריב אנושי
-            </button>
-            <button
-              className="login-panel"
-              style={{ width: '100%', maxWidth: '100%', padding: '18px 24px', borderRadius: 16, fontSize: '1.1rem', fontWeight: 800,
-                background: 'linear-gradient(135deg, #f2f2f2 0%, #c6c6c6 100%)', color: '#000',
-                boxShadow: '0 6px 0 #a8a8a8, 0 10px 20px rgba(0,0,0,0.35)' }}
-              onClick={handleAIMode}
-            >
-              🤖 נגד AI
-            </button>
-            <button
-              style={{ background: 'none', border: 'none', color: '#888', fontSize: '0.9rem', cursor: 'pointer', marginTop: 4 }}
-              onClick={() => setSelectedSide(null)}
-            >
-              ← חזרה
-            </button>
           </div>
-        )}
+
+          <div className="login-stepper" aria-label="שלבי כניסה">
+            <span className={`login-step${homeStep === 1 ? ' is-active' : homeStep > 1 ? ' is-done' : ''}`}>1 פרטים</span>
+            <span className={`login-step${homeStep === 2 ? ' is-active' : homeStep > 2 ? ' is-done' : ''}`}>2 צד</span>
+            <span className={`login-step${homeStep === 3 ? ' is-active' : ''}`}>3 יריב</span>
+          </div>
+
+          {!registered ? (
+            <div className="login-input-row">
+              <div className="login-input-wrap">
+                <input
+                  className="login-input"
+                  type="text"
+                  placeholder="שם משתמש..."
+                  value={username}
+                  onChange={handleUsernameChange}
+                  onKeyDown={e => e.key === 'Enter' && handleRegister()}
+                  maxLength={20}
+                  autoComplete="off"
+                  autoFocus
+                />
+                <input
+                  className="login-input"
+                  type="password"
+                  placeholder="סיסמה (4 תווים)..."
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleRegister()}
+                  maxLength={4}
+                  autoComplete="new-password"
+                />
+                {error && <p className="login-error">{error}</p>}
+              </div>
+              <button className={`login-enter-btn${password.length === 4 ? ' ready' : ''}`} onClick={handleRegister}>
+                כניסה
+              </button>
+            </div>
+          ) : null}
+
+          {aiLoading ? (
+            <div style={{ textAlign: 'center', padding: '40px 0' }}>
+              <div className="spinner" style={{ margin: '0 auto 20px' }} />
+              <p style={{ color: '#fff', fontSize: '1.1rem', fontWeight: 700 }}>🤖 מתחבר ל-AI...</p>
+              <p style={{ color: '#888', fontSize: '0.9rem', marginTop: 8 }}>מכין את הדיון</p>
+            </div>
+          ) : !selectedSide ? (
+            <>
+              <p className="login-choose">בחר את הצד שלך:</p>
+              <p className="login-secondary-copy">אפשר להחליף צד בכל כניסה מחדש לדף הבית. הבחירה קובעת את נקודת המבט בדיון הבא.</p>
+
+              <div className="login-panels">
+                <button
+                  className="login-panel panel-believer"
+                  onClick={() => handlePanelClick('believer')}
+                  onTouchStart={e => e.currentTarget.style.transform = 'translateY(4px)'}
+                  onTouchEnd={e => e.currentTarget.style.transform = 'translateY(0)'}
+                  onMouseDown={e => e.currentTarget.style.transform = 'translateY(4px)'}
+                  onMouseUp={e => e.currentTarget.style.transform = 'translateY(0)'}
+                  onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+                >
+                  {shouldPlayHomePanels && (
+                    <span
+                      key={`believer-ripple-${homeAnimationRun}`}
+                      className="believer-water-ripple is-home-animating"
+                      aria-hidden="true"
+                    />
+                  )}
+                  <span
+                    key={`believer-dancers-${homeAnimationRun}`}
+                    className={`believer-dancers${shouldPlayHomePanels ? ' is-home-animating' : ''}`}
+                  >
+                    <TransparentImage src="/rabbis.jpg" alt="רבנים" size={Math.min(126, window.innerWidth * 0.28)} />
+                  </span>
+                  <div className="panel-title">מאמין</div>
+                  <div className="panel-subtitle">דת</div>
+                </button>
+
+                <div className="login-vs">VS</div>
+
+                <button
+                  className="login-panel panel-atheist"
+                  onClick={() => handlePanelClick('atheist')}
+                  onTouchStart={e => e.currentTarget.style.transform = 'translateY(4px)'}
+                  onTouchEnd={e => e.currentTarget.style.transform = 'translateY(0)'}
+                  onMouseDown={e => e.currentTarget.style.transform = 'translateY(4px)'}
+                  onMouseUp={e => e.currentTarget.style.transform = 'translateY(0)'}
+                  onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+                >
+                  {shouldPlayHomePanels && (
+                    <span key={`einstein-sparkles-${homeAnimationRun}`} className="einstein-sparkles" aria-hidden="true">
+                      {EINSTEIN_SPARKLES.map((sparkle, index) => (
+                        <span
+                          key={`${sparkle.x}-${sparkle.y}`}
+                          className="einstein-sparkle"
+                          style={{
+                            '--sparkle-index': index,
+                            '--sparkle-x': `${sparkle.x * 3}px`,
+                            '--sparkle-y': `${sparkle.y * 3}px`,
+                            '--sparkle-scale': sparkle.s,
+                          }}
+                        />
+                      ))}
+                    </span>
+                  )}
+                  <TransparentImage src="/torah.jpg" alt="איינשטיין" size={Math.min(126, window.innerWidth * 0.28)} />
+                  <div className="panel-title">אתאיסט</div>
+                  <div className="panel-subtitle">מדע</div>
+                </button>
+              </div>
+
+              <button
+                className="ai-button"
+                onClick={handleAI}
+                onTouchStart={e => e.currentTarget.style.transform = 'translateY(3px)'}
+                onTouchEnd={e => e.currentTarget.style.transform = 'translateY(0)'}
+                onMouseDown={e => e.currentTarget.style.transform = 'translateY(3px)'}
+                onMouseUp={e => e.currentTarget.style.transform = 'translateY(0)'}
+                onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                כל התשובות ב AI
+              </button>
+            </>
+          ) : (
+            /* Side chosen — pick mode: human or AI */
+            <div className="login-mode-card">
+              <p className="login-choose" style={{ marginBottom: 0 }}>
+                בחרת: <span style={{ color: selectedSide === 'believer' ? 'var(--believer)' : 'var(--atheist)', fontWeight: 900 }}>
+                  {selectedSide === 'believer' ? 'מאמין' : 'אתאיסט'}
+                </span>
+              </p>
+              <p className="login-secondary-copy">בחר חוויה: התאמה חיה מול משתמש אחר או דיון מיידי מול AI.</p>
+              <button
+                className={`login-panel ${selectedSide === 'believer' ? 'panel-believer' : 'panel-atheist'}`}
+                style={{ width: '100%', maxWidth: '100%', padding: '18px 24px', borderRadius: 16, fontSize: '1.1rem', fontWeight: 800 }}
+                onClick={handleHuman}
+              >
+                👤 נגד יריב אנושי
+              </button>
+              <button
+                className="login-panel"
+                style={{ width: '100%', maxWidth: '100%', padding: '18px 24px', borderRadius: 16, fontSize: '1.1rem', fontWeight: 800,
+                  background: 'linear-gradient(135deg, #f2f2f2 0%, #c6c6c6 100%)', color: '#000',
+                  boxShadow: '0 6px 0 #a8a8a8, 0 10px 20px rgba(0,0,0,0.35)' }}
+                onClick={handleAIMode}
+              >
+                🤖 נגד AI
+              </button>
+              <button
+                style={{ background: 'none', border: 'none', color: '#aaa', fontSize: '0.9rem', cursor: 'pointer', marginTop: 4, fontWeight: 700 }}
+                onClick={() => setSelectedSide(null)}
+              >
+                ← חזרה לבחירת צד
+              </button>
+            </div>
+          )}
+        </section>
 
         <div className="login-links">
           <Link to="/arguments" className="login-link">📚 בעד ונגד</Link>

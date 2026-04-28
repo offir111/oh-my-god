@@ -122,20 +122,34 @@ export default function LobbyPage() {
 
   return (
     <div className="page">
-      <div className="container" style={{ maxWidth: 700 }}>
-        <div className="card" style={{ textAlign: 'center', marginBottom: 24 }}>
-          <div style={{ fontSize: '0.9rem', color: 'var(--muted)', marginBottom: 8 }}>שלום,</div>
-          <div style={{ fontSize: '1.6rem', fontWeight: 700 }}>
-            {user?.username}
-            <span style={{ marginRight: 10 }}><SideTag side={user?.side} /></span>
+      <div className="container container-narrow">
+        <div className="page-hero" style={{ textAlign: 'center' }}>
+          <div className="page-kicker">לובי חי</div>
+          <h1 className="page-title">שלום, {user?.username}</h1>
+          <p className="page-subtitle" style={{ margin: '0 auto 16px' }}>
+            בחר איך להתחיל את הדיון הבא שלך. אפשר לחכות ליריב אנושי או לפתוח דיון מיידי מול AI.
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+            <SideTag side={user?.side} />
           </div>
-          <div style={{ color: 'var(--muted)', marginTop: 6, fontSize: '0.9rem' }}>
-            ניקוד: <span style={{ color: 'var(--gold)', fontWeight: 700 }}>{user?.score || 0}</span>
+          <div className="stat-grid">
+            <div className="stat-tile">
+              <strong>{user?.score || 0}</strong>
+              <span>נקודות</span>
+            </div>
+            <div className="stat-tile">
+              <strong>{liveDebates.length}</strong>
+              <span>דיונים חיים</span>
+            </div>
+            <div className="stat-tile">
+              <strong style={{ color: connected ? '#86efac' : '#fca5a5' }}>{connected ? 'מחובר' : 'מנותק'}</strong>
+              <span>שרת בזמן אמת</span>
+            </div>
           </div>
         </div>
 
         {status === 'idle' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div className="surface-panel" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <button
               className={`btn btn-${user?.side}`}
               style={{ width: '100%', padding: '18px', fontSize: '1.1rem' }}
@@ -198,7 +212,7 @@ export default function LobbyPage() {
 
         {liveDebates.length > 0 && (
           <div style={{ marginTop: 32 }}>
-            <h3 style={{ marginBottom: 14, color: 'var(--muted)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: 1 }}>
+            <h3 className="section-title" style={{ marginBottom: 14 }}>
               דיונים חיים עכשיו
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
