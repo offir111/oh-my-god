@@ -6,6 +6,7 @@ import BibleModal from '../ui/BibleModal.jsx';
 
 export default function AppHeader() {
   const user = useAppStore(s => s.user);
+  const pendingUser = useAppStore(s => s.pendingUser);
   const setUser = useAppStore(s => s.setUser);
   const resetDebate = useAppStore(s => s.resetDebate);
   const navigate = useNavigate();
@@ -16,8 +17,10 @@ export default function AppHeader() {
   const [stats, setStats] = useState({ registered: 0, online: 0, registeredList: [], onlineList: [] });
   const [listOpen, setListOpen] = useState(null); // 'registered' | 'online' | null
   const menuRef = useRef();
-  const avatarRef = useRef();
   const listRef = useRef();
+
+  // Show green avatar also when registered but not yet in debate
+  const activeUser = user || pendingUser;
 
   useEffect(() => {
     const BASE = import.meta.env.VITE_API_URL || '';
@@ -45,7 +48,6 @@ export default function AppHeader() {
   useEffect(() => {
     function handleClick(e) {
       if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
-      if (avatarRef.current && !avatarRef.current.contains(e.target)) setAvatarOpen(false);
       if (listRef.current && !listRef.current.contains(e.target)) setListOpen(null);
     }
     document.addEventListener('mousedown', handleClick);
@@ -109,12 +111,13 @@ export default function AppHeader() {
         .header-dots-menu {
           position: fixed;
           top: 52px;
-          left: 8px;
-          right: auto;
+          right: 8px;
+          left: auto;
           background: #1a1a1a;
           border: 1px solid #333;
           border-radius: 12px;
           min-width: 200px;
+          max-width: calc(100vw - 16px);
           overflow: hidden;
           box-shadow: 0 8px 24px rgba(0,0,0,0.8);
           direction: rtl;
@@ -139,72 +142,39 @@ export default function AppHeader() {
         .header-dots-menu a:hover, .header-dots-menu button:hover { background: #2a2a2a; }
 
         .header-avatar-wrap { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; }
-        .header-online-dot {
-          width: 8px; height: 8px;
-          border-radius: 50%;
-          background: #00DD55;
-          box-shadow: 0 0 6px #00DD55, 0 0 12px #00DD5588;
-          animation: pulse-dot 2s ease-in-out infinite;
-        }
-        @keyframes pulse-dot {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.6; transform: scale(0.8); }
-        }
         .header-avatar {
           width: 36px; height: 36px;
           border-radius: 50%;
           background: #222;
           border: 2px solid #444;
-          cursor: pointer;
+          cursor: default;
           display: flex; align-items: center; justify-content: center;
-          font-size: 0.7rem;
-          font-weight: 800;
-          color: #fff;
           overflow: hidden;
           transition: border-color 0.3s, box-shadow 0.3s;
-          font-family: Arial, sans-serif;
         }
         .header-avatar.logged-in {
-          border-color: #FFE566;
-          box-shadow: 0 0 10px #FFE56699;
-          background: #3a3000;
+          border-color: #00DD55;
+          box-shadow: 0 0 10px #00DD5566;
+          background: #001a0a;
+          cursor: pointer;
         }
         .header-avatar svg { width: 22px; height: 22px; }
-        .avatar-dropdown {
+        .avatar-popup {
           position: absolute;
-          top: 44px; right: 0;
+          top: 42px; left: 0; right: auto;
           background: #1a1a1a;
-          border: 1px solid #333;
-          border-radius: 12px;
-          min-width: 160px;
-          overflow: hidden;
-          box-shadow: 0 8px 24px rgba(0,0,0,0.6);
-          direction: rtl;
+          border: 1px solid #2a2a2a;
+          border-radius: 10px;
+          padding: 8px 14px;
+          white-space: nowrap;
+          box-shadow: 0 6px 18px rgba(0,0,0,0.7);
           z-index: 2000;
-        }
-        .avatar-dropdown-header {
-          padding: 12px 16px;
-          border-bottom: 1px solid #2a2a2a;
-          color: #aaa;
-          font-size: 0.8rem;
           font-family: Arial, sans-serif;
+          font-size: 0.88rem;
+          color: #00DD55;
+          font-weight: 700;
+          direction: rtl;
         }
-        .avatar-dropdown-header strong {
-          display: block;
-          color: #FFE566;
-          font-size: 0.95rem;
-        }
-        .avatar-dropdown button {
-          display: block; width: 100%;
-          padding: 12px 16px;
-          background: none; border: none;
-          color: #ff6666;
-          font-size: 0.9rem;
-          text-align: right;
-          cursor: pointer;
-          font-family: Arial, sans-serif;
-        }
-        .avatar-dropdown button:hover { background: #2a2a2a; }
         .header-stats {
           display: flex;
           gap: 14px;
@@ -267,30 +237,28 @@ export default function AppHeader() {
       `}</style>
 
       <div className="app-header">
-        {/* Left side: back arrow + three dots */}
-        <div style={{ display: 'flex', alignItems: 'center' }}>
+        {/* Left side: back arrow + avatar */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {location.pathname !== '/' && (
             <button className="header-back-btn" onClick={() => navigate(-1)} title="חזור">&#9664;</button>
           )}
-        <div ref={menuRef} style={{ position: 'relative' }}>
-          <button className="header-dots-btn" onClick={() => setMenuOpen(o => !o)}>⋮</button>
-          {menuOpen && (
-            <div className="header-dots-menu">
-              <button onClick={() => { setBibleOpen(true); setMenuOpen(false); }}
-                style={{ display:'block', width:'100%', padding:'13px 18px', color:'#FFE566',
-                  background:'none', border:'none', borderBottom:'1px solid #2a2a2a',
-                  textAlign:'right', cursor:'pointer', fontFamily:'Arial, sans-serif', fontSize:'0.92rem' }}>
-                📖 ספר התנ"ך
-              </button>
-              <a href="#" style={{ display:'block', padding:'13px 18px', color:'#fff',
-                textDecoration:'none', fontSize:'0.92rem', borderBottom:'1px solid #2a2a2a' }}>⚙️ הגדרות</a>
-              <a href="#" style={{ display:'block', padding:'13px 18px', color:'#fff',
-                textDecoration:'none', fontSize:'0.92rem', borderBottom:'1px solid #2a2a2a' }}>📋 תקנון</a>
-              <a href="#" style={{ display:'block', padding:'13px 18px', color:'#fff',
-                textDecoration:'none', fontSize:'0.92rem' }}>✉️ צור קשר</a>
+          <div
+            className="header-avatar-wrap"
+            onMouseEnter={() => activeUser && setAvatarOpen(true)}
+            onMouseLeave={() => setAvatarOpen(false)}
+          >
+            <div className={`header-avatar${activeUser ? ' logged-in' : ''}`}>
+              <svg viewBox="0 0 24 24" fill={activeUser ? '#00DD55' : '#555'}>
+                <circle cx="12" cy="8" r="4" />
+                <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+              </svg>
             </div>
-          )}
-        </div>
+            {avatarOpen && activeUser && (
+              <div className="avatar-popup">
+                👤 {activeUser.username}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Stats — center */}
@@ -320,29 +288,23 @@ export default function AppHeader() {
           )}
         </div>
 
-        {/* Avatar — right */}
-        <div className="header-avatar-wrap" ref={avatarRef}>
-          <div
-            className={`header-avatar${user ? ' logged-in' : ''}`}
-            onClick={() => user && setAvatarOpen(o => !o)}
-          >
-            {user ? (
-              <span style={{ color: '#FFE566' }}>{avatarLabel}</span>
-            ) : (
-              <svg viewBox="0 0 24 24" fill="#555">
-                <circle cx="12" cy="8" r="4" />
-                <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-              </svg>
-            )}
-          </div>
-          {user && <div className="header-online-dot" />}
-          {avatarOpen && user && (
-            <div className="avatar-dropdown">
-              <div className="avatar-dropdown-header">
-                <strong>{user.username}</strong>
-                {user.side === 'believer' ? 'מאמין' : 'אתאיסט'}
-              </div>
-              <button onClick={logout}>🚪 התנתק</button>
+        {/* Right side: three dots menu */}
+        <div ref={menuRef} style={{ position: 'relative' }}>
+          <button className="header-dots-btn" onClick={() => setMenuOpen(o => !o)}>⋮</button>
+          {menuOpen && (
+            <div className="header-dots-menu">
+              <button onClick={() => { setBibleOpen(true); setMenuOpen(false); }}
+                style={{ display:'block', width:'100%', padding:'13px 18px', color:'#FFE566',
+                  background:'none', border:'none', borderBottom:'1px solid #2a2a2a',
+                  textAlign:'right', cursor:'pointer', fontFamily:'Arial, sans-serif', fontSize:'0.92rem' }}>
+                📖 ספר התנ"ך
+              </button>
+              <a href="#" style={{ display:'block', padding:'13px 18px', color:'#fff',
+                textDecoration:'none', fontSize:'0.92rem', borderBottom:'1px solid #2a2a2a' }}>⚙️ הגדרות</a>
+              <a href="#" style={{ display:'block', padding:'13px 18px', color:'#fff',
+                textDecoration:'none', fontSize:'0.92rem', borderBottom:'1px solid #2a2a2a' }}>📋 תקנון</a>
+              <a href="#" style={{ display:'block', padding:'13px 18px', color:'#fff',
+                textDecoration:'none', fontSize:'0.92rem' }}>✉️ צור קשר</a>
             </div>
           )}
         </div>

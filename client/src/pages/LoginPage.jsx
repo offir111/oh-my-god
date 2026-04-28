@@ -10,10 +10,9 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [selectedSide, setSelectedSide] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
-  const [registered, setRegistered] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('omg_pending')) || null; } catch { return null; }
-  });
+  const [registered, setRegistered] = useState(null); // always start fresh
   const setUser = useAppStore(s => s.setUser);
+  const setPendingUser = useAppStore(s => s.setPendingUser);
   const setDebate = useAppStore(s => s.setDebate);
   const navigate = useNavigate();
 
@@ -22,7 +21,6 @@ export default function LoginPage() {
     localStorage.removeItem('omg_user');
     localStorage.removeItem('omg_pending');
     setUser(null);
-    setRegistered(null);
   }, []);
 
   function handleRegister() {
@@ -33,6 +31,7 @@ export default function LoginPage() {
     const pending = { username: name };
     localStorage.setItem('omg_pending', JSON.stringify(pending));
     setRegistered(pending);
+    setPendingUser(pending);
   }
 
   function handlePanelClick(side) {
@@ -167,6 +166,60 @@ export default function LoginPage() {
           text-align: center;
           margin: 0;
         }
+        /* "oh my": travelling yellow (prev letter fades as next lights). GOD: wave stops, G→O→D build then 3s hold, then O→D→G out */
+        .login-title-phrase {
+          direction: ltr;
+          unicode-bidi: embed;
+        }
+        .login-title-ch {
+          display: inline-block;
+          color: #ffffff;
+        }
+        .login-title-sp {
+          color: #ffffff;
+        }
+        @keyframes loginTitleCh0 {
+          0%, 1% { color: #ffffff; }
+          1.5%, 4% { color: #FFEB3B; }
+          6%, 100% { color: #ffffff; }
+        }
+        @keyframes loginTitleCh1 {
+          0%, 3.5% { color: #ffffff; }
+          4.5%, 7.5% { color: #FFEB3B; }
+          9.5%, 100% { color: #ffffff; }
+        }
+        @keyframes loginTitleCh2 {
+          0%, 7% { color: #ffffff; }
+          8%, 10.5% { color: #FFEB3B; }
+          12.5%, 100% { color: #ffffff; }
+        }
+        @keyframes loginTitleCh3 {
+          0%, 10% { color: #ffffff; }
+          11%, 14% { color: #FFEB3B; }
+          16.5%, 100% { color: #ffffff; }
+        }
+        @keyframes loginTitleCh4 {
+          0%, 16% { color: #ffffff; }
+          17.5%, 96.875% { color: #FFEB3B; }
+          97.5%, 100% { color: #ffffff; }
+        }
+        @keyframes loginTitleCh5 {
+          0%, 19.5% { color: #ffffff; }
+          21.5%, 71.875% { color: #FFEB3B; }
+          72.5%, 100% { color: #ffffff; }
+        }
+        @keyframes loginTitleCh6 {
+          0%, 23.5% { color: #ffffff; }
+          25.5%, 84.375% { color: #FFEB3B; }
+          85%, 100% { color: #ffffff; }
+        }
+        .login-title-ch--0 { animation: loginTitleCh0 8s linear infinite; }
+        .login-title-ch--1 { animation: loginTitleCh1 8s linear infinite; }
+        .login-title-ch--2 { animation: loginTitleCh2 8s linear infinite; }
+        .login-title-ch--3 { animation: loginTitleCh3 8s linear infinite; }
+        .login-title-ch--4 { animation: loginTitleCh4 8s linear infinite; }
+        .login-title-ch--5 { animation: loginTitleCh5 8s linear infinite; }
+        .login-title-ch--6 { animation: loginTitleCh6 8s linear infinite; }
         .login-subtitle {
           color: #d3d3d3;
           font-size: clamp(0.85rem, 3.5vw, 1.05rem);
@@ -232,21 +285,21 @@ export default function LoginPage() {
           flex-direction: row;
           align-items: stretch;
           justify-content: center;
-          gap: 12px;
+          gap: 8px;
           width: 100%;
-          max-width: 600px;
+          max-width: 360px;
         }
         .login-panel {
           flex: 1;
-          max-width: 240px;
-          padding: clamp(18px, 4vw, 36px) clamp(12px, 3vw, 24px);
+          max-width: 144px;
+          padding: clamp(10px, 2.4vw, 21px) clamp(7px, 1.8vw, 14px);
           border-radius: 20px;
           cursor: pointer;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 12px;
+          gap: 4px;
           border: none;
           transition: transform 0.08s, box-shadow 0.08s;
           min-width: 0;
@@ -262,15 +315,15 @@ export default function LoginPage() {
           color: #fff;
         }
         .panel-title {
-          font-size: clamp(1.3rem, 5.5vw, 2rem);
+          font-size: clamp(0.78rem, 3.3vw, 1.2rem);
           font-weight: 800;
           letter-spacing: 1px;
         }
         .panel-subtitle {
-          font-size: clamp(0.75rem, 3vw, 0.95rem);
-          font-weight: 600;
-          opacity: 0.85;
-          margin-top: -4px;
+          font-size: clamp(0.65rem, 2.4vw, 0.82rem);
+          font-weight: 800;
+          opacity: 0.95;
+          margin-top: 0;
         }
         .login-vs {
           font-size: clamp(1.1rem, 4vw, 1.6rem);
@@ -282,12 +335,12 @@ export default function LoginPage() {
         }
         .ai-button {
           background: linear-gradient(135deg, #f2f2f2 0%, #dcdcdc 60%, #c6c6c6 100%);
-          box-shadow: 0 6px 0 #a8a8a8, 0 10px 20px rgba(0,0,0,0.35);
+          box-shadow: 0 3px 0 #a8a8a8, 0 6px 14px rgba(0,0,0,0.35);
           color: #000;
           font-weight: 800;
-          font-size: clamp(0.95rem, 3.5vw, 1.1rem);
-          padding: 13px 18px;
-          border-radius: 14px;
+          font-size: clamp(0.85rem, 3vw, 0.95rem);
+          padding: 6px 18px;
+          border-radius: 10px;
           border: none;
           cursor: pointer;
           letter-spacing: 1px;
@@ -344,7 +397,17 @@ export default function LoginPage() {
         </div>
 
         <div style={{ textAlign: 'center' }}>
-          <h1 className="login-title">oh my GOD</h1>
+          <h1 className="login-title login-title-phrase" dir="ltr">
+            <span className="login-title-ch login-title-ch--0">o</span>
+            <span className="login-title-ch login-title-ch--1">h</span>
+            <span className="login-title-sp"> </span>
+            <span className="login-title-ch login-title-ch--2">m</span>
+            <span className="login-title-ch login-title-ch--3">y</span>
+            <span className="login-title-sp"> </span>
+            <span className="login-title-ch login-title-ch--4">G</span>
+            <span className="login-title-ch login-title-ch--5">O</span>
+            <span className="login-title-ch login-title-ch--6">D</span>
+          </h1>
           <p className="login-subtitle">אמונה ודת <span style={{color:'#FFE566'}}>VS</span> אתאיזם ומדע</p>
         </div>
 
@@ -359,6 +422,7 @@ export default function LoginPage() {
                 onChange={e => setUsername(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleRegister()}
                 maxLength={20}
+                autoComplete="off"
                 autoFocus
               />
               <input
@@ -369,10 +433,11 @@ export default function LoginPage() {
                 onChange={e => setPassword(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleRegister()}
                 maxLength={4}
+                autoComplete="new-password"
               />
               {error && <p className="login-error">{error}</p>}
             </div>
-            <button className="login-enter-btn" onClick={handleRegister}>
+            <button className={`login-enter-btn${password.length === 4 ? ' ready' : ''}`} onClick={handleRegister}>
               כניסה
             </button>
           </div>
@@ -398,7 +463,7 @@ export default function LoginPage() {
                 onMouseUp={e => e.currentTarget.style.transform = 'translateY(0)'}
                 onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
               >
-                <TransparentImage src="/rabbis.jpg" alt="רבנים" size={Math.min(150, window.innerWidth * 0.33)} />
+                <TransparentImage src="/rabbis.jpg" alt="רבנים" size={Math.min(126, window.innerWidth * 0.28)} />
                 <div className="panel-title">מאמין</div>
                 <div className="panel-subtitle">דת</div>
               </button>
@@ -414,7 +479,7 @@ export default function LoginPage() {
                 onMouseUp={e => e.currentTarget.style.transform = 'translateY(0)'}
                 onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
               >
-                <TransparentImage src="/torah.jpg" alt="איינשטיין" size={Math.min(150, window.innerWidth * 0.33)} />
+                <TransparentImage src="/torah.jpg" alt="איינשטיין" size={Math.min(126, window.innerWidth * 0.28)} />
                 <div className="panel-title">אתאיסט</div>
                 <div className="panel-subtitle">מדע</div>
               </button>
@@ -429,7 +494,7 @@ export default function LoginPage() {
               onMouseUp={e => e.currentTarget.style.transform = 'translateY(0)'}
               onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
             >
-              התמודד מול AI
+              כל התשובות ב AI
             </button>
           </>
         ) : (

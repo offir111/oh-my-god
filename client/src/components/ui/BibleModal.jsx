@@ -116,8 +116,8 @@ export default function BibleModal({ onClose }) {
     <div style={s.overlay} onClick={e => e.target === e.currentTarget && onClose()}>
       <div style={s.modal}>
         <div style={s.header}>
-          <button style={s.close} onClick={onClose}>✕</button>
           <span style={s.title}>📖 ספר התנ"ך</span>
+          <button style={s.close} onClick={onClose}>✕</button>
         </div>
 
         <div style={s.searchRow}>
@@ -220,12 +220,14 @@ const s = {
   },
   header: {
     padding: '14px 18px', borderBottom: '1px solid #222',
-    display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0,
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    flexShrink: 0,
   },
   title: { fontWeight: 800, fontSize: '1.1rem', color: '#FFE566' },
   close: {
     background: 'none', border: 'none', color: '#888',
-    fontSize: '1.1rem', cursor: 'pointer', marginRight: 'auto',
+    fontSize: '1.2rem', cursor: 'pointer', lineHeight: 1,
+    padding: '2px 6px', borderRadius: 6,
   },
   searchRow: {
     padding: '10px 14px', borderBottom: '1px solid #1a1a1a',

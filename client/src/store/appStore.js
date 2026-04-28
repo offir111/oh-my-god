@@ -1,11 +1,8 @@
 import { create } from 'zustand';
 
-function loadUser() {
-  try { return JSON.parse(localStorage.getItem('omg_user')) || null; } catch { return null; }
-}
-
 export const useAppStore = create((set, get) => ({
-  user: loadUser(),
+  user: null, // never auto-load from storage — always require fresh login
+  pendingUser: null, // set after registration before side selection
   debateId: null,
   debate: null,
   gifts: [],
@@ -20,10 +17,11 @@ export const useAppStore = create((set, get) => ({
   })),
   clearStreamingMessage: () => set({ streamingMessage: null }),
 
+  setPendingUser: (pendingUser) => set({ pendingUser }),
+
   setUser: (user) => {
-    if (user) localStorage.setItem('omg_user', JSON.stringify(user));
-    else localStorage.removeItem('omg_user');
-    set({ user });
+    // no localStorage persistence — fresh login every session
+    set({ user, pendingUser: null });
   },
 
   setDebate: (debate) => set({ debate, debateId: debate?.id || null }),

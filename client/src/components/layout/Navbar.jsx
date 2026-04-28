@@ -19,9 +19,16 @@ export default function Navbar() {
     navigate('/');
   }
 
+  function goHome() {
+    disconnectSocket();
+    setUser(null);
+    resetDebate();
+    navigate('/');
+  }
+
   return (
     <nav className="navbar">
-      <Link to="/lobby" className="navbar-brand">oh my GOD</Link>
+      <button onClick={goHome} className="navbar-brand" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>oh my GOD</button>
       <div className="navbar-links">
         <Link to="/lobby">לובי</Link>
         <Link to="/knowledge">מאגר ידע</Link>

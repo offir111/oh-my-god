@@ -51,8 +51,8 @@ export default function TransparentImage({ src, alt, size = 120 }) {
     img.src = src;
   }, [src]);
 
-  if (!dataUrl) return <div style={{ width: size, height: size }} />;
+  if (!dataUrl) return <div style={{ width: size, height: size, flexShrink: 0 }} />;
   return (
-    <img src={dataUrl} alt={alt} style={{ width: size, height: size, objectFit: 'contain' }} />
+    <img src={dataUrl} alt={alt} style={{ width: size, height: size, objectFit: 'contain', display: 'block', margin: '0 auto', flexShrink: 0 }} />
   );
 }

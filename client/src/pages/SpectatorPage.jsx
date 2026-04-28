@@ -56,7 +56,7 @@ export default function SpectatorPage() {
 
   if (!debate) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
+      <div style={{ minHeight: 'calc(100vh - 52px)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
         <div className="spinner" />
         <p style={{ color: 'var(--muted)' }}>מתחבר לדיון...</p>
       </div>
@@ -120,7 +120,7 @@ export default function SpectatorPage() {
 }
 
 const styles = {
-  page: { minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#000' },
+  page: { minHeight: 'calc(100vh - 52px)', display: 'flex', flexDirection: 'column', background: '#000' },
   header: {
     padding: '14px 20px', background: 'var(--card)',
     borderBottom: '1px solid var(--border)',
