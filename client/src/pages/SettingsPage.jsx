@@ -48,7 +48,7 @@ function ToggleRow({ id, label, description, checked, onChange, disabled }) {
 export default function SettingsPage() {
   const navigate = useNavigate();
   const user = useAppStore(s => s.user);
-  const home = user ? '/lobby' : '/';
+  const home = user ? '/lobby' : '/login';
   const [prefs, setPrefs] = useState(() => loadPreferences());
 
   useEffect(() => {

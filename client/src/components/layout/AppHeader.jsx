@@ -98,22 +98,22 @@ export default function AppHeader() {
     setUser(null);
     resetDebate();
     setAvatarMenuOpen(false);
-    navigate('/');
+    navigate('/login');
   }
 
   function abortPendingRegistration() {
     setPendingUser(null);
     setAvatarMenuOpen(false);
-    navigate('/');
+    navigate('/login');
   }
 
-  /** דף הבית — / (משתמש מחובר יופנה אוטומטית ללובי) */
+  /** דף הכניסה — תמיד /login (גם כשמחוברים) */
   function goAppHome() {
     setMenuOpen(false);
     setListOpen(null);
     setOnlineModalOpen(false);
     setAvatarMenuOpen(false);
-    navigate('/');
+    navigate('/login');
   }
 
   const nick = user?.username || pendingUser?.username;
@@ -554,7 +554,7 @@ export default function AppHeader() {
                   </button>
                 ) : (
                   <button type="button" className="header-user-menu-btn header-user-menu-btn--muted" role="menuitem" onClick={abortPendingRegistration}>
-                    ביטול רישום
+                    התנתק
                   </button>
                 )}
               </div>
@@ -617,7 +617,7 @@ export default function AppHeader() {
 
         {/* Right: מותג (דף הבית) + תפריט נקודות */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <button type="button" className="header-app-brand" onClick={goAppHome} aria-label="דף הבית">
+          <button type="button" className="header-app-brand" onClick={goAppHome} aria-label="דף הכניסה">
             oh my GOD
           </button>
           <div ref={menuRef} className="header-dots-wrap" style={{ position: 'relative' }}>

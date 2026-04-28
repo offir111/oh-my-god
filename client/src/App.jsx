@@ -19,22 +19,28 @@ import { applyPreferencesToDocument, loadPreferences } from './lib/appPreference
 
 function RequireAuth({ children }) {
   const user = useAppStore(s => s.user);
-  if (!user) return <Navigate to="/" replace />;
+  if (!user) return <Navigate to="/login" replace />;
   return children;
 }
 
 export default function App() {
   const user = useAppStore(s => s.user);
+  const socketUsername = user?.username;
+  const socketSide = user?.side;
 
   useEffect(() => {
     applyPreferencesToDocument(loadPreferences());
   }, []);
 
+  // Reconnect only when identity changes, not when `user` is replaced (e.g. updateScore clones the object).
   useEffect(() => {
-    if (!user) return;
-    connectSocket(user.username, user.side);
+    if (!socketUsername || !socketSide) {
+      disconnectSocket();
+      return;
+    }
+    connectSocket(socketUsername, socketSide);
     return () => disconnectSocket();
-  }, [user]);
+  }, [socketUsername, socketSide]);
 
   return (
     <BrowserRouter>
@@ -42,7 +48,8 @@ export default function App() {
       {user && <Navbar />}
       <main id="main-content" className="app-main" tabIndex={-1}>
         <Routes>
-          <Route path="/" element={user ? <Navigate to="/lobby" replace /> : <LoginPage />} />
+          <Route path="/" element={user ? <Navigate to="/lobby" replace /> : <Navigate to="/login" replace />} />
+          <Route path="/login" element={<LoginPage />} />
           <Route path="/lobby" element={<RequireAuth><LobbyPage /></RequireAuth>} />
           <Route path="/debate/:debateId" element={<RequireAuth><DebatePage /></RequireAuth>} />
           <Route path="/spectate/:debateId" element={<SpectatorPage />} />

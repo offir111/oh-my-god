@@ -219,37 +219,37 @@ export default function LoginPage() {
         }
         @keyframes loginTitleCh0 {
           0%, 1% { color: #ffffff; }
-          1.5%, 4% { color: #FFEB3B; }
+          1.5%, 4% { color: var(--omg-yellow-peak, #dcce58); }
           6%, 100% { color: #ffffff; }
         }
         @keyframes loginTitleCh1 {
           0%, 3.5% { color: #ffffff; }
-          4.5%, 7.5% { color: #FFEB3B; }
+          4.5%, 7.5% { color: var(--omg-yellow-peak, #dcce58); }
           9.5%, 100% { color: #ffffff; }
         }
         @keyframes loginTitleCh2 {
           0%, 7% { color: #ffffff; }
-          8%, 10.5% { color: #FFEB3B; }
+          8%, 10.5% { color: var(--omg-yellow-peak, #dcce58); }
           12.5%, 100% { color: #ffffff; }
         }
         @keyframes loginTitleCh3 {
           0%, 10% { color: #ffffff; }
-          11%, 14% { color: #FFEB3B; }
+          11%, 14% { color: var(--omg-yellow-peak, #dcce58); }
           16.5%, 100% { color: #ffffff; }
         }
         @keyframes loginTitleCh4 {
           0%, 16% { color: #ffffff; }
-          17.5%, 96.875% { color: #FFEB3B; }
+          17.5%, 96.875% { color: var(--omg-yellow-peak, #dcce58); }
           97.5%, 100% { color: #ffffff; }
         }
         @keyframes loginTitleCh5 {
           0%, 19.5% { color: #ffffff; }
-          21.5%, 71.875% { color: #FFEB3B; }
+          21.5%, 71.875% { color: var(--omg-yellow-peak, #dcce58); }
           72.5%, 100% { color: #ffffff; }
         }
         @keyframes loginTitleCh6 {
           0%, 23.5% { color: #ffffff; }
-          25.5%, 84.375% { color: #FFEB3B; }
+          25.5%, 84.375% { color: var(--omg-yellow-peak, #dcce58); }
           85%, 100% { color: #ffffff; }
         }
         .login-title-ch--0 { animation: loginTitleCh0 8s linear infinite; }
@@ -266,6 +266,10 @@ export default function LoginPage() {
           text-align: center;
           margin: 8px 0 0;
           letter-spacing: 0.02em;
+        }
+        .login-subtitle-vs {
+          color: var(--omg-yellow-peak, #dcce58);
+          font-weight: 800;
         }
         .login-input-row {
           display: flex;
@@ -456,9 +460,9 @@ export default function LoginPage() {
         <div style={{ textAlign: 'center' }}>
           <h1 className="login-title" dir="ltr">
             <Link
-              to="/"
+              to="/login"
               className="login-title-homelink login-title-phrase"
-              aria-label="דף הבית"
+              aria-label="דף הכניסה"
               onClick={() => window.scrollTo(0, 0)}
             >
               <span className="login-title-ch login-title-ch--0">o</span>
@@ -472,7 +476,7 @@ export default function LoginPage() {
               <span className="login-title-ch login-title-ch--6">D</span>
             </Link>
           </h1>
-          <p className="login-subtitle">אמונה ודת <span style={{ color: 'var(--gold)' }}>VS</span> אתאיזם ומדע</p>
+          <p className="login-subtitle">אמונה ודת <span className="login-subtitle-vs">VS</span> אתאיזם ומדע</p>
         </div>
 
         {!registered ? (

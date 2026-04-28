@@ -26,6 +26,8 @@
   --accent-soft: rgba(99, 102, 241, 0.25);
   --gold: #fbbf24;
   --gold-soft: rgba(251, 191, 36, 0.15);
+  /* Login animated title + subtitle "VS": ~70% #FFEB3B + ~30% muted gray (~40% stronger than prior #c4ba63) */
+  --omg-yellow-peak: #dcce58;
 
   /* Layout */
   --radius: 16px;

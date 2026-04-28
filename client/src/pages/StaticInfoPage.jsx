@@ -86,7 +86,7 @@ export default function StaticInfoPage({ pageId }) {
   const navigate = useNavigate();
   const user = useAppStore(s => s.user);
   const c = PAGES[pageId] || PAGES.contact;
-  const home = user ? '/lobby' : '/';
+  const home = user ? '/lobby' : '/login';
   const isTerms = pageId === 'terms';
 
   return (
