@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/appStore.js';
+import { BiblePanel } from '../components/ui/BibleModal.jsx';
 
 const SPECIAL_RABBIS = ['הרב מאיר', 'הרב שלמה', 'הרב יצחק'];
 const SPECIAL_SCIENTISTS = ['פרופ׳ דניאל', 'פרופ׳ רחל', 'פרופ׳ אמיר'];
@@ -131,6 +132,20 @@ const INITIAL_DATA = {
       { text: 'קמעות וריפוי אפילפסיה — נטען כי עצות רפואיות-מאגיות בתלמוד משקפות ידע רפואי של תקופתן ולא ידיעה על-טבעית.', author: 'היסטוריה של רפואה' },
       { text: 'תינוק בחודש השמיני — ביקורות מציינות תפיסות קדומות על סיכויי חיות של פגים, שאינן תואמות רפואה מודרנית.', author: 'ביקורת רפואית' },
       { text: 'גשמים ומים עליונים — תענית ט׳ ע"ב מובא בדיונים כביטוי לתפיסות קוסמולוגיות קדומות על עננים וגשם.', author: 'ביקורת מקורות' },
+      { text: 'דעת אמת: כינים ושרצים — חז"ל תיארו כינה כמי שאינה פרה ורבה אלא נוצרת מזיעה/עיפוש, ודעת אמת מציג זאת כטעות ביולוגית שהשפיעה על דיני שבת.', author: 'נלקח מדעת אמת' },
+      { text: 'דעת אמת: עכבר שחציו בשר וחציו אדמה — המשנה בחולין מובאת כדוגמה לאמונה בברייה שאינה קיימת במציאות, ולכן כטעות בתיאור עולם החי.', author: 'נלקח מדעת אמת' },
+      { text: 'דעת אמת: דרוסה וארס בציפורני חיות — סוגיית חולין על ארס היוצא דווקא בזמן שליפת היד מוצגת כביסוס הלכתי על תפיסה זואולוגית שגויה.', author: 'נלקח מדעת אמת' },
+      { text: 'דעת אמת: אין ריאה לעוף — המחלוקת בחולין על ריאת העוף מוצגת כדוגמה לכך שגם חכמים מרכזיים יכלו לטעות באנטומיה פשוטה.', author: 'נלקח מדעת אמת' },
+      { text: 'דעת אמת: קנה הנשימה מתפצל ללב, לריאה ולכבד — פירוש הסוגיה בחולין מובא כדוגמה לתיאור אנטומי שאינו תואם את מבנה הגוף הידוע.', author: 'נלקח מדעת אמת' },
+      { text: 'דעת אמת: סימני דגים — הכלל שכל דג שיש לו קשקשת יש לו סנפיר, ומניין שבע מאות מיני דגים טמאים, מוצגים כטענות שאינן עומדות מול הידע הזואולוגי.', author: 'נלקח מדעת אמת' },
+      { text: 'דעת אמת: ערך הפאי — סוגיות עירובין, סוכה ובבא בתרא מוצגות כמשתמשות ביחס 3 בין קוטר להיקף המעגל כאילו הוא מדויק.', author: 'נלקח מדעת אמת' },
+      { text: 'דעת אמת: צורת הארץ ומערכת השמש — דעת אמת טוען שחכמים אימצו תפיסות גיאוצנטריות או עתיקות על הארץ והשמש, ולא ידע מדעי על מבנה מערכת השמש.', author: 'נלקח מדעת אמת' },
+      { text: 'דעת אמת: השפן והארנבת מעלים גירה — קונטרס דעת אמת מציג את תיאור התורה והדיון החז"לי על שפן וארנבת כטעות זואולוגית.', author: 'נלקח מדעת אמת' },
+      { text: 'דעת אמת: פער בין תנ״ך לתלמוד בתפילה — באתר נטען שהתפילה הממוסדת כמעט אינה מופיעה בתורה באותו אופן, והיא התפתחה כעולם דתי תלמודי מאוחר.', author: 'נלקח מדעת אמת' },
+      { text: 'דעת אמת: שבת — האתר טוען שהתורה מציגה שבת באופן כללי יותר, ואילו חז"ל הרחיבו אותה לשלושים ותשע אבות מלאכה ודקדוקים רבים.', author: 'נלקח מדעת אמת' },
+      { text: 'דעת אמת: בשר בחלב — לפי הביקורת באתר, הפסוק "לא תבשל גדי בחלב אמו" הורחב בתלמוד למערכת כשרות רחבה בהרבה מן המקרא.', author: 'נלקח מדעת אמת' },
+      { text: 'דעת אמת: שחיטה — האתר מציג את דיני השחיטה המפורטים כתוצר של תורה שבעל פה ולא כציווי מקראי מפורש באותה רמת פירוט.', author: 'נלקח מדעת אמת' },
+      { text: 'דעת אמת: נידה ומקווה — באתר נטען שהמקרא אוסר קרבה בזמן נידה, אך מערכת טבילת המקווה וטהרת המשפחה היא הרחבה תלמודית מאוחרת.', author: 'נלקח מדעת אמת' },
     ],
     con: [
       { text: 'יש להבחין בין הלכה, אגדה, רפואה עממית ותיאור מציאות; לא כל אמירה תלמודית נטענת כמסירת מדע נצחי.', author: 'הקשר פרשני' },
@@ -310,6 +325,33 @@ const CATEGORY_COLUMN_TITLES = {
   'חקר המקרא': { pro: 'כלי מחקר ונושאי יסוד', con: 'גישות, מחלוקות וזהירות' },
 };
 
+const RELIGIONS_CATEGORY = 'דתות';
+const BIBLE_CATEGORY = 'התנך';
+
+const RELIGIONS = [
+  { name: 'יהדות', belief: 'אל אחד', messenger: 'משה ומשיח עתידי', origin: 'ישראל / המזרח הקדום', followers: 'כ-15 מיליון', age: 'כ-3,000 שנה', principle: 'ברית בין עם ישראל לאל אחד דרך תורה, מצוות ומוסר.' },
+  { name: 'נצרות', belief: 'אל אחד, שילוש', messenger: 'ישו', origin: 'ארץ ישראל', followers: 'כ-2.4 מיליארד', age: 'כ-2,000 שנה', principle: 'אמונה בישוע כמשיח וגאולה דרך אהבה, חסד ואמונה.' },
+  { name: 'איסלאם', belief: 'אל אחד', messenger: 'מוחמד', origin: 'חצי האי ערב', followers: 'כ-2 מיליארד', age: 'כ-1,400 שנה', principle: 'כניעה לאללה, נבואת מוחמד וקיום חמשת עמודי האסלאם.' },
+  { name: 'הינדואיזם', belief: 'ריבוי אלים ותפיסות אלוהות', messenger: 'אין שליח יחיד', origin: 'הודו', followers: 'כ-1.2 מיליארד', age: 'מעל 3,500 שנה', principle: 'דהרמה, קרמה ושחרור רוחני ממעגל הלידה והמוות.' },
+  { name: 'בודהיזם', belief: 'לרוב לא-תאיסטי', messenger: 'בודהה', origin: 'הודו / נפאל', followers: 'כ-500 מיליון', age: 'כ-2,500 שנה', principle: 'הפחתת סבל דרך דרך האמצע, חמלה והתעוררות.' },
+  { name: 'דתות עממיות ומסורתיות', stackedName: ['דתות עממיות', 'מסורתיות'], belief: 'משתנה לפי תרבות', messenger: 'זקני שבט ושמאנים', origin: 'אפריקה, אסיה וקהילות ילידיות', followers: 'כ-400 מיליון', age: 'עתיק מאוד', principle: 'קשר בין אדם, אבות קדומים, טבע ורוחות מקומיות.' },
+  { name: 'סיקיזם', belief: 'אל אחד', messenger: 'גורו נאנאק', origin: 'פנג׳אב, הודו', followers: 'כ-26 מיליון', age: 'כ-500 שנה', principle: 'שוויון, שירות לזולת וזכירת האל האחד בחיי היום יום.' },
+  { name: 'ספיריטיזם', belief: 'אלוהים ורוחות', messenger: 'אלן קרדק', origin: 'אירופה / ברזיל', followers: 'כ-15 מיליון', age: 'כ-170 שנה', principle: 'התפתחות מוסרית של הנשמה דרך גלגולים ותקשורת רוחנית.' },
+  { name: 'דאואיזם', belief: 'אלים רבים והדאו', messenger: 'לאו דזה', origin: 'סין', followers: 'כ-12 מיליון', age: 'כ-2,400 שנה', principle: 'חיים בהרמוניה עם הדאו, הדרך הטבעית של המציאות.' },
+  { name: 'בהאיות', belief: 'אל אחד', messenger: 'בהאא אללה', origin: 'פרס / איראן', followers: 'כ-8 מיליון', age: 'כ-180 שנה', principle: 'אחדות האנושות והמשכיות ההתגלות דרך שליחי דת שונים.' },
+  { name: 'ג׳ייניזם', belief: 'ללא אל בורא מרכזי', messenger: 'מהאווירה', origin: 'הודו', followers: 'כ-4.5 מיליון', age: 'כ-2,500 שנה', principle: 'אי-אלימות קיצונית, טיהור הנפש ושחרור מכבלי הקרמה.' },
+  { name: 'שינטו', belief: 'ריבוי קאמי', messenger: 'אין שליח יחיד', origin: 'יפן', followers: 'כ-4 מיליון מאמינים פעילים', age: 'מעל 1,500 שנה', principle: 'כבוד לקאמי, לטבע, לטוהרה ולקשר בין קהילה ומסורת.' },
+  { name: 'קאו דאי', belief: 'אל אחד עם שילוב מסורות', messenger: 'נגו ואן צ׳יאו', origin: 'וייטנאם', followers: 'כ-4 מיליון', age: 'כ-100 שנה', principle: 'איחוד רעיונות מדתות שונות תחת חזון רוחני אחד.' },
+  { name: 'טנריקיו', belief: 'אל יוצר אחד', messenger: 'נקאיאמה מיקי', origin: 'יפן', followers: 'כ-2 מיליון', age: 'כ-190 שנה', principle: 'חיים של שמחה, תיקון הלב ועזרה הדדית.' },
+  { name: 'דרוזים', belief: 'אל אחד', messenger: 'חמזה בן עלי', origin: 'המזרח התיכון', followers: 'כ-1 מיליון', age: 'כ-1,000 שנה', principle: 'אמונה מונותאיסטית סודית המדגישה חכמה, אמת ונאמנות קהילתית.' },
+  { name: 'נאו-פגאניזם / ויקה', belief: 'משתנה, לרוב טבע ואלוהויות', messenger: 'אין שליח יחיד', origin: 'אירופה וצפון אמריקה', followers: 'כ-1 מיליון', age: 'כ-80 שנה', principle: 'קדושת הטבע, מחזורי השנה ואחריות אישית במעשה הרוחני.' },
+  { name: 'רסטפארי', belief: 'אל אחד', messenger: 'היילה סלאסי', origin: 'ג׳מייקה', followers: 'כ-1 מיליון', age: 'כ-90 שנה', principle: 'שחרור, זהות אפריקאית וקריאה לצדק רוחני וחברתי.' },
+  { name: 'זורואסטריות', belief: 'אל עליון אחד', messenger: 'זרתוסטרא', origin: 'פרס / איראן', followers: 'כ-100-200 אלף', age: 'כ-3,000 שנה', principle: 'מאבק מוסרי בין טוב לרע דרך מחשבה, דיבור ומעשה טובים.' },
+  { name: 'מנדעים', belief: 'אל עליון ועולם אור', messenger: 'יוחנן המטביל', origin: 'מסופוטמיה', followers: 'כ-60-100 אלף', age: 'כ-2,000 שנה', principle: 'טקסי טבילה, טהרה וחיבור הנשמה לעולם האור.' },
+  { name: 'שומרונים', belief: 'אל אחד', messenger: 'משה', origin: 'ישראל', followers: 'כ-900', age: 'מעל 2,500 שנה', principle: 'מסורת מקראית עתיקה סביב התורה והר גריזים כמקום קדוש.' },
+  { name: 'דתות נוספות', nameList: 'קונפוציאניזם, דת מצרית עתיקה, דת שומרית, דת כנענית עתיקה, דת בבלית, דת אשורית, דת יוונית עתיקה, דת רומית עתיקה, דת נורדית עתיקה, דת קלטית עתיקה, דת סלאבית עתיקה, דת פינית עתיקה, דת גרמאנית עתיקה, דת פרסית עתיקה, זורווניזם, מניכאיזם, גנוסטיקה, מיתראיזם, הרמטיציזם, יזידים, אלווים, עלווים, אחמדים, איבאדיה, סופיות, מורמונים, עדי יהוה, אדוונטיזם, מדע נוצרי, קווייקרים, אוניטריאניזם, כנסיית האיחוד, סיינטולוגיה, ראליזם, פאלון גונג, טנגריזם, שמאניזם סיבירי, שמאניזם מונגולי, דתות ילידיות אמריקאיות, דת האינקה, דת המאיה, דת האצטקים, יורובה, איפה, וודו, וודון, סנטריה, קנדומבלה, אומבנדה, דתות אפריקאיות מסורתיות, דת זולו, דת אקאן, דת דוגון, דת מסאי, דתות אבוריג׳יניות אוסטרליות, דת מאורית, דת פולינזית, דת הוואית עתיקה, דתות אינואיטיות, דת סינית עממית, צ׳אונדואיזם, מוּאִיזם קוריאני, בון טיבטי, קאודהיזם, אאום שינריקיו, אומוטו, סייקו נו איה, סובוד, תיאוסופיה, אנתרופוסופיה, אקנקר, אוניברסליזם אוניטרי, נאו-דרואידיזם, הלניזם מודרני, רודנובריה, אסאטרו, קמטיזם, תלמה, שבתאות, קראים, ביתא ישראל' },
+];
+
 const STORAGE_KEY = 'omg_arguments';
 
 function loadArguments() {
@@ -320,6 +362,60 @@ function saveArguments(data) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
+function ReligionsTable() {
+  return (
+    <>
+      <div className="religions-table-wrap">
+        <table className="religions-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>דת / מסורת</th>
+              <th>אמונה באלוהים</th>
+              <th>שליח</th>
+              <th>מקור מרכזי</th>
+              <th>כמות מאמינים</th>
+              <th>גיל משוער</th>
+              <th>עיקרון האמונה</th>
+            </tr>
+          </thead>
+          <tbody>
+            {RELIGIONS.map((religion, index) => (
+              <tr key={religion.name}>
+                <td className="religion-index">{index + 1}</td>
+                {religion.nameList ? (
+                  <td className="religion-name-list" colSpan={7}>{religion.nameList}</td>
+                ) : (
+                <>
+                <td className="religion-name">
+                  {religion.stackedName ? (
+                    <>
+                      {religion.stackedName[0]}
+                      <br />
+                      {religion.stackedName[1]}
+                    </>
+                  ) : religion.name}
+                </td>
+                <td>{religion.belief}</td>
+                <td>{religion.messenger}</td>
+                <td>{religion.origin}</td>
+                <td>{religion.followers}</td>
+                <td>{religion.age}</td>
+                <td>{religion.principle}</td>
+                </>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="religion-note">
+        הנתונים הם הערכות מקורבות בלבד: בדתות רבות יש הבדל בין שיוך תרבותי, מאמינים פעילים וקהילות סגורות.
+      </p>
+    </>
+  );
+}
+
 function argMatchesQuery(arg, query) {
   if (!query) return true;
   const q = query.toLowerCase();
@@ -327,8 +423,8 @@ function argMatchesQuery(arg, query) {
 }
 
 export default function ArgumentsPage({
-  title = '⚖️ בעד ונגד',
-  subtitle = 'ויקיפדיה של טענות — אמונה, מדע, ומה שביניהם',
+  title = 'דתות',
+  subtitle = 'טבלת דתות ומסורות מרכזיות בעולם לפי סדר שביקשת ונתוני מאמינים מקורבים',
   showSearch = false,
   showBack = true,
   editorsPlacement = 'bottom',
@@ -345,6 +441,7 @@ export default function ArgumentsPage({
   const isSpecial = ALL_SPECIAL.includes(user?.username);
   const isRabbi = SPECIAL_RABBIS.includes(user?.username);
   const isScientist = SPECIAL_SCIENTISTS.includes(user?.username);
+  const isReligionsPage = title === 'דתות';
 
   const normalizedSearch = searchQuery.trim().toLowerCase();
 
@@ -379,8 +476,22 @@ export default function ArgumentsPage({
     });
   }
 
-  const categories = useMemo(() => Object.keys(INITIAL_DATA).filter(category => {
+  const categories = useMemo(() => {
+    const baseCategories = isReligionsPage ? Object.keys(INITIAL_DATA) : [BIBLE_CATEGORY, ...Object.keys(INITIAL_DATA), RELIGIONS_CATEGORY];
+
+    return baseCategories.filter(category => {
     if (!normalizedSearch) return true;
+    if (category === BIBLE_CATEGORY) {
+      return 'התנך תנך ספר התנך תורה נביאים כתובים בראשית שמות ויקרא במדבר דברים תהילים משלי'
+        .includes(normalizedSearch);
+    }
+    if (category === RELIGIONS_CATEGORY) {
+      return RELIGIONS.some(religion => (
+        `${religion.name} ${religion.belief} ${religion.origin} ${religion.followers} ${religion.age} ${religion.principle}`
+          .toLowerCase()
+          .includes(normalizedSearch)
+      ));
+    }
     const allArgs = [
       ...(INITIAL_DATA[category]?.pro || []),
       ...(INITIAL_DATA[category]?.con || []),
@@ -388,7 +499,8 @@ export default function ArgumentsPage({
       ...(customArgs[category]?.con || []),
     ];
     return category.toLowerCase().includes(normalizedSearch) || allArgs.some(arg => argMatchesQuery(arg, normalizedSearch));
-  }), [customArgs, normalizedSearch]);
+    });
+  }, [customArgs, isReligionsPage, normalizedSearch]);
 
   useEffect(() => {
     if (categories.length > 0 && !categories.includes(activeCategory)) {
@@ -400,6 +512,125 @@ export default function ArgumentsPage({
     pro: '✡️ בעד אמונה',
     con: '🔬 בעד מדע',
   };
+
+  if (isReligionsPage) {
+    return (
+      <>
+        <style>{`
+          .religions-page {
+            min-height: calc(100vh - 52px);
+            color: var(--text);
+            direction: rtl;
+            padding: 0 16px 48px;
+          }
+          .religions-header {
+            position: relative;
+            text-align: center;
+            padding: 28px 16px 22px;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(180deg, rgba(255,255,255,0.04), transparent);
+            margin: 0 -16px 22px;
+          }
+          .religions-header h1 {
+            font-size: clamp(1.8rem, 7vw, 2.8rem);
+            font-weight: 950;
+            margin-bottom: 8px;
+          }
+          .religions-header p {
+            color: var(--muted);
+            font-size: 0.92rem;
+            max-width: 680px;
+            margin: 0 auto;
+            line-height: 1.6;
+          }
+          .religions-back {
+            position: absolute;
+            top: 16px;
+            left: 12px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid var(--border);
+            color: var(--muted);
+            font-size: 0.82rem;
+            font-weight: 600;
+            padding: 8px 14px;
+            border-radius: 10px;
+            cursor: pointer;
+          }
+          .religions-table-wrap {
+            max-width: 1160px;
+            margin: 0 auto;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            background: rgba(255,255,255,0.035);
+            box-shadow: var(--shadow-sm);
+          }
+          .religions-table {
+            width: 100%;
+            min-width: 940px;
+            border-collapse: collapse;
+          }
+          .religions-table th,
+          .religions-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            text-align: right;
+            vertical-align: top;
+            line-height: 1.55;
+          }
+          .religions-table th {
+            position: sticky;
+            top: 0;
+            background: rgba(15,23,42,0.96);
+            color: #f8fafc;
+            font-size: 0.82rem;
+            font-weight: 900;
+            white-space: nowrap;
+          }
+          .religions-table tbody tr:hover {
+            background: rgba(255,255,255,0.05);
+          }
+          .religions-table tbody tr:last-child td {
+            border-bottom: none;
+          }
+          .religion-index {
+            color: #f4b942;
+            font-weight: 900;
+            text-align: center;
+          }
+          .religion-name {
+            font-weight: 900;
+            color: #ffffff;
+            white-space: nowrap;
+          }
+          .religion-note {
+            max-width: 1160px;
+            margin: 14px auto 0;
+            color: var(--muted);
+            font-size: 0.78rem;
+            line-height: 1.6;
+            text-align: center;
+          }
+          @media (max-width: 560px) {
+            .religions-back {
+              position: static;
+              display: block;
+              margin: 0 auto 12px;
+            }
+          }
+        `}</style>
+        <div className="religions-page">
+          <header className="religions-header">
+            {showBack && <button type="button" className="religions-back" onClick={() => navigate('/')}>← חזרה</button>}
+            <h1>{title}</h1>
+            <p>{subtitle}</p>
+          </header>
+
+          <ReligionsTable />
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -588,6 +819,75 @@ export default function ArgumentsPage({
           gap: 0;
           max-width: 960px;
           margin: 0 auto;
+        }
+        .religions-table-wrap {
+          max-width: 1160px;
+          margin: 24px auto 0;
+          overflow-x: auto;
+          border: 1px solid var(--border);
+          border-radius: 18px;
+          background: rgba(255,255,255,0.035);
+          box-shadow: var(--shadow-sm);
+        }
+        .religions-table {
+          width: 100%;
+          min-width: 940px;
+          border-collapse: collapse;
+        }
+        .religions-table th,
+        .religions-table td {
+          padding: 14px 16px;
+          border-bottom: 1px solid var(--border);
+          text-align: right;
+          vertical-align: top;
+          line-height: 1.55;
+        }
+        .religions-table th {
+          position: sticky;
+          top: 0;
+          background: rgba(15,23,42,0.96);
+          color: #f8fafc;
+          font-size: 0.82rem;
+          font-weight: 900;
+          white-space: nowrap;
+        }
+        .religions-table tbody tr:hover {
+          background: rgba(255,255,255,0.05);
+        }
+        .religions-table tbody tr:last-child td {
+          border-bottom: none;
+        }
+        .religion-index {
+          color: #f4b942;
+          font-weight: 900;
+          text-align: center;
+        }
+        .religion-name {
+          font-weight: 900;
+          color: #ffffff;
+          white-space: nowrap;
+        }
+        .religion-name-list {
+          color: rgba(248,250,252,0.92);
+          font-weight: 700;
+          line-height: 1.8;
+        }
+        .religion-note {
+          max-width: 1160px;
+          margin: 14px auto 0;
+          color: var(--muted);
+          font-size: 0.78rem;
+          line-height: 1.6;
+          text-align: center;
+        }
+        .knowledge-bible-panel {
+          max-width: 760px;
+          margin: 24px auto 0;
+        }
+        .knowledge-bible-panel .bm-sheet-embedded {
+          max-width: none;
+          max-height: none;
+          min-height: 620px;
         }
         .args-col {
           padding: 20px 16px;
@@ -864,7 +1164,6 @@ export default function ArgumentsPage({
                     <button type="button" onClick={() => setSearchQuery(searchQuery.trim())} aria-label="חיפוש">🔍</button>
                   </div>
                 )}
-                <div className="args-active-title">{activeCategory}</div>
               </div>
               <div className="editors-top-list rabbis">
                 <div className="editors-top-title">עורכים מורשים בעד אמונה</div>
@@ -891,7 +1190,6 @@ export default function ArgumentsPage({
                   <button type="button" onClick={() => setSearchQuery(searchQuery.trim())} aria-label="חיפוש">🔍</button>
                 </div>
               )}
-              <div className="args-active-title">{activeCategory}</div>
             </>
           )}
         </div>
@@ -915,6 +1213,12 @@ export default function ArgumentsPage({
         {categories.length === 0 ? (
           <div className="state-card" style={{ maxWidth: 720, margin: '24px auto' }}>
             לא נמצאו טענות שמתאימות לחיפוש
+          </div>
+        ) : activeCategory === RELIGIONS_CATEGORY ? (
+          <ReligionsTable />
+        ) : activeCategory === BIBLE_CATEGORY ? (
+          <div className="knowledge-bible-panel">
+            <BiblePanel embedded />
           </div>
         ) : (
         <div className="args-columns">
