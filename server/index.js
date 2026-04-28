@@ -17,7 +17,7 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
-import { loadSnapshot, saveSnapshot, store, registerUser } from './store/memory.js';
+import { loadSnapshot, saveSnapshot, store, registerUser, getRegisteredStats } from './store/memory.js';
 import { registerMatchmaking } from './socket/matchmaking.js';
 import { registerDebate } from './socket/debate.js';
 import { registerSpectator } from './socket/spectator.js';
@@ -47,11 +47,38 @@ app.get('/api/health', (_, res) => res.json({ ok: true, provider: 'groq', versio
 app.get('/api/stats', (_, res) => {
   // Count unique usernames online (same user from multiple devices = 1)
   const onlineSet = new Set([...store.users.values()].map(u => u.username));
+  const { registered, registeredList } = getRegisteredStats();
   res.json({
-    registered: store.registeredCount,
+    registered,
     online: onlineSet.size,
-    registeredList: [...store.registeredUsernames],
+    registeredList,
     onlineList: [...onlineSet],
+  });
+});
+
+app.get('/api/users/:username/stats', (req, res) => {
+  const username = String(req.params.username || '').trim();
+  if (!username) return res.status(400).json({ error: 'missing username' });
+
+  const profile = store.userScores.get(username) || {};
+  const archivedByUser = store.archivedDebates.filter(d =>
+    d?.believer?.username === username || d?.atheist?.username === username
+  );
+  const humanDebates = archivedByUser.filter(d => !d.isAI).length;
+  const aiDebates = archivedByUser.filter(d => d.isAI).length;
+  const liveAppearances = archivedByUser.filter(d => d?.phases?.voice?.messages?.length > 0).length;
+
+  res.json({
+    username,
+    score: profile.score || 0,
+    likesReceived: profile.score || 0,
+    giftsReceived: profile.giftsReceived || 0,
+    voiceDebates: profile.voiceDebates || 0,
+    humanDebates,
+    aiDebates,
+    liveAppearances,
+    archivedDebates: archivedByUser.length,
+    side: profile.side || 'believer',
   });
 });
 
@@ -65,7 +92,7 @@ app.post('/api/register', (req, res) => {
   }
   const result = registerUser(username, password, { resetPassword });
   if (!result.ok) return res.status(409).json({ error: result.error });
-  res.json({ ok: true, registered: store.registeredCount });
+  res.json({ ok: true, registered: getRegisteredStats().registered });
 });
 
 // Bible search via Groq AI
@@ -119,8 +146,9 @@ app.post('/api/admin/set-count', express.json(), (req, res) => {
   const { count, usernames } = req.body;
   if (count) store.registeredCount = count;
   if (usernames) usernames.forEach(u => store.registeredUsernames.add(u));
+  store.registeredCount = Math.max(store.registeredCount, store.registeredUsernames.size);
   saveSnapshot();
-  res.json({ ok: true, registeredCount: store.registeredCount });
+  res.json({ ok: true, registeredCount: getRegisteredStats().registered });
 });
 
 loadSnapshot();

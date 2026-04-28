@@ -4,6 +4,36 @@ import { useAppStore } from '../../store/appStore.js';
 import { disconnectSocket } from '../../socket.js';
 import BibleModal from '../ui/BibleModal.jsx';
 
+const STATS_CACHE_KEY = 'omg_stats_cache';
+
+function readCachedStats() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(STATS_CACHE_KEY) || 'null');
+    if (!cached || typeof cached !== 'object') return null;
+    return {
+      registered: Number(cached.registered) || 0,
+      online: Number(cached.online) || 0,
+      registeredList: Array.isArray(cached.registeredList) ? cached.registeredList : [],
+      onlineList: Array.isArray(cached.onlineList) ? cached.onlineList : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+function cacheStats(stats) {
+  try {
+    localStorage.setItem(STATS_CACHE_KEY, JSON.stringify({
+      registered: Number(stats?.registered) || 0,
+      online: Number(stats?.online) || 0,
+      registeredList: Array.isArray(stats?.registeredList) ? stats.registeredList : [],
+      onlineList: Array.isArray(stats?.onlineList) ? stats.onlineList : [],
+    }));
+  } catch {
+    // Ignore storage failures; live stats will still render for this session.
+  }
+}
+
 export default function AppHeader() {
   const user = useAppStore(s => s.user);
   const pendingUser = useAppStore(s => s.pendingUser);
@@ -15,6 +45,7 @@ export default function AppHeader() {
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const [bibleOpen, setBibleOpen] = useState(false);
   const [stats, setStats] = useState({ registered: 0, online: 0, registeredList: [], onlineList: [] });
+  const [profileStats, setProfileStats] = useState(null);
   const [listOpen, setListOpen] = useState(null); // 'registered' | null — רשומים רק למנהל
   const [onlineModalOpen, setOnlineModalOpen] = useState(false);
   const menuRef = useRef();
@@ -33,14 +64,30 @@ export default function AppHeader() {
     function localStats() {
       const hasUser = !!localStorage.getItem('omg_user');
       const hasPending = !!localStorage.getItem('omg_pending');
-      const registered = hasUser || hasPending ? 1 : 0;
+      const cached = readCachedStats();
+      const registered = Math.max(cached?.registered || 0, hasUser || hasPending ? 1 : 0);
       const online = hasUser || hasPending ? 1 : 0;
-      return { registered, online, registeredList: [], onlineList: [] };
+      return {
+        registered,
+        online,
+        registeredList: cached?.registeredList || [],
+        onlineList: cached?.onlineList || [],
+      };
     }
 
     fetch(`${BASE}/api/stats`)
       .then(r => r.ok ? r.json() : null)
-      .then(d => { setStats(d || localStats()); })
+      .then(d => {
+        const fallback = localStats();
+        const next = d ? {
+          registered: Math.max(Number(d.registered) || 0, fallback.registered),
+          online: Number(d.online) || fallback.online,
+          registeredList: Array.isArray(d.registeredList) ? d.registeredList : fallback.registeredList,
+          onlineList: Array.isArray(d.onlineList) ? d.onlineList : fallback.onlineList,
+        } : fallback;
+        cacheStats(next);
+        setStats(next);
+      })
       .catch(() => setStats(localStats()));
   }, []);
 
@@ -91,6 +138,41 @@ export default function AppHeader() {
     return () => window.removeEventListener('keydown', onKey);
   }, [avatarMenuOpen]);
 
+  useEffect(() => {
+    if (!avatarMenuOpen || !activeUser?.username) return;
+
+    let cancelled = false;
+    const BASE = import.meta.env.VITE_API_URL || '';
+    fetch(`${BASE}/api/users/${encodeURIComponent(activeUser.username)}/stats`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (cancelled) return;
+        setProfileStats(data || {
+          score: user?.score || 0,
+          likesReceived: user?.score || 0,
+          giftsReceived: user?.giftsReceived || 0,
+          voiceDebates: user?.voiceDebates || 0,
+          humanDebates: user?.humanDebates || 0,
+          aiDebates: user?.aiDebates || 0,
+          liveAppearances: 0,
+        });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setProfileStats({
+          score: user?.score || 0,
+          likesReceived: user?.score || 0,
+          giftsReceived: user?.giftsReceived || 0,
+          voiceDebates: user?.voiceDebates || 0,
+          humanDebates: user?.humanDebates || 0,
+          aiDebates: user?.aiDebates || 0,
+          liveAppearances: 0,
+        });
+      });
+
+    return () => { cancelled = true; };
+  }, [avatarMenuOpen, activeUser?.username, user]);
+
   /** התנתקות מלאה — רק מתפריט העיגול */
   function fullLogout() {
     disconnectSocket();
@@ -113,6 +195,11 @@ export default function AppHeader() {
     setOnlineModalOpen(false);
     setAvatarMenuOpen(false);
     navigate('/login', { state: { homeResetAt: Date.now() } });
+  }
+
+  function openLivrChat() {
+    setAvatarMenuOpen(false);
+    navigate('/livr');
   }
 
   const nick = user?.username || pendingUser?.username;
@@ -290,8 +377,8 @@ export default function AppHeader() {
           top: calc(100% + 8px);
           right: 0;
           left: auto;
-          min-width: 200px;
-          max-width: min(280px, calc(100vw - 24px));
+          width: min(360px, calc(100vw - 24px));
+          min-width: 260px;
           box-sizing: border-box;
           background: rgba(18, 18, 26, 0.98);
           border: 1px solid var(--border-strong, rgba(255,255,255,0.14));
@@ -303,13 +390,66 @@ export default function AppHeader() {
           text-align: right;
         }
         .header-user-menu-name {
-          font-size: 0.88rem;
+          font-size: 0.95rem;
           font-weight: 700;
           color: var(--text, #fff);
-          padding: 4px 8px 10px;
+          padding: 4px 8px 6px;
+          word-break: break-word;
+        }
+        .header-user-menu-sub {
+          color: var(--muted, #8a8a9a);
+          font-size: 0.76rem;
+          font-weight: 700;
+          padding: 0 8px 10px;
           border-bottom: 1px solid var(--border, rgba(255,255,255,0.08));
           margin-bottom: 8px;
-          word-break: break-word;
+        }
+        .header-profile-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 8px;
+          margin: 10px 0;
+        }
+        .header-profile-stat {
+          border: 1px solid var(--border, rgba(255,255,255,0.08));
+          border-radius: 12px;
+          background: rgba(255,255,255,0.045);
+          padding: 10px 9px;
+          min-width: 0;
+        }
+        .header-profile-stat strong {
+          display: block;
+          color: var(--text, #fff);
+          font-size: 1rem;
+          font-weight: 900;
+          margin-bottom: 2px;
+          font-variant-numeric: tabular-nums;
+        }
+        .header-profile-stat span {
+          display: block;
+          color: var(--muted, #8a8a9a);
+          font-size: 0.68rem;
+          font-weight: 800;
+          line-height: 1.3;
+        }
+        .header-livr-card {
+          margin: 10px 0;
+          padding: 12px;
+          border-radius: 14px;
+          border: 1px solid rgba(99,102,241,0.35);
+          background: rgba(99,102,241,0.12);
+        }
+        .header-livr-title {
+          color: var(--text, #fff);
+          font-weight: 900;
+          font-size: 0.9rem;
+          margin-bottom: 4px;
+        }
+        .header-livr-copy {
+          color: var(--text-secondary, #b4b4c0);
+          font-size: 0.75rem;
+          line-height: 1.45;
+          margin-bottom: 10px;
         }
         .header-user-menu-btn {
           display: block;
@@ -329,6 +469,15 @@ export default function AppHeader() {
         .header-user-menu-btn:hover {
           background: rgba(248, 113, 113, 0.2);
           border-color: rgba(248, 113, 113, 0.5);
+        }
+        .header-user-menu-btn--primary {
+          border-color: rgba(99,102,241,0.45);
+          background: rgba(99,102,241,0.22);
+          color: #dbeafe;
+        }
+        .header-user-menu-btn--primary:hover {
+          border-color: rgba(99,102,241,0.7);
+          background: rgba(99,102,241,0.32);
         }
         .header-user-menu-btn--muted {
           border-color: var(--border, rgba(255,255,255,0.12));
@@ -546,6 +695,46 @@ export default function AppHeader() {
             {avatarMenuOpen && activeUser && (
               <div className="header-user-menu" role="menu">
                 <div className="header-user-menu-name" dir="auto">👤 {activeUser.username}</div>
+                <div className="header-user-menu-sub">
+                  {user ? 'כרטיס משתמש ונתוני פעילות' : 'רישום בתהליך'}
+                </div>
+                <div className="header-profile-grid" aria-label="נתוני משתמש">
+                  <div className="header-profile-stat">
+                    <strong>{profileStats?.humanDebates ?? user?.humanDebates ?? 0}</strong>
+                    <span>שיחות מול משתמשים</span>
+                  </div>
+                  <div className="header-profile-stat">
+                    <strong>{profileStats?.likesReceived ?? user?.score ?? 0}</strong>
+                    <span>לייקים / ניקוד</span>
+                  </div>
+                  <div className="header-profile-stat">
+                    <strong>{profileStats?.giftsReceived ?? user?.giftsReceived ?? 0}</strong>
+                    <span>מתנות שקיבל</span>
+                  </div>
+                  <div className="header-profile-stat">
+                    <strong>{profileStats?.voiceDebates ?? user?.voiceDebates ?? 0}</strong>
+                    <span>שיחות קול / לייב</span>
+                  </div>
+                  <div className="header-profile-stat">
+                    <strong>{profileStats?.aiDebates ?? user?.aiDebates ?? 0}</strong>
+                    <span>דיונים מול AI</span>
+                  </div>
+                  <div className="header-profile-stat">
+                    <strong>{profileStats?.liveAppearances ?? 0}</strong>
+                    <span>הופעות LIVE</span>
+                  </div>
+                </div>
+                {user && (
+                  <div className="header-livr-card">
+                    <div className="header-livr-title">צ׳אט LIVE</div>
+                    <div className="header-livr-copy">
+                      פתח חדר לייב עם מצלמה, דיבור מול קהל והשתתפות צופים בשיחה.
+                    </div>
+                    <button type="button" className="header-user-menu-btn header-user-menu-btn--primary" role="menuitem" onClick={openLivrChat}>
+                      פתח שיחת LIVE
+                    </button>
+                  </div>
+                )}
                 {user ? (
                   <button type="button" className="header-user-menu-btn" role="menuitem" onClick={fullLogout}>
                     התנתק מהחשבון

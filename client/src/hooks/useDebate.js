@@ -33,7 +33,7 @@ export function useDebate(debateId) {
           } else {
             appendStreamingChunk(fullText.slice(i - 3, i));
           }
-        }, 10125); // Another 50% slower for a near-reading typing pace
+        }, 5062); // Twice as fast as the previous fallback typing pace
         fallbackStreamIntervalsRef.current.add(interval);
       } else {
         addTextMessage(msg);

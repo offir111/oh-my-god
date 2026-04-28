@@ -13,6 +13,7 @@ import DebateDetailPage from './pages/DebateDetailPage.jsx';
 import LeaderboardPage from './pages/LeaderboardPage.jsx';
 import ArgumentsPage from './pages/ArgumentsPage.jsx';
 import LiveEventsPage from './pages/LiveEventsPage.jsx';
+import LivrPage from './pages/LivrPage.jsx';
 import StaticInfoPage from './pages/StaticInfoPage.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
 import { applyPreferencesToDocument, loadPreferences } from './lib/appPreferences.js';
@@ -57,6 +58,7 @@ export default function App() {
           <Route path="/leaderboard" element={<LeaderboardPage />} />
           <Route path="/arguments" element={<ArgumentsPage />} />
           <Route path="/live-events" element={<LiveEventsPage />} />
+          <Route path="/livr" element={<RequireAuth><LivrPage /></RequireAuth>} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/terms" element={<StaticInfoPage pageId="terms" />} />
           <Route path="/contact" element={<StaticInfoPage pageId="contact" />} />

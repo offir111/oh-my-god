@@ -1,94 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
+import ArgumentsPage from './ArgumentsPage.jsx';
 
 export default function KnowledgeBasePage() {
-  const [debates, setDebates] = useState([]);
-  const [total, setTotal] = useState(0);
-  const [query, setQuery] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const navigate = useNavigate();
-
-  useEffect(() => { fetchDebates(); }, [query]);
-
-  async function fetchDebates() {
-    setLoading(true);
-    setError('');
-    try {
-      const qs = query ? `?q=${encodeURIComponent(query)}` : '';
-      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/debates${qs}`);
-      if (!res.ok) throw new Error('failed to load debates');
-      const data = await res.json();
-      setDebates(data.items);
-      setTotal(data.total);
-    } catch {
-      setDebates([]);
-      setTotal(0);
-      setError('לא ניתן לטעון את מאגר הידע כרגע. נסה שוב מאוחר יותר.');
-    }
-    setLoading(false);
-  }
-
   return (
-    <div className="page">
-      <div className="container container-wide">
-        <button type="button" className="ui-back-button" onClick={() => navigate('/')} style={{ marginBottom: 14 }}>← חזרה</button>
-        <div className="page-hero">
-          <span className="page-kicker">מאגר ידע</span>
-          <h1 className="page-title">📚 ספריית דיונים וטענות</h1>
-          <p className="page-subtitle">ויקיפדיה חיה של טענות בעד ונגד האמונה, עם חיפוש מהיר וסיכומי דיונים. כרגע שמורים {total} דיונים.</p>
-        </div>
-
-        <input
-          placeholder="חפש לפי נושא, שם משתמש..."
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          style={{ marginBottom: 20 }}
-        />
-
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: 40 }}><div className="spinner" style={{ margin: '0 auto' }} /></div>
-        ) : error ? (
-          <div className="state-card">
-            {error}
-          </div>
-        ) : debates.length === 0 ? (
-          <div className="state-card">
-            {query ? 'לא נמצאו תוצאות' : 'עדיין אין דיונים שמורים'}
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
-            {debates.map(d => (
-              <div key={d.id} className="card" style={{ cursor: 'pointer', transition: 'border-color 0.2s' }}
-                onClick={() => navigate(`/knowledge/${d.id}`)}>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'center' }}>
-                  <span style={{ color: 'var(--believer)', fontWeight: 700, fontSize: '0.9rem' }}>{d.believer.username}</span>
-                  <span style={{ color: 'var(--muted)', fontSize: '0.8rem' }}>vs</span>
-                  <span style={{ color: 'var(--atheist)', fontWeight: 700, fontSize: '0.9rem' }}>
-                    {d.atheist.username}{d.isAI && ' (AI)'}
-                  </span>
-                </div>
-                {d.summary && <p style={{ color: '#ccc', fontSize: '0.85rem', lineHeight: 1.5, marginBottom: 10 }}>{d.summary}</p>}
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-                  {d.tags?.map(t => <span key={t} style={styles.tag}>{t}</span>)}
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--muted)', fontSize: '0.75rem', gap: 12 }}>
-                  <span>⏱ {Math.round(d.stats?.duration / 60) || 0} דק׳</span>
-                  <span>👁 {d.stats?.spectatorPeak || 0} צופים</span>
-                  <span>🎁 {d.stats?.giftsTotal || 0} מתנות</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+    <ArgumentsPage
+      title="מאגר ידע"
+      subtitle="ויקיפדיה של טענות בעד אמונה ובעד מדע — עם חיפוש מהיר לפי נושא, טענה או כותב"
+      showSearch
+      showBack={false}
+      editorsPlacement="top"
+    />
   );
 }
-
-const styles = {
-  tag: {
-    background: 'var(--card2)', border: '1px solid var(--border)',
-    padding: '2px 8px', borderRadius: 99, fontSize: '0.75rem', color: 'var(--muted)',
-  },
-};

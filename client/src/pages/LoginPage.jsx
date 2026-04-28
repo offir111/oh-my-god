@@ -6,6 +6,7 @@ import TransparentImage from '../components/ui/TransparentImage.jsx';
 
 const LOGIN_USERNAME_KEY = 'omg_login_username';
 const LOGIN_PASSWORD_PREFIX = 'omg_login_password:';
+const STATS_CACHE_KEY = 'omg_stats_cache';
 
 function readStoredLoginUsername() {
   try {
@@ -46,6 +47,18 @@ function persistLoginPassword(username, password) {
     localStorage.setItem(getPasswordStorageKey(username), password);
   } catch {
     // Local storage may be unavailable in private or restricted browser modes.
+  }
+}
+
+function cacheRegisteredCount(count) {
+  try {
+    const current = JSON.parse(localStorage.getItem(STATS_CACHE_KEY) || 'null') || {};
+    localStorage.setItem(STATS_CACHE_KEY, JSON.stringify({
+      ...current,
+      registered: Math.max(Number(current.registered) || 0, Number(count) || 0),
+    }));
+  } catch {
+    // Stats cache is only a display fallback.
   }
 }
 
@@ -92,7 +105,6 @@ export default function LoginPage() {
   const matchErrorHandlerRef = useRef(null);
   const aiTimeoutRef = useRef(null);
   const shouldPlayHomePanels = homeAnimationRun > 0 && Boolean(registered || currentUser);
-  const homeStep = !registered ? 1 : !selectedSide ? 2 : 3;
 
   function playHomeAnimationSequence() {
     setHomeAnimationRun(run => run + 1);
@@ -152,19 +164,16 @@ export default function LoginPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: name, password, resetPassword: shouldResetServerPassword }),
       });
+      const data = await res.json().catch(() => null);
       if (!res.ok) {
         let message = 'לא ניתן להיכנס עם הסיסמה הזו';
-        try {
-          const data = await res.json();
-          if (data?.error) message = data.error;
-        } catch {
-          // Keep the generic message if the server did not return JSON.
-        }
+        if (data?.error) message = data.error;
         if (!shouldResetServerPassword) {
           setError(message);
           return;
         }
       }
+      if (data?.registered) cacheRegisteredCount(data.registered);
     } catch {
       // Allow first setup locally if the registration server is temporarily unavailable.
     }
@@ -193,13 +202,13 @@ export default function LoginPage() {
 
   function handleHuman() {
     const name = registered?.username;
-    setUser({ username: name, side: selectedSide, score: 0, voiceDebates: 0 });
+    setUser({ username: name, side: selectedSide, score: 0, voiceDebates: 0, giftsReceived: 0, humanDebates: 0, aiDebates: 0 });
     connectSocket(name, selectedSide);
     navigate('/lobby');
   }
 
   function startAIDebate(name, side) {
-    setUser({ username: name, side, score: 0, voiceDebates: 0 });
+    setUser({ username: name, side, score: 0, voiceDebates: 0, giftsReceived: 0, humanDebates: 0, aiDebates: 0 });
     setAiLoading(true);
 
     connectSocket(name, side);
@@ -339,38 +348,6 @@ export default function LoginPage() {
           color: var(--text-secondary, #b4b4c0);
           font-size: 0.78rem;
           font-weight: 700;
-        }
-        .login-stepper {
-          width: min(100%, 380px);
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 8px;
-          direction: rtl;
-        }
-        .login-step {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 6px;
-          padding: 8px 6px;
-          border-radius: 999px;
-          border: 1px solid rgba(255,255,255,0.09);
-          background: rgba(255,255,255,0.045);
-          color: var(--muted, #8a8a9a);
-          font-size: 0.72rem;
-          font-weight: 800;
-          transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.2s;
-        }
-        .login-step.is-active {
-          color: var(--text, #fff);
-          background: rgba(251,191,36,0.12);
-          border-color: rgba(251,191,36,0.28);
-          transform: translateY(-1px);
-        }
-        .login-step.is-done {
-          color: #b9f6ca;
-          background: rgba(0,200,83,0.08);
-          border-color: rgba(0,200,83,0.18);
         }
         .ticker-wrap {
           width: 100%;
@@ -886,12 +863,6 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <div className="login-stepper" aria-label="שלבי כניסה">
-            <span className={`login-step${homeStep === 1 ? ' is-active' : homeStep > 1 ? ' is-done' : ''}`}>1 פרטים</span>
-            <span className={`login-step${homeStep === 2 ? ' is-active' : homeStep > 2 ? ' is-done' : ''}`}>2 צד</span>
-            <span className={`login-step${homeStep === 3 ? ' is-active' : ''}`}>3 יריב</span>
-          </div>
-
           {!registered ? (
             <div className="login-input-row">
               <div className="login-input-wrap">
@@ -933,7 +904,6 @@ export default function LoginPage() {
           ) : !selectedSide ? (
             <>
               <p className="login-choose">בחר את הצד שלך:</p>
-              <p className="login-secondary-copy">אפשר להחליף צד בכל כניסה מחדש לדף הבית. הבחירה קובעת את נקודת המבט בדיון הבא.</p>
 
               <div className="login-panels">
                 <button
@@ -1021,7 +991,7 @@ export default function LoginPage() {
                 style={{ width: '100%', maxWidth: '100%', padding: '18px 24px', borderRadius: 16, fontSize: '1.1rem', fontWeight: 800 }}
                 onClick={handleHuman}
               >
-                👤 נגד יריב אנושי
+                נגד יריב אנושי
               </button>
               <button
                 className="login-panel"
@@ -1030,7 +1000,7 @@ export default function LoginPage() {
                   boxShadow: '0 6px 0 #a8a8a8, 0 10px 20px rgba(0,0,0,0.35)' }}
                 onClick={handleAIMode}
               >
-                🤖 נגד AI
+                נגד AI
               </button>
               <button
                 style={{ background: 'none', border: 'none', color: '#aaa', fontSize: '0.9rem', cursor: 'pointer', marginTop: 4, fontWeight: 700 }}

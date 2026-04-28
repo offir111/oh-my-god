@@ -14,6 +14,9 @@ function readStoredUser() {
         side: u.side,
         score: typeof u.score === 'number' ? u.score : 0,
         voiceDebates: typeof u.voiceDebates === 'number' ? u.voiceDebates : 0,
+        giftsReceived: typeof u.giftsReceived === 'number' ? u.giftsReceived : 0,
+        humanDebates: typeof u.humanDebates === 'number' ? u.humanDebates : 0,
+        aiDebates: typeof u.aiDebates === 'number' ? u.aiDebates : 0,
       };
     }
   } catch { /* ignore */ }

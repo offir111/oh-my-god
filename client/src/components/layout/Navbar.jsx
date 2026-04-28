@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../store/appStore.js';
 
 function navClass({ isActive }) {
@@ -9,6 +9,8 @@ function navClass({ isActive }) {
 export default function Navbar() {
   const user = useAppStore(s => s.user);
   const navigate = useNavigate();
+  const location = useLocation();
+  const homeOnly = location.pathname.startsWith('/knowledge');
 
   const sideLabel = user?.side === 'believer' ? 'מאמין' : 'אתאיסט';
   const sideColor = user?.side === 'believer' ? 'var(--believer)' : 'var(--atheist)';
@@ -20,19 +22,21 @@ export default function Navbar() {
 
   return (
     <nav className="navbar" aria-label="ניווט ראשי">
-      <div className="navbar-links">
-        <NavLink to="/lobby" end className={navClass}>
-          לובי
-        </NavLink>
-        <NavLink to="/knowledge" className={navClass}>
-          מאגר ידע
-        </NavLink>
-        <NavLink to="/leaderboard" className={navClass}>
-          טבלת מובילים
-        </NavLink>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        {user && (
+      {!homeOnly && (
+        <div className="navbar-links">
+          <NavLink to="/lobby" end className={navClass}>
+            לובי
+          </NavLink>
+          <NavLink to="/knowledge" className={navClass}>
+            מאגר ידע
+          </NavLink>
+          <NavLink to="/leaderboard" className={navClass}>
+            טבלת מובילים
+          </NavLink>
+        </div>
+      )}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginInlineStart: homeOnly ? 'auto' : undefined }}>
+        {user && !homeOnly && (
           <div className="navbar-score" aria-live="polite">
             <span style={{ color: sideColor, fontWeight: 700, marginLeft: 6 }}>{sideLabel}</span>
             {user.username} | <span>{user.score || 0} נק׳</span>

@@ -98,13 +98,19 @@ export function registerUser(username, password = null, options = {}) {
 
   if (!store.registeredUsernames.has(username)) {
     store.registeredUsernames.add(username);
-    store.registeredCount++;
+    store.registeredCount = Math.max(store.registeredCount + 1, store.registeredUsernames.size);
     shouldSave = true;
   }
 
   if (shouldSave) saveSnapshot();
 
   return { ok: true, registered: store.registeredCount };
+}
+
+export function getRegisteredStats() {
+  const registeredList = [...store.registeredUsernames];
+  const registered = Math.max(store.registeredCount, registeredList.length, store.registeredPasswords.size);
+  return { registered, registeredList };
 }
 
 export function saveSnapshot() {
@@ -134,13 +140,14 @@ export function loadSnapshot() {
         store.userScores.set(k, v);
       }
     }
-    if (data.registeredCount) store.registeredCount = data.registeredCount;
+    if (typeof data.registeredCount === 'number') store.registeredCount = data.registeredCount;
     if (data.registeredUsernames) {
       store.registeredUsernames = new Set(data.registeredUsernames);
     }
     if (data.registeredPasswordsVersion === REGISTERED_PASSWORDS_VERSION && data.registeredPasswords) {
       store.registeredPasswords = new Map(Object.entries(data.registeredPasswords));
     }
+    store.registeredCount = Math.max(store.registeredCount, store.registeredUsernames.size, store.registeredPasswords.size);
     console.log(`[store] Loaded ${store.archivedDebates.length} archived debates, ${store.registeredCount} registered users`);
   } catch (e) {
     console.error('[store] Failed to load snapshot:', e.message);
