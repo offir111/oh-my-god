@@ -69,15 +69,17 @@
 /* Toast */
 .score-toast {
   position: fixed;
-  bottom: 30px;
+  bottom: 28px;
   left: 50%;
   transform: translateX(-50%);
-  background: #FFD700;
-  color: #000;
-  font-weight: 700;
-  padding: 10px 24px;
-  border-radius: 99px;
-  font-size: 1rem;
+  background: linear-gradient(135deg, #fde047 0%, var(--gold, #fbbf24) 100%);
+  color: #171717;
+  font-weight: 800;
+  padding: 12px 28px;
+  border-radius: 999px;
+  font-size: 0.95rem;
   z-index: 9999;
-  animation: slideUp 0.3s ease forwards;
+  box-shadow: 0 12px 40px rgba(251, 191, 36, 0.35), 0 4px 12px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  animation: slideUp 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }

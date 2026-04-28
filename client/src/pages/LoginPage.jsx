@@ -1,27 +1,44 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAppStore } from '../store/appStore.js';
 import { connectSocket, socket } from '../socket.js';
 import TransparentImage from '../components/ui/TransparentImage.jsx';
 
+function readLoginResume() {
+  try {
+    if (localStorage.getItem('omg_user')) return { registered: null, username: '' };
+    const raw = localStorage.getItem('omg_pending');
+    if (!raw) return { registered: null, username: '' };
+    const p = JSON.parse(raw);
+    if (!p?.username) return { registered: null, username: '' };
+    return { registered: { username: p.username }, username: p.username };
+  } catch {
+    return { registered: null, username: '' };
+  }
+}
+
 export default function LoginPage() {
-  const [username, setUsername] = useState('');
+  const loginInit = readLoginResume();
+  const [username, setUsername] = useState(loginInit.username);
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [selectedSide, setSelectedSide] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
-  const [registered, setRegistered] = useState(null); // always start fresh
+  const [registered, setRegistered] = useState(loginInit.registered);
   const setUser = useAppStore(s => s.setUser);
   const setPendingUser = useAppStore(s => s.setPendingUser);
+  const pendingUser = useAppStore(s => s.pendingUser);
   const setDebate = useAppStore(s => s.setDebate);
   const navigate = useNavigate();
 
-  // Always start fresh — clear any saved session so each visitor enters their own name
   useEffect(() => {
-    localStorage.removeItem('omg_user');
-    localStorage.removeItem('omg_pending');
-    setUser(null);
-  }, []);
+    if (!pendingUser && registered) {
+      setRegistered(null);
+      setSelectedSide(null);
+      setUsername('');
+      setPassword('');
+    }
+  }, [pendingUser, registered]);
 
   function handleRegister() {
     const name = username.trim();
@@ -29,9 +46,15 @@ export default function LoginPage() {
     if (password.length !== 4) { setError('הסיסמה חייבת להיות בדיוק 4 תווים'); return; }
     setError('');
     const pending = { username: name };
-    localStorage.setItem('omg_pending', JSON.stringify(pending));
     setRegistered(pending);
     setPendingUser(pending);
+
+    const BASE = import.meta.env.VITE_API_URL || '';
+    fetch(`${BASE}/api/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: name }),
+    }).catch(() => {});
   }
 
   function handlePanelClick(side) {
@@ -42,7 +65,6 @@ export default function LoginPage() {
 
   function handleHuman() {
     const name = registered?.username;
-    localStorage.removeItem('omg_pending');
     setUser({ username: name, side: selectedSide, score: 0, voiceDebates: 0 });
     connectSocket(name, selectedSide);
     navigate('/lobby');
@@ -50,7 +72,6 @@ export default function LoginPage() {
 
   function handleAIMode() {
     const name = registered?.username;
-    localStorage.removeItem('omg_pending');
     const side = selectedSide;
     setUser({ username: name, side, score: 0, voiceDebates: 0 });
     setAiLoading(true);
@@ -112,23 +133,26 @@ export default function LoginPage() {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          padding: 20px 16px;
-          background: #000;
-          gap: 20px;
+          padding: 24px 16px 32px;
+          background: transparent;
+          gap: 22px;
           box-sizing: border-box;
           overflow-x: hidden;
           width: 100%;
         }
         .ticker-wrap {
           width: 100%;
-          max-width: 520px;
-          border: 1px solid #444;
-          border-radius: 4px;
+          max-width: 540px;
+          border: 1px solid var(--border-strong, rgba(255,255,255,0.14));
+          border-radius: 12px;
           overflow: hidden;
-          padding: 3px 0;
-          background: transparent;
+          padding: 6px 0;
+          background: rgba(14, 14, 20, 0.55);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
           direction: ltr;
-          margin-bottom: 18px;
+          margin-bottom: 8px;
+          box-shadow: var(--shadow-sm, 0 4px 14px rgba(0,0,0,0.35));
         }
         .ticker-inner {
           display: inline-block;
@@ -145,26 +169,41 @@ export default function LoginPage() {
         }
         .ticker-item {
           display: inline-block;
-          color: #fff;
-          font-weight: 700;
-          font-size: clamp(0.6rem, 2.2vw, 0.72rem);
+          color: var(--text-secondary, #b4b4c0);
+          font-weight: 600;
+          font-size: clamp(0.62rem, 2.2vw, 0.74rem);
           padding: 0 18px;
           direction: rtl;
           unicode-bidi: embed;
         }
         .ticker-sep {
-          color: #555;
-          font-size: 0.6rem;
+          color: var(--muted, #8a8a9a);
+          font-size: 0.55rem;
+          opacity: 0.7;
         }
         .login-title {
-          font-family: Arial, sans-serif;
-          font-size: clamp(2.4rem, 10vw, 5rem);
-          font-weight: 400;
-          letter-spacing: 2px;
-          word-spacing: -6px;
-          color: #fff;
+          font-size: clamp(2.35rem, 10vw, 4.8rem);
+          font-weight: 500;
+          letter-spacing: 0.06em;
+          word-spacing: -0.12em;
+          color: var(--text, #f4f4f8);
           text-align: center;
           margin: 0;
+          text-shadow: 0 2px 40px rgba(0,0,0,0.45);
+        }
+        .login-title-homelink {
+          text-decoration: none;
+          color: inherit;
+          cursor: pointer;
+          border: none;
+          background: none;
+          padding: 0;
+          display: inline-block;
+        }
+        .login-title-homelink:focus-visible {
+          outline: 2px solid var(--accent, #6366f1);
+          outline-offset: 6px;
+          border-radius: 12px;
         }
         /* "oh my": travelling yellow (prev letter fades as next lights). GOD: wave stops, G→O→D build then 3s hold, then O→D→G out */
         .login-title-phrase {
@@ -221,11 +260,12 @@ export default function LoginPage() {
         .login-title-ch--5 { animation: loginTitleCh5 8s linear infinite; }
         .login-title-ch--6 { animation: loginTitleCh6 8s linear infinite; }
         .login-subtitle {
-          color: #d3d3d3;
-          font-size: clamp(0.85rem, 3.5vw, 1.05rem);
-          font-weight: 700;
+          color: var(--muted, #8a8a9a);
+          font-size: clamp(0.86rem, 3.5vw, 1.06rem);
+          font-weight: 600;
           text-align: center;
-          margin: 4px 0 0;
+          margin: 8px 0 0;
+          letter-spacing: 0.02em;
         }
         .login-input-row {
           display: flex;
@@ -244,41 +284,49 @@ export default function LoginPage() {
         }
         .login-input {
           width: 100%;
-          padding: 10px 12px;
-          font-size: clamp(0.82rem, 3.5vw, 0.95rem);
-          background: #111;
-          border: 1px solid #333;
-          border-radius: 10px;
-          color: #fff;
+          padding: 12px 14px;
+          font-size: clamp(0.84rem, 3.5vw, 0.96rem);
+          background: var(--card2, #1a1a24);
+          border: 1px solid var(--border-strong, rgba(255,255,255,0.14));
+          border-radius: 12px;
+          color: var(--text, #f4f4f8);
           text-align: center;
           outline: none;
           box-sizing: border-box;
+          transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .login-input:focus {
+          border-color: var(--accent, #6366f1);
+          box-shadow: 0 0 0 3px var(--accent-soft, rgba(99,102,241,0.25));
         }
         .login-enter-btn {
-          width: 58px; height: 58px;
+          width: 60px; height: 60px;
           border-radius: 50%;
-          border: none;
-          background: #555;
-          color: #fff;
-          font-size: 0.72rem;
+          border: 1px solid var(--border-strong, rgba(255,255,255,0.14));
+          background: rgba(255,255,255,0.08);
+          color: var(--text, #fff);
+          font-size: 0.7rem;
           font-weight: 800;
           cursor: pointer;
           flex-shrink: 0;
-          transition: background 0.3s, box-shadow 0.3s;
-          font-family: Arial, sans-serif;
+          transition: background 0.25s, box-shadow 0.25s, transform 0.12s;
           display: flex; align-items: center; justify-content: center;
           text-align: center;
           line-height: 1.2;
         }
+        .login-enter-btn:hover { transform: scale(1.03); }
         .login-enter-btn.ready {
-          background: #00AA44;
-          box-shadow: 0 0 16px #00AA4488;
+          background: linear-gradient(145deg, #26e070 0%, var(--atheist, #00c853) 45%, #009624 100%);
+          border-color: transparent;
+          color: #031a0c;
+          box-shadow: 0 0 28px var(--atheist-glow, rgba(0,200,83,0.35));
         }
         .login-choose {
-          color: #fff;
+          color: var(--text, #fff);
           font-size: clamp(0.9rem, 3.5vw, 1rem);
           font-weight: 700;
           margin: 0;
+          letter-spacing: 0.02em;
         }
         .login-panels {
           display: flex;
@@ -291,28 +339,28 @@ export default function LoginPage() {
         }
         .login-panel {
           flex: 1;
-          max-width: 144px;
+          max-width: 148px;
           padding: clamp(10px, 2.4vw, 21px) clamp(7px, 1.8vw, 14px);
-          border-radius: 20px;
+          border-radius: 18px;
           cursor: pointer;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
           gap: 4px;
-          border: none;
-          transition: transform 0.08s, box-shadow 0.08s;
+          border: 1px solid rgba(255,255,255,0.08);
+          transition: transform 0.12s, box-shadow 0.2s;
           min-width: 0;
         }
         .panel-believer {
-          background: linear-gradient(160deg, #aa0000 0%, #7a0000 60%, #550000 100%);
-          box-shadow: 0 8px 0 #5a0000, 0 12px 20px rgba(0,0,0,0.5), 0 0 40px rgba(204,0,0,0.35);
+          background: linear-gradient(165deg, #ef5350 0%, var(--believer, #e53935) 42%, #8b1515 100%);
+          box-shadow: 0 6px 0 #5c1010, 0 14px 32px rgba(0,0,0,0.45), 0 0 36px var(--believer-glow, rgba(229,57,53,0.35));
           color: #fff;
         }
         .panel-atheist {
-          background: linear-gradient(160deg, #00aa44 0%, #007a30 60%, #005522 100%);
-          box-shadow: 0 8px 0 #004d22, 0 12px 20px rgba(0,0,0,0.5), 0 0 40px rgba(0,170,68,0.35);
-          color: #fff;
+          background: linear-gradient(165deg, #69f0ae 0%, var(--atheist, #00c853) 40%, #00682a 100%);
+          box-shadow: 0 6px 0 #003d1a, 0 14px 32px rgba(0,0,0,0.45), 0 0 36px var(--atheist-glow, rgba(0,200,83,0.32));
+          color: #031a0c;
         }
         .panel-title {
           font-size: clamp(0.78rem, 3.3vw, 1.2rem);
@@ -326,28 +374,30 @@ export default function LoginPage() {
           margin-top: 0;
         }
         .login-vs {
-          font-size: clamp(1.1rem, 4vw, 1.6rem);
+          font-size: clamp(1.05rem, 4vw, 1.55rem);
           font-weight: 900;
-          color: #fff;
-          text-shadow: 0 0 12px rgba(255,255,255,0.4);
+          color: var(--text, #fff);
+          text-shadow: 0 0 20px rgba(255,255,255,0.25);
           flex-shrink: 0;
           align-self: center;
+          opacity: 0.95;
         }
         .ai-button {
-          background: linear-gradient(135deg, #f2f2f2 0%, #dcdcdc 60%, #c6c6c6 100%);
-          box-shadow: 0 3px 0 #a8a8a8, 0 6px 14px rgba(0,0,0,0.35);
-          color: #000;
+          background: linear-gradient(180deg, #e8e8ee 0%, #a8a8b8 55%, #787890 100%);
+          box-shadow: 0 4px 0 #5a5a6e, 0 10px 28px rgba(0,0,0,0.4);
+          color: #0a0a0f;
           font-weight: 800;
-          font-size: clamp(0.85rem, 3vw, 0.95rem);
-          padding: 6px 18px;
-          border-radius: 10px;
-          border: none;
+          font-size: clamp(0.84rem, 3vw, 0.94rem);
+          padding: 10px 22px;
+          border-radius: 12px;
+          border: 1px solid rgba(255,255,255,0.25);
           cursor: pointer;
-          letter-spacing: 1px;
-          transition: transform 0.08s, box-shadow 0.08s;
+          letter-spacing: 0.06em;
+          transition: transform 0.1s, box-shadow 0.15s, filter 0.15s;
           width: fit-content;
           text-align: center;
         }
+        .ai-button:hover { filter: brightness(1.06); }
         .login-links {
           display: flex;
           gap: 24px;
@@ -355,16 +405,23 @@ export default function LoginPage() {
           flex-wrap: wrap;
         }
         .login-link {
-          color: #fff;
+          color: var(--text-secondary, #b4b4c0);
           font-size: clamp(0.82rem, 3.2vw, 0.9rem);
           text-decoration: none;
-          font-weight: 700;
-          text-shadow: 0 0 10px rgba(255,255,255,0.3);
+          font-weight: 600;
+          padding: 8px 12px;
+          border-radius: 10px;
+          transition: color 0.2s, background 0.2s;
+        }
+        .login-link:hover {
+          color: var(--gold, #fbbf24);
+          background: rgba(251, 191, 36, 0.08);
         }
         .login-error {
-          color: #ff6666;
+          color: #f87171;
           margin-top: 8px;
           font-size: 0.88rem;
+          font-weight: 600;
         }
       `}</style>
 
@@ -397,18 +454,25 @@ export default function LoginPage() {
         </div>
 
         <div style={{ textAlign: 'center' }}>
-          <h1 className="login-title login-title-phrase" dir="ltr">
-            <span className="login-title-ch login-title-ch--0">o</span>
-            <span className="login-title-ch login-title-ch--1">h</span>
-            <span className="login-title-sp"> </span>
-            <span className="login-title-ch login-title-ch--2">m</span>
-            <span className="login-title-ch login-title-ch--3">y</span>
-            <span className="login-title-sp"> </span>
-            <span className="login-title-ch login-title-ch--4">G</span>
-            <span className="login-title-ch login-title-ch--5">O</span>
-            <span className="login-title-ch login-title-ch--6">D</span>
+          <h1 className="login-title" dir="ltr">
+            <Link
+              to="/"
+              className="login-title-homelink login-title-phrase"
+              aria-label="דף הבית"
+              onClick={() => window.scrollTo(0, 0)}
+            >
+              <span className="login-title-ch login-title-ch--0">o</span>
+              <span className="login-title-ch login-title-ch--1">h</span>
+              <span className="login-title-sp"> </span>
+              <span className="login-title-ch login-title-ch--2">m</span>
+              <span className="login-title-ch login-title-ch--3">y</span>
+              <span className="login-title-sp"> </span>
+              <span className="login-title-ch login-title-ch--4">G</span>
+              <span className="login-title-ch login-title-ch--5">O</span>
+              <span className="login-title-ch login-title-ch--6">D</span>
+            </Link>
           </h1>
-          <p className="login-subtitle">אמונה ודת <span style={{color:'#FFE566'}}>VS</span> אתאיזם ומדע</p>
+          <p className="login-subtitle">אמונה ודת <span style={{ color: 'var(--gold)' }}>VS</span> אתאיזם ומדע</p>
         </div>
 
         {!registered ? (
@@ -501,7 +565,7 @@ export default function LoginPage() {
           /* Side chosen — pick mode: human or AI */
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, width: '100%', maxWidth: 360 }}>
             <p className="login-choose" style={{ marginBottom: 4 }}>
-              בחרת: <span style={{ color: selectedSide === 'believer' ? '#CC0000' : '#00AA44', fontWeight: 900 }}>
+              בחרת: <span style={{ color: selectedSide === 'believer' ? 'var(--believer)' : 'var(--atheist)', fontWeight: 900 }}>
                 {selectedSide === 'believer' ? 'מאמין' : 'אתאיסט'}
               </span>
             </p>
@@ -532,8 +596,8 @@ export default function LoginPage() {
         )}
 
         <div className="login-links">
-          <a href="/arguments" className="login-link">📚 בעד ונגד</a>
-          <a href="/live-events" className="login-link">🏆 רב VS מדען</a>
+          <Link to="/arguments" className="login-link">📚 בעד ונגד</Link>
+          <Link to="/live-events" className="login-link">🏆 רב VS מדען</Link>
         </div>
       </div>
     </>

@@ -7,41 +7,26 @@ export default function LivePhase({ debateId }) {
   }
 
   return (
-    <div style={styles.wrap}>
-      <div style={styles.icon}>📞</div>
-      <h2 style={styles.title}>שלב השיחה הקולית החיה</h2>
-      <p style={styles.desc}>
+    <div className="live-phase">
+      <div className="live-phase__icon" aria-hidden="true">📞</div>
+      <h2 className="live-phase__title">שיחה קולית חיה</h2>
+      <p className="live-phase__desc">
         בשלב זה המשתתפים מוזמנים לשיחה קולית רציפה ישירה.
         <br />
-        <span style={{ color: '#FFD700' }}>תכונה זו תהיה זמינה בגרסה הבאה עם WebRTC.</span>
+        <span style={{ color: 'var(--gold)', fontWeight: 700 }}>התכונה תהיה זמינה בגרסה הבאה (WebRTC).</span>
       </p>
 
-      <div style={styles.card}>
-        <p style={{ color: 'var(--muted)', fontSize: '0.9rem', textAlign: 'center', lineHeight: 1.7 }}>
-          בינתיים תוכלו לתאם שיחה דרך פלטפורמה אחרת.
+      <div className="live-phase__card">
+        <p style={{ color: 'var(--muted)', fontSize: '0.92rem', textAlign: 'center', lineHeight: 1.75 }}>
+          בינתיים ניתן לתאם שיחה דרך פלטפורמה אחרת.
           <br />
-          סיים את הדיון כשתסיימו.
+          סיימו את הדיון כשהשיחה נגמרה.
         </p>
       </div>
 
-      <button className="btn btn-ghost" onClick={endDebate} style={{ marginTop: 8, padding: '12px 32px' }}>
-        סיים דיון ✓
+      <button type="button" className="btn btn-ghost" onClick={endDebate} style={{ padding: '14px 36px' }}>
+        סיים דיון
       </button>
     </div>
   );
 }
-
-const styles = {
-  wrap: {
-    display: 'flex', flexDirection: 'column', alignItems: 'center',
-    justifyContent: 'center', gap: 20, padding: '40px 20px', textAlign: 'center',
-    flex: 1,
-  },
-  icon: { fontSize: '4rem' },
-  title: { fontSize: '1.6rem', fontWeight: 700 },
-  desc: { color: 'var(--muted)', lineHeight: 1.7, maxWidth: 440 },
-  card: {
-    background: 'var(--card2)', border: '1px solid var(--border)',
-    borderRadius: 12, padding: '20px 30px', maxWidth: 380, width: '100%',
-  },
-};

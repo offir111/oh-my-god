@@ -62,7 +62,7 @@ export default function KnowledgeBasePage() {
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
                   {d.tags?.map(t => <span key={t} style={styles.tag}>{t}</span>)}
                 </div>
-                <div style={{ display: 'flex', justify: 'space-between', color: 'var(--muted)', fontSize: '0.75rem', gap: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--muted)', fontSize: '0.75rem', gap: 12 }}>
                   <span>⏱ {Math.round(d.stats?.duration / 60) || 0} דק׳</span>
                   <span>👁 {d.stats?.spectatorPeak || 0} צופים</span>
                   <span>🎁 {d.stats?.giftsTotal || 0} מתנות</span>

@@ -17,12 +17,6 @@ export default function TextPhase({ debateId, opponentTyping }) {
   const remaining = TEXT_LIMIT - myCount;
 
   useEffect(() => {
-    console.log('[TextPhase] render', {
-      myCount,
-      isMyTurn,
-      streamingMessage: streamingMessage ? `${streamingMessage.content.length} chars` : null,
-      opponentTyping,
-    });
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [debate?.textMessages?.length, opponentTyping, streamingMessage?.content]);
 
@@ -33,64 +27,57 @@ export default function TextPhase({ debateId, opponentTyping }) {
   }
 
   return (
-    <div style={styles.wrap}>
-      <div style={styles.header}>
-        <span style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>
+    <div className="debate-phase-stack">
+      <div className="debate-feed-toolbar">
+        <span className="toolbar-muted">
           שלב טקסט — הודעות שלי: <strong>{myCount}/{TEXT_LIMIT}</strong>
         </span>
         {isMyTurn ? (
-          <span style={{ color: '#fff', fontSize: '0.85rem', fontWeight: 600 }}>✏️ תורך לכתוב</span>
+          <span className="debate-turn-pill debate-turn-pill--active">תורך לכתוב</span>
         ) : (
-          <span style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>⏳ ממתין ליריב...</span>
+          <span className="debate-turn-pill debate-turn-pill--wait">ממתין ליריב…</span>
         )}
       </div>
 
-      <div style={styles.messages}>
+      <div className="debate-messages-scroller">
         {debate?.textMessages?.map((msg, i) => (
           <MessageBubble key={i} msg={msg} mySide={user?.side} />
         ))}
         {streamingMessage && (
-          <MessageBubble msg={{ ...streamingMessage, content: streamingMessage.content + '▋' }} mySide={user?.side} />
+          <MessageBubble
+            msg={{ ...streamingMessage, content: streamingMessage.content + '▋' }}
+            mySide={user?.side}
+          />
         )}
         {opponentTyping && !streamingMessage && (
-          <div style={{ textAlign: 'left', color: 'var(--muted)', fontSize: '0.9rem', padding: '4px 0' }}>
-            🤖 AI חושב<span className="pulse-anim">...</span>
+          <div className="toolbar-muted" style={{ textAlign: 'right', padding: '8px 4px' }}>
+            AI חושב<span className="pulse-anim">…</span>
           </div>
         )}
         <div ref={bottomRef} />
       </div>
 
-      <div style={styles.inputRow}>
+      <div className="debate-composer">
         <input
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
-          placeholder={isMyTurn ? 'כתוב את טיעונך...' : 'ממתין ליריב...'}
+          placeholder={isMyTurn ? 'כתוב את טיעונך…' : 'ממתין ליריב…'}
           disabled={!isMyTurn || remaining <= 0}
-          style={{ flex: 1 }}
-          maxLength={600}
+          aria-label="הודעת טקסט לדיון"
         />
         <button
+          type="button"
           className={`btn btn-${user?.side}`}
           onClick={send}
           disabled={!input.trim() || !isMyTurn || remaining <= 0}
-          style={{ padding: '10px 20px' }}
         >
           שלח
         </button>
       </div>
       {remaining <= 2 && remaining > 0 && (
-        <div style={{ color: '#FFD700', fontSize: '0.8rem', textAlign: 'center', marginTop: 4 }}>
-          נותרו {remaining} הודעות לשלב זה
-        </div>
+        <div className="debate-hint">נותרו {remaining} הודעות לשלב זה</div>
       )}
     </div>
   );
 }
-
-const styles = {
-  wrap: { display: 'flex', flexDirection: 'column', height: '100%', gap: 12 },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 4px' },
-  messages: { flex: 1, overflowY: 'auto', padding: '4px 0', minHeight: 0 },
-  inputRow: { display: 'flex', gap: 10, alignItems: 'center' },
-};

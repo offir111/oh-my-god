@@ -1,47 +1,50 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../store/appStore.js';
-import { disconnectSocket } from '../../socket.js';
+
+function navClass({ isActive }) {
+  return 'navbar-link' + (isActive ? ' navbar-link--active' : '');
+}
 
 export default function Navbar() {
   const user = useAppStore(s => s.user);
-  const setUser = useAppStore(s => s.setUser);
-  const resetDebate = useAppStore(s => s.resetDebate);
   const navigate = useNavigate();
 
   const sideLabel = user?.side === 'believer' ? 'מאמין' : 'אתאיסט';
   const sideColor = user?.side === 'believer' ? 'var(--believer)' : 'var(--atheist)';
 
-  function logout() {
-    disconnectSocket();
-    setUser(null);
-    resetDebate();
-    navigate('/');
-  }
-
-  function goHome() {
-    disconnectSocket();
-    setUser(null);
-    resetDebate();
-    navigate('/');
+  /** לובי — לא מנתק מהחשבון (התנתקות רק מעיגול המשתמש בכותרת) */
+  function goToLobby() {
+    navigate('/lobby');
   }
 
   return (
-    <nav className="navbar">
-      <button onClick={goHome} className="navbar-brand" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>oh my GOD</button>
+    <nav className="navbar" aria-label="ניווט ראשי">
       <div className="navbar-links">
-        <Link to="/lobby">לובי</Link>
-        <Link to="/knowledge">מאגר ידע</Link>
-        <Link to="/leaderboard">טבלת מובילים</Link>
+        <NavLink to="/lobby" end className={navClass}>
+          לובי
+        </NavLink>
+        <NavLink to="/knowledge" className={navClass}>
+          מאגר ידע
+        </NavLink>
+        <NavLink to="/leaderboard" className={navClass}>
+          טבלת מובילים
+        </NavLink>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         {user && (
-          <div className="navbar-score">
+          <div className="navbar-score" aria-live="polite">
             <span style={{ color: sideColor, fontWeight: 700, marginLeft: 6 }}>{sideLabel}</span>
             {user.username} | <span>{user.score || 0} נק׳</span>
           </div>
         )}
-        <button className="btn btn-ghost" style={{ padding: '6px 14px', fontSize: '0.85rem' }} onClick={logout}>
+        <button
+          type="button"
+          className="btn btn-ghost"
+          style={{ padding: '8px 16px', fontSize: '0.84rem' }}
+          onClick={goToLobby}
+          title="חזרה ללובי (נשארים מחוברים)"
+        >
           יציאה
         </button>
       </div>

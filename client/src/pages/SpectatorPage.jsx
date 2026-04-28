@@ -15,7 +15,6 @@ export default function SpectatorPage() {
   const [voiceMessages, setVoiceMessages] = useState([]);
   const [phase, setPhase] = useState('text');
   const [gifts, setGifts] = useState([]);
-  const addGift = useAppStore(s => s.addGift);
 
   useEffect(() => {
     if (!socket.connected) socket.connect();
@@ -56,90 +55,89 @@ export default function SpectatorPage() {
 
   if (!debate) {
     return (
-      <div style={{ minHeight: 'calc(100vh - 52px)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
+      <div className="spectator-page" style={{ alignItems: 'center', justifyContent: 'center', gap: 16 }}>
         <div className="spinner" />
-        <p style={{ color: 'var(--muted)' }}>מתחבר לדיון...</p>
+        <p style={{ color: 'var(--muted)', fontWeight: 600 }}>מתחבר לדיון…</p>
       </div>
     );
   }
 
   const allMessages = phase === 'text' ? messages : voiceMessages;
+  const phaseLabel = phase === 'text' ? 'טקסט' : phase === 'voice' ? 'קולי' : 'שיחה';
 
   return (
-    <div style={styles.page}>
-      <button onClick={() => navigate(-1)} style={{ background:'none', border:'none', color:'#aaa', fontSize:'0.9rem', cursor:'pointer', padding:'8px 16px', alignSelf:'flex-start' }}>← חזרה</button>
-      <div style={styles.header}>
-        <div style={styles.headerTitle}>
-          <span style={{ color: 'var(--believer)', fontWeight: 700 }}>{debate.believer.username} (מאמין)</span>
-          <span style={{ color: 'var(--muted)' }}>VS</span>
-          <span style={{ color: 'var(--atheist)', fontWeight: 700 }}>{debate.atheist.username} (אתאיסט)</span>
+    <div className="spectator-page">
+      <button type="button" className="spectator-back" onClick={() => navigate(-1)}>
+        חזרה
+      </button>
+      <header className="spectator-top">
+        <div className="spectator-top__names">
+          <span style={{ color: 'var(--believer)', fontWeight: 800 }}>{debate.believer.username}</span>
+          <span style={{ color: 'var(--muted)', fontWeight: 700 }}>VS</span>
+          <span style={{ color: 'var(--atheist)', fontWeight: 800 }}>{debate.atheist.username}</span>
         </div>
-        <div style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>👁 {count} צופים • שלב: {phase}</div>
-      </div>
+        <div className="spectator-top__meta">
+          {count} צופים · שלב {phaseLabel}
+        </div>
+      </header>
 
-      <div style={styles.body}>
-        <div style={styles.feed}>
+      <div className="spectator-layout">
+        <div className="spectator-feed">
           {allMessages.map((msg, i) => (
             <MessageBubble key={i} msg={msg} mySide={null} />
           ))}
           {gifts.map(g => (
-            <div key={g.uid} style={{ textAlign: 'center', fontSize: '2rem', animation: 'giftFloat 1.8s ease-out forwards' }}>
+            <div
+              key={g.uid}
+              style={{ textAlign: 'center', fontSize: '2rem', animation: 'giftFloat 1.8s ease-out forwards' }}
+            >
               {g.emoji} → {g.targetSide === 'believer' ? debate.believer.username : debate.atheist.username}
             </div>
           ))}
         </div>
 
-        <div style={styles.sidebar}>
-          <h3 style={styles.sidebarTitle}>שלח מתנה</h3>
+        <aside className="spectator-sidebar" aria-label="מתנות לצדדים">
+          <h3>מתנות</h3>
 
-          <div style={styles.giftSection}>
-            <p style={{ color: 'var(--believer)', fontWeight: 700, fontSize: '0.85rem', marginBottom: 8 }}>
+          <div style={{ marginBottom: 22 }}>
+            <p style={{ color: 'var(--believer)', fontWeight: 800, fontSize: '0.86rem', marginBottom: 10 }}>
               למאמין — {debate.believer.username}
             </p>
-            <div style={styles.giftGrid}>
+            <div className="spectator-gift-grid">
               {GIFTS.map(e => (
-                <button key={e} onClick={() => sendGift('believer', e)} style={styles.giftBtn}>{e}</button>
+                <button
+                  type="button"
+                  key={e}
+                  className="spectator-gift-btn"
+                  onClick={() => sendGift('believer', e)}
+                  aria-label={`מתנה ${e} למאמין`}
+                >
+                  {e}
+                </button>
               ))}
             </div>
           </div>
 
-          <div style={styles.giftSection}>
-            <p style={{ color: 'var(--atheist)', fontWeight: 700, fontSize: '0.85rem', marginBottom: 8 }}>
+          <div>
+            <p style={{ color: 'var(--atheist)', fontWeight: 800, fontSize: '0.86rem', marginBottom: 10 }}>
               לאתאיסט — {debate.atheist.username}
             </p>
-            <div style={styles.giftGrid}>
+            <div className="spectator-gift-grid">
               {GIFTS.map(e => (
-                <button key={e} onClick={() => sendGift('atheist', e)} style={styles.giftBtn}>{e}</button>
+                <button
+                  type="button"
+                  key={e}
+                  className="spectator-gift-btn"
+                  onClick={() => sendGift('atheist', e)}
+                  aria-label={`מתנה ${e} לאתאיסט`}
+                >
+                  {e}
+                </button>
               ))}
             </div>
           </div>
-        </div>
+        </aside>
       </div>
     </div>
   );
 }
-
-const styles = {
-  page: { minHeight: 'calc(100vh - 52px)', display: 'flex', flexDirection: 'column', background: '#000' },
-  header: {
-    padding: '14px 20px', background: 'var(--card)',
-    borderBottom: '1px solid var(--border)',
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-  },
-  headerTitle: { display: 'flex', gap: 12, alignItems: 'center', fontSize: '1rem' },
-  body: { flex: 1, display: 'flex', overflow: 'hidden' },
-  feed: { flex: 1, padding: '16px 20px', overflowY: 'auto' },
-  sidebar: {
-    width: 240, borderRight: '1px solid var(--border)',
-    padding: '16px 14px', overflowY: 'auto',
-    background: 'var(--card)',
-  },
-  sidebarTitle: { fontSize: '0.9rem', color: 'var(--muted)', marginBottom: 16, fontWeight: 700 },
-  giftSection: { marginBottom: 20 },
-  giftGrid: { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 4 },
-  giftBtn: {
-    background: 'var(--card2)', border: '1px solid var(--border)',
-    borderRadius: 8, cursor: 'pointer', padding: '6px',
-    fontSize: '1.2rem', transition: 'transform 0.1s',
-  },
-};

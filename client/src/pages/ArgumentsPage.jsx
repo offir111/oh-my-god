@@ -137,180 +137,227 @@ export default function ArgumentsPage() {
       <style>{`
         .args-page {
           min-height: calc(100vh - 52px);
-          background: #000;
-          color: #fff;
-          font-family: Arial, sans-serif;
+          background: transparent;
+          color: var(--text);
           direction: rtl;
-          padding: 0 0 40px;
+          padding: 0 0 48px;
         }
         .args-header {
+          position: relative;
           text-align: center;
-          padding: 24px 16px 16px;
-          border-bottom: 1px solid #222;
+          padding: 28px 16px 22px;
+          border-bottom: 1px solid var(--border);
+          background: linear-gradient(180deg, rgba(255,255,255,0.04), transparent);
         }
         .args-header h1 {
-          font-size: clamp(1.4rem, 5vw, 2rem);
+          font-size: clamp(1.45rem, 5vw, 2.05rem);
           font-weight: 900;
-          margin-bottom: 6px;
+          margin-bottom: 8px;
+          letter-spacing: 0.02em;
         }
         .args-header p {
-          color: #888;
-          font-size: 0.85rem;
+          color: var(--muted);
+          font-size: 0.9rem;
+          max-width: 420px;
+          margin: 0 auto;
+          line-height: 1.5;
         }
         .args-back {
           position: absolute;
-          top: 60px; left: 14px;
-          background: none;
-          border: 1px solid #333;
-          color: #aaa;
-          font-size: 0.8rem;
-          padding: 5px 12px;
-          border-radius: 8px;
+          top: 16px;
+          left: 12px;
+          background: rgba(255,255,255,0.06);
+          border: 1px solid var(--border);
+          color: var(--muted);
+          font-size: 0.82rem;
+          font-weight: 600;
+          padding: 8px 14px;
+          border-radius: 10px;
           cursor: pointer;
-          font-family: Arial, sans-serif;
+          transition: background 0.2s, color 0.2s, border-color 0.2s;
+        }
+        .args-back:hover {
+          color: var(--text);
+          background: rgba(255,255,255,0.1);
+          border-color: var(--border-strong);
         }
         .args-cats {
           display: flex;
           gap: 8px;
           overflow-x: auto;
-          padding: 14px 16px;
-          border-bottom: 1px solid #1a1a1a;
+          padding: 16px 16px;
+          border-bottom: 1px solid var(--border);
           scrollbar-width: none;
         }
         .args-cats::-webkit-scrollbar { display: none; }
         .args-cat-btn {
           white-space: nowrap;
-          padding: 7px 16px;
-          border-radius: 20px;
-          border: 1px solid #333;
-          background: #111;
-          color: #aaa;
-          font-size: 0.82rem;
+          padding: 9px 18px;
+          border-radius: 999px;
+          border: 1px solid var(--border);
+          background: rgba(255,255,255,0.04);
+          color: var(--muted);
+          font-size: 0.84rem;
+          font-weight: 600;
           cursor: pointer;
-          font-family: Arial, sans-serif;
-          transition: all 0.15s;
+          transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.12s;
+        }
+        .args-cat-btn:hover {
+          color: var(--text);
+          background: rgba(255,255,255,0.08);
         }
         .args-cat-btn.active {
-          background: #fff;
-          color: #000;
-          border-color: #fff;
-          font-weight: 700;
+          background: linear-gradient(145deg, #fff, #d8d8e4);
+          color: #0a0a10;
+          border-color: rgba(255,255,255,0.4);
+          font-weight: 800;
+          box-shadow: 0 6px 24px rgba(255,255,255,0.1);
         }
         .args-columns {
           display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 0;
-          max-width: 900px;
+          max-width: 960px;
           margin: 0 auto;
         }
         .args-col {
-          padding: 16px 14px;
-          border-left: 1px solid #1a1a1a;
+          padding: 20px 16px;
+          border-left: 1px solid var(--border);
         }
         .args-col:first-child { border-left: none; }
         .args-col-title {
-          font-size: 1rem;
+          font-size: 0.95rem;
           font-weight: 900;
           text-align: center;
-          padding: 10px;
-          border-radius: 10px;
-          margin-bottom: 14px;
-        }
-        .col-pro .args-col-title { background: #1a0000; color: #ff6666; border: 1px solid #440000; }
-        .col-con .args-col-title { background: #001a08; color: #44ff88; border: 1px solid #004422; }
-        .arg-card {
-          background: #111;
-          border: 1px solid #222;
-          border-radius: 10px;
           padding: 12px 14px;
-          margin-bottom: 10px;
-          font-size: 0.85rem;
-          line-height: 1.55;
+          border-radius: 14px;
+          margin-bottom: 16px;
+          letter-spacing: 0.03em;
+        }
+        .col-pro .args-col-title {
+          background: linear-gradient(165deg, rgba(229,57,53,0.25), rgba(92,16,16,0.9));
+          color: #ffcdd2;
+          border: 1px solid rgba(229,57,53,0.45);
+        }
+        .col-con .args-col-title {
+          background: linear-gradient(165deg, rgba(0,200,83,0.2), rgba(0,61,26,0.92));
+          color: #b9f6ca;
+          border: 1px solid rgba(0,200,83,0.4);
+        }
+        .arg-card {
+          background: var(--card);
+          border: 1px solid var(--border);
+          border-radius: 14px;
+          padding: 14px 16px;
+          margin-bottom: 12px;
+          font-size: 0.88rem;
+          line-height: 1.6;
+          box-shadow: var(--shadow-xs);
+          transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .arg-card:hover {
+          border-color: var(--border-strong);
+          box-shadow: var(--shadow-sm);
         }
         .arg-card-author {
-          margin-top: 8px;
-          font-size: 0.72rem;
-          color: #555;
+          margin-top: 10px;
+          font-size: 0.74rem;
+          color: var(--muted);
           text-align: left;
+          font-weight: 600;
         }
         .args-special {
-          margin-top: 20px;
-          padding-top: 14px;
-          border-top: 1px dashed #2a2a2a;
+          margin-top: 22px;
+          padding-top: 16px;
+          border-top: 1px dashed var(--border-strong);
         }
         .args-special-title {
-          font-size: 0.75rem;
-          color: #666;
-          margin-bottom: 10px;
+          font-size: 0.78rem;
+          color: var(--muted);
+          margin-bottom: 12px;
           text-align: center;
+          font-weight: 700;
         }
         .args-add-input {
           width: 100%;
-          background: #111;
-          border: 1px solid #333;
-          border-radius: 8px;
-          color: #fff;
-          padding: 10px 12px;
-          font-size: 0.82rem;
-          font-family: Arial, sans-serif;
+          background: var(--card2);
+          border: 1px solid var(--border-strong);
+          border-radius: 12px;
+          color: var(--text);
+          padding: 12px 14px;
+          font-size: 0.86rem;
           direction: rtl;
           resize: vertical;
-          min-height: 64px;
+          min-height: 72px;
           box-sizing: border-box;
         }
         .args-add-btn {
-          margin-top: 8px;
+          margin-top: 10px;
           width: 100%;
-          padding: 9px;
-          border-radius: 8px;
+          padding: 11px;
+          border-radius: 12px;
           border: none;
-          font-weight: 700;
-          font-size: 0.82rem;
+          font-weight: 800;
+          font-size: 0.86rem;
           cursor: pointer;
-          font-family: Arial, sans-serif;
+          transition: filter 0.15s, transform 0.12s;
         }
-        .btn-pro { background: #660000; color: #fff; }
-        .btn-con { background: #004422; color: #fff; }
+        .args-add-btn:active { transform: scale(0.98); }
+        .btn-pro {
+          background: linear-gradient(180deg, #ef5350, var(--believer));
+          color: #fff;
+          box-shadow: 0 0 20px var(--believer-glow);
+        }
+        .btn-con {
+          background: linear-gradient(180deg, #69f0ae, var(--atheist));
+          color: #031a0c;
+          box-shadow: 0 0 20px var(--atheist-glow);
+        }
         .special-badge {
           display: inline-block;
           font-size: 0.65rem;
-          padding: 2px 8px;
-          border-radius: 10px;
+          padding: 3px 9px;
+          border-radius: 8px;
           margin-right: 6px;
-          font-weight: 700;
+          font-weight: 800;
         }
-        .badge-rabbi { background: #440000; color: #ff8888; }
-        .badge-scientist { background: #002244; color: #88aaff; }
+        .badge-rabbi { background: rgba(229,57,53,0.25); color: #ffcdd2; border: 1px solid rgba(229,57,53,0.35); }
+        .badge-scientist { background: rgba(99,102,241,0.2); color: #c7d2fe; border: 1px solid rgba(99,102,241,0.35); }
         .editors-section {
-          max-width: 900px;
-          margin: 30px auto 0;
-          padding: 20px 16px;
-          border-top: 1px solid #1a1a1a;
+          max-width: 960px;
+          margin: 36px auto 0;
+          padding: 24px 16px;
+          border-top: 1px solid var(--border);
         }
         .editors-title {
           text-align: center;
-          color: #555;
-          font-size: 0.82rem;
-          margin-bottom: 16px;
+          color: var(--muted);
+          font-size: 0.84rem;
+          margin-bottom: 18px;
+          font-weight: 700;
+          letter-spacing: 0.04em;
         }
         .editors-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 12px;
+          gap: 14px;
         }
         .editor-card {
-          background: #0d0d0d;
-          border: 1px solid #222;
-          border-radius: 10px;
-          padding: 12px;
+          background: var(--card);
+          border: 1px solid var(--border);
+          border-radius: 14px;
+          padding: 16px;
           text-align: center;
-          font-size: 0.8rem;
+          font-size: 0.84rem;
+          box-shadow: var(--shadow-xs);
         }
-        .editor-card .name { font-weight: 700; margin-bottom: 4px; }
-        .editor-card .role { color: #555; font-size: 0.72rem; }
+        .editor-card .name { font-weight: 800; margin-bottom: 6px; }
+        .editor-card .role { color: var(--muted); font-size: 0.76rem; line-height: 1.4; }
         @media (max-width: 560px) {
+          .args-back { position: static; margin: 0 auto 12px; display: block; }
           .args-columns { grid-template-columns: 1fr; }
-          .col-pro { border-left: none; border-bottom: 1px solid #1a1a1a; }
+          .args-col { border-left: none; border-bottom: 1px solid var(--border); }
+          .args-col:last-child { border-bottom: none; }
           .editors-grid { grid-template-columns: 1fr; }
         }
       `}</style>

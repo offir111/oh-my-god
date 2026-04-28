@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAppStore } from './store/appStore.js';
-import { connectSocket } from './socket.js';
+import { connectSocket, disconnectSocket } from './socket.js';
 import Navbar from './components/layout/Navbar.jsx';
 import AppHeader from './components/layout/AppHeader.jsx';
 import LoginPage from './pages/LoginPage.jsx';
@@ -13,6 +13,9 @@ import DebateDetailPage from './pages/DebateDetailPage.jsx';
 import LeaderboardPage from './pages/LeaderboardPage.jsx';
 import ArgumentsPage from './pages/ArgumentsPage.jsx';
 import LiveEventsPage from './pages/LiveEventsPage.jsx';
+import StaticInfoPage from './pages/StaticInfoPage.jsx';
+import SettingsPage from './pages/SettingsPage.jsx';
+import { applyPreferencesToDocument, loadPreferences } from './lib/appPreferences.js';
 
 function RequireAuth({ children }) {
   const user = useAppStore(s => s.user);
@@ -24,25 +27,36 @@ export default function App() {
   const user = useAppStore(s => s.user);
 
   useEffect(() => {
-    if (user) connectSocket(user.username, user.side);
+    applyPreferencesToDocument(loadPreferences());
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    connectSocket(user.username, user.side);
+    return () => disconnectSocket();
+  }, [user]);
 
   return (
     <BrowserRouter>
       <AppHeader />
       {user && <Navbar />}
-      <Routes>
-        <Route path="/" element={user ? <Navigate to="/lobby" replace /> : <LoginPage />} />
-        <Route path="/lobby" element={<RequireAuth><LobbyPage /></RequireAuth>} />
-        <Route path="/debate/:debateId" element={<RequireAuth><DebatePage /></RequireAuth>} />
-        <Route path="/spectate/:debateId" element={<SpectatorPage />} />
-        <Route path="/knowledge" element={<KnowledgeBasePage />} />
-        <Route path="/knowledge/:id" element={<DebateDetailPage />} />
-        <Route path="/leaderboard" element={<LeaderboardPage />} />
-        <Route path="/arguments" element={<ArgumentsPage />} />
-        <Route path="/live-events" element={<LiveEventsPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <main id="main-content" className="app-main" tabIndex={-1}>
+        <Routes>
+          <Route path="/" element={user ? <Navigate to="/lobby" replace /> : <LoginPage />} />
+          <Route path="/lobby" element={<RequireAuth><LobbyPage /></RequireAuth>} />
+          <Route path="/debate/:debateId" element={<RequireAuth><DebatePage /></RequireAuth>} />
+          <Route path="/spectate/:debateId" element={<SpectatorPage />} />
+          <Route path="/knowledge" element={<KnowledgeBasePage />} />
+          <Route path="/knowledge/:id" element={<DebateDetailPage />} />
+          <Route path="/leaderboard" element={<LeaderboardPage />} />
+          <Route path="/arguments" element={<ArgumentsPage />} />
+          <Route path="/live-events" element={<LiveEventsPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/terms" element={<StaticInfoPage pageId="terms" />} />
+          <Route path="/contact" element={<StaticInfoPage pageId="contact" />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </main>
     </BrowserRouter>
   );
 }

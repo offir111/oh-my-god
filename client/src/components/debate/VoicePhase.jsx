@@ -41,86 +41,13 @@ export default function VoicePhase({ debateId, opponentRecording }) {
     reader.readAsDataURL(audioBlob);
   }
 
-  return (
-    <div style={styles.wrap}>
-      <div style={styles.header}>
-        <span style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>
-          שלב קולי — הודעות שלי: <strong>{myCount}/{VOICE_LIMIT}</strong>
-        </span>
-        {isMyTurn ? (
-          <span style={{ color: '#fff', fontSize: '0.85rem' }}>🎙️ תורך להקליט</span>
-        ) : (
-          <span style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>⏳ ממתין ליריב...</span>
-        )}
-      </div>
-
-      <div style={styles.messages}>
-        {debate?.voiceMessages?.map((msg, i) => (
-          <MessageBubble key={i} msg={msg} mySide={user?.side} />
-        ))}
-        {opponentRecording && (
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '6px 0', color: 'var(--muted)' }}>
-            <div className="recording-dots">
-              <span /><span /><span />
-            </div>
-            היריב מקליט...
-          </div>
-        )}
-        <div ref={bottomRef} />
-      </div>
-
-      {isMyTurn && remaining > 0 && (
-        <div style={styles.controls}>
-          {!audioBlob ? (
-            <button
-              onClick={handleRecord}
-              style={{
-                ...styles.recordBtn,
-                background: isRecording ? '#ff4444' : `var(--${user?.side})`,
-                boxShadow: isRecording ? '0 0 20px rgba(255,68,68,0.6)' : 'none',
-              }}
-            >
-              {isRecording ? (
-                <>
-                  <div className="recording-dots" style={{ justifyContent: 'center' }}>
-                    <span /><span /><span />
-                  </div>
-                  <span style={{ marginTop: 4, fontSize: '0.85rem' }}>לחץ לסיום</span>
-                </>
-              ) : (
-                <>
-                  <span style={{ fontSize: '2rem' }}>🎙️</span>
-                  <span style={{ fontSize: '0.85rem' }}>לחץ להקלטה</span>
-                </>
-              )}
-            </button>
-          ) : (
-            <div style={styles.previewRow}>
-              <span style={{ color: '#aaa', fontSize: '0.9rem' }}>✅ הוקלטו {duration} שניות</span>
-              <button className={`btn btn-${user?.side}`} onClick={sendVoice}>שלח הודעה קולית</button>
-              <button className="btn btn-ghost" onClick={clearBlob} style={{ padding: '10px 16px' }}>מחק</button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {!isMyTurn && (
-        <div style={{ textAlign: 'center', color: 'var(--muted)', padding: '16px 0' }}>
-          {opponentRecording ? '🎙️ היריב מקליט...' : '⏳ ממתין להודעה הקולית של היריב'}
-        </div>
-      )}
-    </div>
-  );
-}
-
-const styles = {
-  wrap: { display: 'flex', flexDirection: 'column', height: '100%', gap: 12 },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  messages: { flex: 1, overflowY: 'auto', minHeight: 0 },
-  controls: { display: 'flex', justifyContent: 'center', padding: '16px 0' },
-  recordBtn: {
-    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-    width: 120, height: 120,
+  const recordStyle = {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 124,
+    height: 124,
     borderRadius: '50%',
     border: 'none',
     cursor: 'pointer',
@@ -129,6 +56,77 @@ const styles = {
     fontWeight: 700,
     transition: 'all 0.2s',
     fontSize: '1rem',
-  },
-  previewRow: { display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' },
-};
+    background: isRecording ? '#ef4444' : `var(--${user?.side})`,
+    boxShadow: isRecording ? '0 0 28px rgba(239,68,68,0.55)' : '0 8px 32px rgba(0,0,0,0.35)',
+  };
+
+  return (
+    <div className="debate-phase-stack">
+      <div className="debate-feed-toolbar">
+        <span className="toolbar-muted">
+          שלב קולי — הודעות שלי: <strong>{myCount}/{VOICE_LIMIT}</strong>
+        </span>
+        {isMyTurn ? (
+          <span className="debate-turn-pill debate-turn-pill--active">תורך להקליט</span>
+        ) : (
+          <span className="debate-turn-pill debate-turn-pill--wait">ממתין ליריב…</span>
+        )}
+      </div>
+
+      <div className="debate-messages-scroller">
+        {debate?.voiceMessages?.map((msg, i) => (
+          <MessageBubble key={i} msg={msg} mySide={user?.side} />
+        ))}
+        {opponentRecording && (
+          <div className="toolbar-muted" style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 4px' }}>
+            <div className="recording-dots">
+              <span /><span /><span />
+            </div>
+            היריב מקליט…
+          </div>
+        )}
+        <div ref={bottomRef} />
+      </div>
+
+      {isMyTurn && remaining > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '14px 0' }}>
+          {!audioBlob ? (
+            <button type="button" onClick={handleRecord} style={recordStyle} aria-pressed={isRecording}>
+              {isRecording ? (
+                <>
+                  <div className="recording-dots" style={{ justifyContent: 'center' }}>
+                    <span /><span /><span />
+                  </div>
+                  <span style={{ marginTop: 4, fontSize: '0.82rem' }}>לחץ לסיום</span>
+                </>
+              ) : (
+                <>
+                  <span style={{ fontSize: '2rem' }} aria-hidden="true">🎙️</span>
+                  <span style={{ fontSize: '0.82rem' }}>לחץ להקלטה</span>
+                </>
+              )}
+            </button>
+          ) : (
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
+              <span className="toolbar-muted" style={{ fontSize: '0.9rem' }}>
+                הוקלטו {duration} שניות
+              </span>
+              <button type="button" className={`btn btn-${user?.side}`} onClick={sendVoice}>
+                שלח הודעה קולית
+              </button>
+              <button type="button" className="btn btn-ghost" onClick={clearBlob}>
+                מחק
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!isMyTurn && (
+        <div className="toolbar-muted" style={{ textAlign: 'center', padding: '16px 0' }}>
+          {opponentRecording ? 'היריב מקליט…' : 'ממתין להודעה הקולית של היריב'}
+        </div>
+      )}
+    </div>
+  );
+}

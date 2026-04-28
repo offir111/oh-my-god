@@ -2,41 +2,26 @@ import React, { useRef } from 'react';
 
 export default function MessageBubble({ msg, mySide }) {
   const isBeliever = msg.side === 'believer';
-  const color = isBeliever ? 'var(--believer)' : 'var(--atheist)';
-  const dimColor = isBeliever ? 'var(--believer-dim)' : 'var(--atheist-dim)';
+  const sideClass = isBeliever ? 'believer' : 'atheist';
 
   if (msg.audioB64 || msg.isAIText) {
-    return <VoiceBubble msg={msg} color={color} dimColor={dimColor} />;
+    return <VoiceBubble msg={msg} sideClass={sideClass} />;
   }
 
   return (
-    <div style={{ marginBottom: 14, direction: 'rtl', textAlign: 'right' }}>
-      <div style={{
-        display: 'inline-block',
-        maxWidth: '90%',
-        background: dimColor,
-        border: `1px solid ${color}`,
-        borderRadius: 14,
-        padding: '12px 16px',
-        color: '#fff',
-        lineHeight: 1.7,
-        fontSize: '0.97rem',
-        animation: 'fadeIn 0.25s ease',
-        textAlign: 'right',
-      }}>
-        <div style={{ fontSize: '0.72rem', color, fontWeight: 700, marginBottom: 5 }}>
-          {msg.side === 'believer' ? '🔴 מאמין' : '🟢 אתאיסט'}
-          {msg.isAI && ' (AI)'}
+    <div className="msg-row">
+      <div className={`msg-bubble msg-bubble--${sideClass}`}>
+        <div className="msg-bubble__meta">
+          {msg.side === 'believer' ? 'מאמין' : 'אתאיסט'}
+          {msg.isAI && ' · AI'}
         </div>
-        <div style={{ direction: 'rtl', textAlign: 'right' }}>
-          {msg.content}
-        </div>
+        <div style={{ direction: 'rtl', textAlign: 'right' }}>{msg.content}</div>
       </div>
     </div>
   );
 }
 
-function VoiceBubble({ msg, color, dimColor }) {
+function VoiceBubble({ msg, sideClass }) {
   const audioRef = useRef(null);
 
   function play() {
@@ -60,33 +45,22 @@ function VoiceBubble({ msg, color, dimColor }) {
   }
 
   return (
-    <div style={{ marginBottom: 14, direction: 'rtl', textAlign: 'right' }}>
-      <div style={{
-        display: 'inline-flex',
-        background: dimColor,
-        border: `1px solid ${color}`,
-        borderRadius: 14,
-        padding: '10px 16px',
-        alignItems: 'center',
-        gap: 10,
-        animation: 'fadeIn 0.25s ease',
-        flexDirection: 'row-reverse',
-      }}>
-        <div style={{ fontSize: '0.72rem', color, fontWeight: 700 }}>
-          {msg.side === 'believer' ? '🔴 מאמין' : '🟢 אתאיסט'}
-          {msg.isAI && ' (AI)'}
+    <div className="msg-voice-wrap">
+      <div className={`msg-voice-bubble msg-voice-bubble--${sideClass}`}>
+        <div className="msg-bubble__meta">
+          {msg.side === 'believer' ? 'מאמין' : 'אתאיסט'}
+          {msg.isAI && ' · AI'}
         </div>
-        <button onClick={play} style={{
-          background: color,
-          border: 'none',
-          borderRadius: '50%',
-          width: 36, height: 36,
-          cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '1rem', color: '#fff',
-        }}>▶</button>
-        <span style={{ color: '#888', fontSize: '0.8rem' }}>
-          {msg.isAIText ? '🤖 AI' : `🎙️ ${msg.duration}s`}
+        <button
+          type="button"
+          className={`msg-play-btn msg-play-btn--${sideClass}`}
+          onClick={play}
+          aria-label="השמע הודעה"
+        >
+          ▶
+        </button>
+        <span className="msg-voice-meta">
+          {msg.isAIText ? 'AI' : `${msg.duration}s`}
         </span>
         <audio ref={audioRef} style={{ display: 'none' }} />
       </div>

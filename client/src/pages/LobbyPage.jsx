@@ -101,7 +101,7 @@ export default function LobbyPage() {
             <span style={{ marginRight: 10 }}><SideTag side={user?.side} /></span>
           </div>
           <div style={{ color: 'var(--muted)', marginTop: 6, fontSize: '0.9rem' }}>
-            ניקוד: <span style={{ color: '#FFD700', fontWeight: 700 }}>{user?.score || 0}</span>
+            ניקוד: <span style={{ color: 'var(--gold)', fontWeight: 700 }}>{user?.score || 0}</span>
           </div>
         </div>
 

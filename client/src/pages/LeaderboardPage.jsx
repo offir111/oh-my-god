@@ -36,7 +36,7 @@ export default function LeaderboardPage() {
             {leaders.map((u, i) => (
               <div key={u.username} className="card" style={{
                 display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px',
-                border: i === 0 ? '1px solid #FFD700' : undefined,
+                border: i === 0 ? '1px solid var(--gold)' : undefined,
               }}>
                 <div style={{ width: 32, textAlign: 'center', fontSize: i < 3 ? '1.4rem' : '1rem', color: i >= 3 ? 'var(--muted)' : undefined }}>
                   {i < 3 ? medals[i] : `${i + 1}`}
@@ -52,7 +52,7 @@ export default function LeaderboardPage() {
                     <span>⚡ ניקוד איכות: {u.qualityScore}</span>
                   </div>
                 </div>
-                <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#FFD700' }}>
+                <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--gold)' }}>
                   {u.score} נק׳
                 </div>
               </div>

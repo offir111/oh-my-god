@@ -45,7 +45,11 @@ const BOOKS = [
   { he: 'דברי הימים ב', en: 'II Chronicles', section: 'כתובים' },
 ];
 
-const SECTION_COLORS = { תורה: '#CC0000', נביאים: '#0055AA', כתובים: '#007733' };
+const SECTION_COLORS = {
+  תורה: 'var(--believer)',
+  נביאים: 'var(--accent)',
+  כתובים: 'var(--atheist)',
+};
 
 export default function BibleModal({ onClose }) {
   const [query, setQuery] = useState('');
@@ -113,41 +117,43 @@ export default function BibleModal({ onClose }) {
     : 0;
 
   return (
-    <div style={s.overlay} onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={s.modal}>
-        <div style={s.header}>
-          <span style={s.title}>📖 ספר התנ"ך</span>
-          <button style={s.close} onClick={onClose}>✕</button>
+    <div className="bm-overlay" onClick={e => e.target === e.currentTarget && onClose()} role="presentation">
+      <div className="bm-sheet" role="dialog" aria-modal="true" aria-labelledby="bible-modal-title">
+        <div className="bm-header">
+          <span className="bm-title" id="bible-modal-title">ספר התנ״ך</span>
+          <button type="button" className="bm-close" onClick={onClose} aria-label="סגור">✕</button>
         </div>
 
-        <div style={s.searchRow}>
+        <div className="bm-search">
           <input
             ref={searchRef}
-            style={s.input}
-            placeholder="חפש ספר, פרק או מילה..."
+            placeholder="חפש ספר, פרק או מילה…"
             value={query}
             onChange={e => { setQuery(e.target.value); setResults(null); setSelectedBook(null); setVerses(null); }}
             onKeyDown={e => e.key === 'Enter' && searchVerses()}
           />
-          <button style={s.searchBtn} onClick={searchVerses}>🔍</button>
+          <button type="button" className="bm-search-btn" onClick={searchVerses} aria-label="חיפוש">🔍</button>
         </div>
 
-        <div style={s.body}>
-          {/* Verse search results */}
-          {loading && <div style={s.center}><div className="spinner" /></div>}
-          {results && results.length === 0 && <p style={s.muted}>לא נמצאו תוצאות</p>}
+        <div className="bm-body">
+          {loading && (
+            <div className="bm-center">
+              <div className="spinner" />
+            </div>
+          )}
+          {results && results.length === 0 && <p className="bm-muted">לא נמצאו תוצאות</p>}
           {results && results.length > 0 && (
             <div>
-              <p style={s.sectionLabel}>🤖 תוצאות AI — {results.length} פסוקים</p>
+              <p className="bm-section-label">תוצאות חיפוש · {results.length} פסוקים</p>
               {results.map((r, i) => (
-                <div key={i} style={s.verseCard}>
-                  <div style={{ color: '#FFE566', fontSize: '0.8rem', fontWeight: 700, marginBottom: 6 }}>📍 {r.ref}</div>
-                  <div style={{ fontSize: '1rem', lineHeight: 1.9, direction: 'rtl', marginBottom: r.context ? 8 : 0 }}>
+                <div key={i} className="bm-verse-card">
+                  <div style={{ color: 'var(--gold)', fontSize: '0.8rem', fontWeight: 800, marginBottom: 8 }}>{r.ref}</div>
+                  <div style={{ fontSize: '0.98rem', lineHeight: 1.9, direction: 'rtl', marginBottom: r.context ? 8 : 0 }}>
                     {r.text}
                   </div>
                   {r.context && (
-                    <div style={{ color: '#888', fontSize: '0.78rem', borderTop: '1px solid #2a2a2a', paddingTop: 6, direction: 'rtl' }}>
-                      💡 {r.context}
+                    <div style={{ color: 'var(--muted)', fontSize: '0.8rem', borderTop: '1px solid var(--border)', paddingTop: 8, marginTop: 8, direction: 'rtl' }}>
+                      {r.context}
                     </div>
                   )}
                 </div>
@@ -155,45 +161,51 @@ export default function BibleModal({ onClose }) {
             </div>
           )}
 
-          {/* Chapter verses view */}
           {!results && selectedBook && chapter && (
             <div>
-              <button style={s.back} onClick={() => { setChapter(null); setVerses(null); }}>
+              <button type="button" className="bm-back" onClick={() => { setChapter(null); setVerses(null); }}>
                 ← {selectedBook.he}
               </button>
-              <p style={s.sectionLabel}>{selectedBook.he} פרק {chapter}</p>
-              {versesLoading && <div style={s.center}><div className="spinner" /></div>}
+              <p className="bm-section-label" style={{ color: 'var(--text)' }}>{selectedBook.he} · פרק {chapter}</p>
+              {versesLoading && (
+                <div className="bm-center">
+                  <div className="spinner" />
+                </div>
+              )}
               {verses && verses.map((v, i) => (
-                <div key={i} style={s.verseCard}>
-                  <span style={{ color: '#888', fontSize: '0.72rem', marginLeft: 8 }}>{i + 1}</span>
-                  <span style={{ fontSize: '0.95rem', lineHeight: 1.8, direction: 'rtl' }}
+                <div key={i} className="bm-verse-card">
+                  <span style={{ color: 'var(--muted)', fontSize: '0.72rem', marginLeft: 8 }}>{i + 1}</span>
+                  <span style={{ fontSize: '0.95rem', lineHeight: 1.85, direction: 'rtl' }}
                     dangerouslySetInnerHTML={{ __html: typeof v === 'string' ? v : '' }} />
                 </div>
               ))}
             </div>
           )}
 
-          {/* Chapter selector */}
           {!results && selectedBook && !chapter && (
             <div>
-              <button style={s.back} onClick={() => setSelectedBook(null)}>← רשימת ספרים</button>
-              <p style={s.sectionLabel}>{selectedBook.he} — בחר פרק</p>
-              <div style={s.chapterGrid}>
+              <button type="button" className="bm-back" onClick={() => setSelectedBook(null)}>← רשימת ספרים</button>
+              <p className="bm-section-label" style={{ color: 'var(--text)' }}>{selectedBook.he} — בחר פרק</p>
+              <div className="bm-chapter-grid">
                 {Array.from({ length: chapterCount }, (_, i) => i + 1).map(ch => (
-                  <button key={ch} style={s.chapterBtn} onClick={() => loadChapter(selectedBook, ch)}>{ch}</button>
+                  <button type="button" key={ch} className="bm-chapter-btn" onClick={() => loadChapter(selectedBook, ch)}>{ch}</button>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Book list */}
           {!results && !selectedBook && sections.map(sec => (
             <div key={sec}>
-              <p style={{ ...s.sectionLabel, color: SECTION_COLORS[sec] }}>{sec}</p>
-              <div style={s.bookGrid}>
+              <p className="bm-section-label" style={{ color: SECTION_COLORS[sec] }}>{sec}</p>
+              <div className="bm-book-grid">
                 {filtered.filter(b => b.section === sec).map(b => (
-                  <button key={b.en} style={{ ...s.bookBtn, borderColor: SECTION_COLORS[b.section] }}
-                    onClick={() => { setSelectedBook(b); setChapter(null); setVerses(null); }}>
+                  <button
+                    type="button"
+                    key={b.en}
+                    className="bm-book-btn"
+                    style={{ borderColor: SECTION_COLORS[b.section] }}
+                    onClick={() => { setSelectedBook(b); setChapter(null); setVerses(null); }}
+                  >
                     {b.he}
                   </button>
                 ))}
@@ -205,73 +217,3 @@ export default function BibleModal({ onClose }) {
     </div>
   );
 }
-
-const s = {
-  overlay: {
-    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    zIndex: 9000, padding: 16,
-  },
-  modal: {
-    background: '#111', border: '1px solid #333', borderRadius: 16,
-    width: '100%', maxWidth: 560, maxHeight: '85vh',
-    display: 'flex', flexDirection: 'column', overflow: 'hidden',
-    direction: 'rtl',
-  },
-  header: {
-    padding: '14px 18px', borderBottom: '1px solid #222',
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    flexShrink: 0,
-  },
-  title: { fontWeight: 800, fontSize: '1.1rem', color: '#FFE566' },
-  close: {
-    background: 'none', border: 'none', color: '#888',
-    fontSize: '1.2rem', cursor: 'pointer', lineHeight: 1,
-    padding: '2px 6px', borderRadius: 6,
-  },
-  searchRow: {
-    padding: '10px 14px', borderBottom: '1px solid #1a1a1a',
-    display: 'flex', gap: 8, flexShrink: 0,
-  },
-  input: {
-    flex: 1, background: '#1a1a1a', border: '1px solid #333',
-    borderRadius: 10, padding: '9px 12px', color: '#fff',
-    fontSize: '0.95rem', direction: 'rtl', outline: 'none',
-  },
-  searchBtn: {
-    background: '#FFE566', border: 'none', borderRadius: 10,
-    padding: '9px 14px', cursor: 'pointer', fontSize: '1rem', fontWeight: 700,
-  },
-  body: { flex: 1, overflowY: 'auto', padding: '12px 14px' },
-  sectionLabel: {
-    fontSize: '0.72rem', fontWeight: 800, color: '#888',
-    letterSpacing: 1, textTransform: 'uppercase', margin: '10px 0 8px',
-  },
-  bookGrid: {
-    display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 14,
-  },
-  bookBtn: {
-    background: '#1a1a1a', border: '1px solid #444', borderRadius: 10,
-    color: '#fff', padding: '7px 12px', cursor: 'pointer',
-    fontSize: '0.88rem', fontWeight: 600, fontFamily: 'Arial, sans-serif',
-    transition: 'background 0.15s',
-  },
-  chapterGrid: {
-    display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8,
-  },
-  chapterBtn: {
-    width: 42, height: 42, background: '#1a1a1a', border: '1px solid #333',
-    borderRadius: 8, color: '#fff', cursor: 'pointer', fontWeight: 700,
-    fontFamily: 'Arial, sans-serif',
-  },
-  verseCard: {
-    background: '#1a1a1a', borderRadius: 10, padding: '10px 14px',
-    marginBottom: 8, lineHeight: 1.7,
-  },
-  back: {
-    background: 'none', border: 'none', color: '#888', cursor: 'pointer',
-    fontSize: '0.9rem', padding: '4px 0', marginBottom: 6, display: 'block',
-  },
-  muted: { color: '#555', textAlign: 'center', padding: '20px 0' },
-  center: { display: 'flex', justifyContent: 'center', padding: 20 },
-};

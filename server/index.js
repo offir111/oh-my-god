@@ -55,6 +55,16 @@ app.get('/api/stats', (_, res) => {
   });
 });
 
+/** רישום שם משתמש (אחרי טופס הרישום בלקוח) — מעדכן רשומים; idempotent לפי שם */
+app.post('/api/register', (req, res) => {
+  const username = String(req.body?.username || '').trim();
+  if (username.length < 2 || username.length > 64) {
+    return res.status(400).json({ error: 'invalid username' });
+  }
+  registerUser(username);
+  res.json({ ok: true, registered: store.registeredCount });
+});
+
 // Bible search via Groq AI
 app.post('/api/bible-search', async (req, res) => {
   const { query } = req.body;

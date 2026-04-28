@@ -40,23 +40,23 @@ export default function DebatePage() {
 
   if (finished) {
     return (
-      <div style={styles.finishPage}>
-        <div style={{ fontSize: '3rem' }}>🏆</div>
-        <h2 style={{ fontSize: '1.8rem' }}>הדיון הסתיים!</h2>
+      <div className="debate-finish-screen">
+        <div style={{ fontSize: 'clamp(2.5rem, 10vw, 3.5rem)', filter: 'drop-shadow(0 8px 24px rgba(251,191,36,0.25))' }} aria-hidden="true">🏆</div>
+        <h2>הדיון הסתיים</h2>
         {finishData?.summary && (
-          <div className="card" style={{ maxWidth: 500, textAlign: 'center' }}>
-            <p style={{ color: 'var(--muted)', fontSize: '0.85rem', marginBottom: 8 }}>סיכום:</p>
-            <p style={{ lineHeight: 1.7 }}>{finishData.summary}</p>
+          <div className="card" style={{ maxWidth: 520, textAlign: 'center', width: '100%' }}>
+            <p style={{ color: 'var(--muted)', fontSize: '0.82rem', marginBottom: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>סיכום</p>
+            <p style={{ lineHeight: 1.75, color: 'var(--text-secondary)' }}>{finishData.summary}</p>
             {finishData.tags?.length > 0 && (
-              <div style={{ marginTop: 12, display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
+              <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
                 {finishData.tags.map(t => <span key={t} style={styles.tag}>{t}</span>)}
               </div>
             )}
           </div>
         )}
-        <div style={{ display: 'flex', gap: 12 }}>
-          <button className="btn btn-ghost" onClick={() => navigate('/lobby')}>חזור ללובי</button>
-          <button className="btn btn-ghost" onClick={() => navigate('/knowledge')}>מאגר ידע</button>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <button type="button" className="btn btn-ghost" onClick={() => navigate('/lobby')}>חזור ללובי</button>
+          <button type="button" className="btn btn-ghost" onClick={() => navigate('/knowledge')}>מאגר ידע</button>
         </div>
       </div>
     );
@@ -64,11 +64,11 @@ export default function DebatePage() {
 
   if (disconnected) {
     return (
-      <div style={styles.finishPage}>
-        <div style={{ fontSize: '3rem' }}>⚠️</div>
+      <div className="debate-finish-screen">
+        <div style={{ fontSize: 'clamp(2.5rem, 10vw, 3.5rem)' }} aria-hidden="true">⚠️</div>
         <h2>היריב התנתק</h2>
-        <p style={{ color: 'var(--muted)' }}>הדיון הסתיים מוקדם.</p>
-        <button className="btn btn-ghost" onClick={() => navigate('/lobby')}>חזור ללובי</button>
+        <p style={{ color: 'var(--muted)', maxWidth: 360, lineHeight: 1.7 }}>הדיון נסגר לפני הסיום הרגיל.</p>
+        <button type="button" className="btn btn-ghost" onClick={() => navigate('/lobby')}>חזור ללובי</button>
       </div>
     );
   }
@@ -117,9 +117,8 @@ export default function DebatePage() {
       </div>
 
       <div style={styles.bottomBar}>
-        <a href={spectateUrl} target="_blank" rel="noreferrer"
-          style={{ color: 'var(--muted)', fontSize: '0.78rem' }}>
-          🔗 שתף קישור לצפייה
+        <a href={spectateUrl} target="_blank" rel="noreferrer" className="debate-share-link">
+          שתף קישור לצפייה
         </a>
       </div>
 
@@ -133,33 +132,36 @@ export default function DebatePage() {
 const styles = {
   page: {
     display: 'flex', flexDirection: 'column',
-    height: 'calc(100vh - 109px)', /* 52px AppHeader + 57px Navbar */
+    height: 'calc(100vh - 110px)', /* AppHeader + Navbar */
     padding: '0',
     overflow: 'hidden',
   },
   topBar: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
     padding: '12px 20px',
-    background: 'var(--card)',
+    background: 'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 100%), var(--card)',
     borderBottom: '1px solid var(--border)',
     flexShrink: 0,
+    backdropFilter: 'blur(8px)',
   },
   player: { display: 'flex', alignItems: 'center', gap: 8, minWidth: 140 },
   turnDot: { width: 8, height: 8, borderRadius: '50%', background: 'var(--believer)', animation: 'pulse 1s infinite' },
   body: { flex: 1, overflow: 'hidden', padding: '16px 20px', display: 'flex', flexDirection: 'column' },
   bottomBar: {
-    padding: '8px 20px',
+    padding: '10px 20px 14px',
     borderTop: '1px solid var(--border)',
-    display: 'flex', justifyContent: 'center',
+    display: 'flex',
+    justifyContent: 'center',
     flexShrink: 0,
-  },
-  finishPage: {
-    minHeight: '80vh',
-    display: 'flex', flexDirection: 'column', alignItems: 'center',
-    justifyContent: 'center', gap: 24, padding: '40px 20px', textAlign: 'center',
+    background: 'linear-gradient(0deg, rgba(0, 0, 0, 0.35), transparent)',
   },
   tag: {
-    background: 'var(--card2)', padding: '3px 10px',
-    borderRadius: 99, fontSize: '0.8rem', color: 'var(--muted)',
+    background: 'var(--card2)',
+    padding: '6px 12px',
+    borderRadius: 99,
+    fontSize: '0.78rem',
+    fontWeight: 700,
+    color: 'var(--muted)',
+    border: '1px solid var(--border)',
   },
 };

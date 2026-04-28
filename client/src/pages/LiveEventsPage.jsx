@@ -20,7 +20,7 @@ export default function LiveEventsPage() {
       <style>{`
         .live-events-page {
           min-height: calc(100vh - 52px);
-          background: #000;
+          background: transparent;
           padding: 24px 16px;
           display: flex;
           flex-direction: column;

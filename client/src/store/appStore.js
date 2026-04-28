@@ -1,13 +1,56 @@
 import { create } from 'zustand';
 
-export const useAppStore = create((set, get) => ({
-  user: null, // never auto-load from storage — always require fresh login
-  pendingUser: null, // set after registration before side selection
+const LS_USER = 'omg_user';
+const LS_PENDING = 'omg_pending';
+
+function readStoredUser() {
+  try {
+    const raw = localStorage.getItem(LS_USER);
+    if (!raw) return null;
+    const u = JSON.parse(raw);
+    if (u && typeof u.username === 'string' && u.username.length >= 2 && (u.side === 'believer' || u.side === 'atheist')) {
+      return {
+        username: u.username,
+        side: u.side,
+        score: typeof u.score === 'number' ? u.score : 0,
+        voiceDebates: typeof u.voiceDebates === 'number' ? u.voiceDebates : 0,
+      };
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
+function readStoredPending() {
+  try {
+    const raw = localStorage.getItem(LS_PENDING);
+    if (!raw) return null;
+    const p = JSON.parse(raw);
+    if (p && typeof p.username === 'string' && p.username.length >= 2) return { username: p.username };
+  } catch { /* ignore */ }
+  return null;
+}
+
+function persistFullUser(user) {
+  if (user) localStorage.setItem(LS_USER, JSON.stringify(user));
+  else localStorage.removeItem(LS_USER);
+}
+
+function persistPending(pending) {
+  if (pending) localStorage.setItem(LS_PENDING, JSON.stringify(pending));
+  else localStorage.removeItem(LS_PENDING);
+}
+
+const initialUser = readStoredUser();
+const initialPending = initialUser ? null : readStoredPending();
+
+export const useAppStore = create((set) => ({
+  user: initialUser,
+  pendingUser: initialPending,
   debateId: null,
   debate: null,
   gifts: [],
   spectatorCount: 0,
-  streamingMessage: null, // { side, content, isAI: true }
+  streamingMessage: null,
 
   setStreamingMessage: (msg) => set({ streamingMessage: msg }),
   appendStreamingChunk: (chunk) => set(s => ({
@@ -17,11 +60,27 @@ export const useAppStore = create((set, get) => ({
   })),
   clearStreamingMessage: () => set({ streamingMessage: null }),
 
-  setPendingUser: (pendingUser) => set({ pendingUser }),
+  setPendingUser: (pendingUser) => {
+    if (pendingUser) {
+      persistPending(pendingUser);
+      persistFullUser(null);
+      set({ pendingUser, user: null });
+    } else {
+      persistPending(null);
+      set({ pendingUser: null });
+    }
+  },
 
   setUser: (user) => {
-    // no localStorage persistence — fresh login every session
-    set({ user, pendingUser: null });
+    if (user) {
+      persistFullUser(user);
+      persistPending(null);
+      set({ user, pendingUser: null });
+    } else {
+      persistFullUser(null);
+      persistPending(null);
+      set({ user: null, pendingUser: null });
+    }
   },
 
   setDebate: (debate) => set({ debate, debateId: debate?.id || null }),
@@ -58,9 +117,11 @@ export const useAppStore = create((set, get) => ({
     debate: s.debate ? { ...s.debate, turn } : s.debate,
   })),
 
-  updateScore: (newScore) => set(s => ({
-    user: s.user ? { ...s.user, score: newScore } : s.user,
-  })),
+  updateScore: (newScore) => set(s => {
+    const nextUser = s.user ? { ...s.user, score: newScore } : s.user;
+    if (nextUser) persistFullUser(nextUser);
+    return { user: nextUser };
+  }),
 
   setSpectatorCount: (count) => set({ spectatorCount: count }),
 
