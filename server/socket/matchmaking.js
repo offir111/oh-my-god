@@ -7,6 +7,11 @@ export function registerMatchmaking(io) {
     socket.on('disconnect', reason => console.log(`[socket] disconnected: ${socket.id} (${reason})`));
 
     socket.on('JOIN_QUEUE', ({ username, side }) => {
+      if (!isValidMatchUser(username, side)) {
+        socket.emit('MATCH_ERROR', { message: 'פרטי משתמש לא תקינים' });
+        return;
+      }
+      username = username.trim();
       store.users.set(socket.id, { username, side, score: 0, voiceDebates: 0, giftsReceived: 0 });
       registerUser(username);
       const oppSide = side === 'believer' ? 'atheist' : 'believer';
@@ -49,6 +54,11 @@ export function registerMatchmaking(io) {
     });
 
     socket.on('REQUEST_AI_DEBATE', ({ username, side }) => {
+      if (!isValidMatchUser(username, side)) {
+        socket.emit('MATCH_ERROR', { message: 'פרטי משתמש לא תקינים' });
+        return;
+      }
+      username = username.trim();
       console.log(`[match] REQUEST_AI_DEBATE from ${username} (${side})`);
       store.users.set(socket.id, { username, side, score: 0, voiceDebates: 0, giftsReceived: 0 });
       registerUser(username);
@@ -98,6 +108,13 @@ export function registerMatchmaking(io) {
       }
     });
   });
+}
+
+function isValidMatchUser(username, side) {
+  return typeof username === 'string'
+    && username.trim().length >= 2
+    && username.trim().length <= 64
+    && ['believer', 'atheist'].includes(side);
 }
 
 async function triggerAIFirstMessage(io, debate) {

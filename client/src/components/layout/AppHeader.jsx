@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAppStore } from '../../store/appStore.js';
 import { disconnectSocket } from '../../socket.js';
 import BibleModal from '../ui/BibleModal.jsx';
@@ -11,7 +11,6 @@ export default function AppHeader() {
   const setPendingUser = useAppStore(s => s.setPendingUser);
   const resetDebate = useAppStore(s => s.resetDebate);
   const navigate = useNavigate();
-  const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const [bibleOpen, setBibleOpen] = useState(false);
@@ -107,13 +106,13 @@ export default function AppHeader() {
     navigate('/login');
   }
 
-  /** דף הכניסה — תמיד /login (גם כשמחוברים) */
+  /** דף הבית — דף ההרשמה ובחירת הצד; לא מנתק מהחשבון */
   function goAppHome() {
     setMenuOpen(false);
     setListOpen(null);
     setOnlineModalOpen(false);
     setAvatarMenuOpen(false);
-    navigate('/login');
+    navigate('/login', { state: { homeResetAt: Date.now() } });
   }
 
   const nick = user?.username || pendingUser?.username;
@@ -142,9 +141,16 @@ export default function AppHeader() {
           box-shadow: 0 4px 24px rgba(0,0,0,0.25);
         }
         .app-header > * { pointer-events: all; }
+        .header-zone {
+          height: 38px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
 
         .header-dots-btn {
           width: 38px; height: 38px;
+          box-sizing: border-box;
           border-radius: 50%;
           border: 1px solid var(--border, rgba(255,255,255,0.1));
           background: rgba(255,255,255,0.05);
@@ -161,6 +167,10 @@ export default function AppHeader() {
         }
         .header-dots-btn:active { transform: scale(0.95); }
         .header-app-brand {
+          height: 38px;
+          display: flex;
+          align-items: center;
+          box-sizing: border-box;
           background: none;
           border: none;
           cursor: pointer;
@@ -183,23 +193,6 @@ export default function AppHeader() {
         .header-app-brand:focus-visible {
           outline: 2px solid var(--accent, #6366f1);
           outline-offset: 2px;
-        }
-        .header-back-btn {
-          width: 38px; height: 38px;
-          border-radius: 50%;
-          border: 1px solid var(--border, rgba(255,255,255,0.1));
-          background: rgba(255,255,255,0.05);
-          color: var(--text, #fff);
-          font-size: 1rem;
-          cursor: pointer;
-          display: flex; align-items: center; justify-content: center;
-          line-height: 1;
-          margin-right: 6px;
-          transition: background 0.2s, border-color 0.2s;
-        }
-        .header-back-btn:hover {
-          background: rgba(255,255,255,0.1);
-          border-color: rgba(255,255,255,0.2);
         }
         /* RTL: הכפתור בקצה המסך השמאלי; right:0 גרם לתפריט להימתח שמאלה (מחוץ למסך) — left:0 פותח לתוך הדף */
         .header-dots-menu {
@@ -247,6 +240,7 @@ export default function AppHeader() {
         .header-avatar-wrap { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; }
         .header-avatar {
           width: 38px; height: 38px;
+          box-sizing: border-box;
           border-radius: 50%;
           background: var(--card2, #1a1a24);
           border: 2px solid var(--border-strong, rgba(255,255,255,0.14));
@@ -349,13 +343,20 @@ export default function AppHeader() {
           display: flex;
           gap: 10px;
           align-items: center;
+          height: 38px;
           direction: rtl;
+          position: relative;
+        }
+        .header-stats.header-zone {
           position: relative;
         }
         .header-stat {
           display: flex;
           flex-direction: column;
           align-items: center;
+          justify-content: center;
+          min-height: 38px;
+          box-sizing: border-box;
           line-height: 1.25;
           cursor: pointer;
           padding: 6px 12px;
@@ -513,11 +514,8 @@ export default function AppHeader() {
       `}</style>
 
       <div className="app-header">
-        {/* Left side: back arrow + avatar */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          {location.pathname !== '/' && (
-            <button className="header-back-btn" onClick={() => navigate(-1)} title="חזור">&#9664;</button>
-          )}
+        {/* Right side: avatar */}
+        <div className="header-zone header-zone--user">
           <div className="header-avatar-wrap" ref={avatarWrapRef}>
             {activeUser ? (
               <button
@@ -563,7 +561,7 @@ export default function AppHeader() {
         </div>
 
         {/* Stats — center */}
-        <div className="header-stats" ref={listRef}>
+        <div className="header-zone header-zone--stats header-stats" ref={listRef}>
           {canSeeRegistered ? (
             <button
               type="button"
@@ -615,9 +613,9 @@ export default function AppHeader() {
           )}
         </div>
 
-        {/* Right: מותג (דף הבית) + תפריט נקודות */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <button type="button" className="header-app-brand" onClick={goAppHome} aria-label="דף הכניסה">
+        {/* Left: מותג (דף הבית) + תפריט נקודות */}
+        <div className="header-zone header-zone--brand">
+          <button type="button" className="header-app-brand" onClick={goAppHome} aria-label="דף הבית">
             oh my GOD
           </button>
           <div ref={menuRef} className="header-dots-wrap" style={{ position: 'relative' }}>

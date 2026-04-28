@@ -8,19 +8,62 @@ import VoicePhase from '../components/debate/VoicePhase.jsx';
 import LivePhase from '../components/debate/LivePhase.jsx';
 import GiftOverlay from '../components/debate/GiftOverlay.jsx';
 import SideTag from '../components/ui/SideTag.jsx';
+import { socket } from '../socket.js';
 
 export default function DebatePage() {
   const { debateId } = useParams();
   const navigate = useNavigate();
   const user = useAppStore(s => s.user);
   const debate = useAppStore(s => s.debate);
+  const setDebate = useAppStore(s => s.setDebate);
   const spectatorCount = useAppStore(s => s.spectatorCount);
   const { opponentTyping, opponentRecording, finished, finishData, disconnected } = useDebate(debateId);
   const [scoreToast, setScoreToast] = useState(null);
+  const [shareToast, setShareToast] = useState('');
+  const [loadingDebate, setLoadingDebate] = useState(() => !debate || debate.id !== debateId);
 
   useEffect(() => {
-    if (!debate) navigate('/lobby', { replace: true });
-  }, [debate]);
+    if (debate?.id === debateId) {
+      setLoadingDebate(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function restoreLiveDebate() {
+      setLoadingDebate(true);
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/debates/live/${debateId}`);
+        if (!res.ok) throw new Error('live debate not found');
+        const data = await res.json();
+        const isParticipant = [data?.believer?.username, data?.atheist?.username].includes(user?.username);
+        if (!isParticipant) {
+          navigate(`/spectate/${debateId}`, { replace: true });
+          return;
+        }
+        if (!cancelled) {
+          const rejoin = () => socket.emit('REJOIN_DEBATE', {
+            debateId,
+            username: user?.username,
+            side: user?.side,
+          });
+          if (socket.connected) rejoin();
+          else {
+            socket.once('connect', rejoin);
+            socket.connect();
+          }
+          setDebate(data);
+        }
+      } catch {
+        if (!cancelled) navigate('/lobby', { replace: true });
+      } finally {
+        if (!cancelled) setLoadingDebate(false);
+      }
+    }
+
+    restoreLiveDebate();
+    return () => { cancelled = true; };
+  }, [debate, debateId, navigate, setDebate, user?.username]);
 
   useEffect(() => {
     if (finished) {
@@ -29,7 +72,13 @@ export default function DebatePage() {
     }
   }, [finished]);
 
-  if (!debate) return null;
+  if (!debate || debate.id !== debateId) {
+    return loadingDebate ? (
+      <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="spinner" />
+      </div>
+    ) : null;
+  }
 
   const mySide = user?.side;
   const opponent = mySide === 'believer' ? debate.atheist : debate.believer;
@@ -37,6 +86,16 @@ export default function DebatePage() {
   const oppColor = oppSide === 'believer' ? 'var(--believer)' : 'var(--atheist)';
 
   const spectateUrl = `${window.location.origin}/spectate/${debateId}`;
+
+  async function copySpectateUrl() {
+    try {
+      await navigator.clipboard.writeText(spectateUrl);
+      setShareToast('קישור הצפייה הועתק');
+    } catch {
+      setShareToast(spectateUrl);
+    }
+    setTimeout(() => setShareToast(''), 2500);
+  }
 
   if (finished) {
     return (
@@ -117,9 +176,10 @@ export default function DebatePage() {
       </div>
 
       <div style={styles.bottomBar}>
-        <a href={spectateUrl} target="_blank" rel="noreferrer" className="debate-share-link">
+        <button type="button" onClick={copySpectateUrl} className="debate-share-link" style={styles.shareButton}>
           שתף קישור לצפייה
-        </a>
+        </button>
+        {shareToast && <span style={styles.shareToast}>{shareToast}</span>}
       </div>
 
       <GiftOverlay mySide={mySide} />
@@ -151,9 +211,24 @@ const styles = {
     padding: '10px 20px 14px',
     borderTop: '1px solid var(--border)',
     display: 'flex',
+    gap: 12,
+    alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
     background: 'linear-gradient(0deg, rgba(0, 0, 0, 0.35), transparent)',
+  },
+  shareButton: {
+    border: 'none',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  },
+  shareToast: {
+    color: 'var(--muted)',
+    fontSize: '0.8rem',
+    maxWidth: 260,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   tag: {
     background: 'var(--card2)',

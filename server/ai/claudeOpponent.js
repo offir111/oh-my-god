@@ -72,7 +72,7 @@ export async function streamAIResponse({ side, history, phase }, onChunk) {
       chunkCount++;
       fullText += delta;
       console.log(`[groq] chunk #${chunkCount} — ${delta.length} chars: "${delta.substring(0, 20)}..."`);
-      onChunk(delta);
+      await onChunk(delta);
     }
   }
   console.log(`[groq] stream FINISHED — ${chunkCount} chunks, ${fullText.length} total chars`);

@@ -20,6 +20,28 @@ const VOICE_LIMIT = 5;
 export function registerDebate(io) {
   io.on('connection', (socket) => {
 
+    socket.on('REJOIN_DEBATE', ({ debateId, username, side }) => {
+      const debate = store.debates.get(debateId);
+      if (!debate || debate.phase === 'finished') return;
+      if (!['believer', 'atheist'].includes(side)) return;
+
+      const participant = side === 'believer' ? debate.believer : debate.atheist;
+      if (participant.username !== username || participant.socketId === 'ai') return;
+
+      const profile = store.userScores.get(username);
+      store.users.set(socket.id, {
+        username,
+        side,
+        score: profile?.score || 0,
+        voiceDebates: profile?.voiceDebates || 0,
+        giftsReceived: profile?.giftsReceived || 0,
+      });
+      participant.socketId = socket.id;
+      socket.join(debateId);
+      socket.emit('DEBATE_REJOINED', { debateId });
+      console.log(`[debate] ${username} rejoined ${debateId} as ${side}`);
+    });
+
     socket.on('SEND_TEXT_MESSAGE', async ({ debateId, content }) => {
       const debate = store.debates.get(debateId);
       console.log(`[debate] SEND_TEXT_MESSAGE debateId=${debateId} found=${!!debate} phase=${debate?.phase} validTurn=${debate ? isValidTurn(debate, socket.id, store) : 'n/a'} turn=${debate?.turn}`);
@@ -116,12 +138,13 @@ async function handleAITextTurn(io, debate) {
     let chunkCount = 0;
     const text = await streamAIResponse(
       { side: debate.aiSide, history: debate.textMessages, phase: 'text' },
-      (chunk) => {
+      async (chunk) => {
         chunkCount++;
         console.log(`[ai-turn] CHUNK #${chunkCount} callback — emitting to ${debate.id} and spec:${debate.id}`);
         io.to(debate.id).emit('AI_STREAM_CHUNK', { side: debate.aiSide, chunk });
         io.to(`spec:${debate.id}`).emit('AI_STREAM_CHUNK', { side: debate.aiSide, chunk });
         console.log(`[ai-turn] CHUNK #${chunkCount} emitted`);
+        await new Promise(r => setTimeout(r, 240));
       }
     );
     console.log(`[ai-turn] DONE — ${chunkCount} chunks, ${text.length} total chars`);

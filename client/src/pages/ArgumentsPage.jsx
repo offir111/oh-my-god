@@ -364,7 +364,7 @@ export default function ArgumentsPage() {
 
       <div className="args-page">
         <div className="args-header">
-          <button className="args-back" onClick={() => navigate(-1)}>← חזרה</button>
+          <button type="button" className="args-back" onClick={() => navigate('/')}>← חזרה</button>
           <h1>⚖️ בעד ונגד</h1>
           <p>ויקיפדיה של טענות — אמונה, מדע, ומה שביניהם</p>
         </div>

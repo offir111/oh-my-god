@@ -13,9 +13,9 @@ export default function Navbar() {
   const sideLabel = user?.side === 'believer' ? 'מאמין' : 'אתאיסט';
   const sideColor = user?.side === 'believer' ? 'var(--believer)' : 'var(--atheist)';
 
-  /** דף הכניסה — לא מנתק מהחשבון (התנתקות מלאה רק מעיגול המשתמש) */
-  function goToLoginPage() {
-    navigate('/login');
+  /** דף הבית — לא מנתק מהחשבון (התנתקות מלאה רק מעיגול המשתמש) */
+  function goHome() {
+    navigate('/login', { state: { homeResetAt: Date.now() } });
   }
 
   return (
@@ -42,10 +42,10 @@ export default function Navbar() {
           type="button"
           className="btn btn-ghost"
           style={{ padding: '8px 16px', fontSize: '0.84rem' }}
-          onClick={goToLoginPage}
-          title="מעבר לדף הכניסה (נשארים מחוברים)"
+          onClick={goHome}
+          title="מעבר לדף הבית (נשארים מחוברים)"
         >
-          יציאה
+          דף הבית
         </button>
       </div>
     </nav>

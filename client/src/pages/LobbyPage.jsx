@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppStore } from '../store/appStore.js';
 import { socket } from '../socket.js';
@@ -12,6 +12,8 @@ export default function LobbyPage() {
   const [serverUrl, setServerUrl] = useState('');
   const [httpOk, setHttpOk] = useState(null);
   const [liveDebates, setLiveDebates] = useState([]);
+  const [matchError, setMatchError] = useState('');
+  const matchmakingActiveRef = useRef(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -21,7 +23,10 @@ export default function LobbyPage() {
 
     // Test plain HTTP connectivity to Railway
     fetch(`${url}/api/health`)
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error('health check failed');
+        return r.json();
+      })
       .then(d => { console.log('[lobby] HTTP health OK:', d); setHttpOk(true); })
       .catch(e => { console.error('[lobby] HTTP health FAILED:', e.message); setHttpOk(false); });
 
@@ -35,16 +40,25 @@ export default function LobbyPage() {
 
     // Auto-start AI debate if coming from login with ?ai=1
     const params = new URLSearchParams(location.search);
+    let autoStartTimer = null;
     if (params.get('ai') === '1') {
-      setTimeout(() => {
+      autoStartTimer = setTimeout(() => {
         console.log('[lobby] auto-starting AI, connected=', socket.connected);
+        matchmakingActiveRef.current = true;
         setStatus('waiting-ai');
         socket.emit('REQUEST_AI_DEBATE', { username: user?.username, side: user?.side });
       }, 800);
     }
 
-    socket.on('WAITING_FOR_OPPONENT', () => setStatus('waiting'));
-    socket.on('MATCH_FOUND', ({ debateId, isAI, believer, atheist, aiSide, turn }) => {
+    const onWaitingForOpponent = () => setStatus('waiting');
+    const onMatchError = ({ message }) => {
+      matchmakingActiveRef.current = false;
+      setMatchError(message || 'לא ניתן להתחיל התאמה כרגע');
+      setStatus('error');
+    };
+    const onMatchFound = ({ debateId, isAI, believer, atheist, aiSide, turn }) => {
+      if (!matchmakingActiveRef.current) return;
+      matchmakingActiveRef.current = false;
       setStatus('found');
       setDebate({
         id: debateId, isAI, aiSide,
@@ -56,34 +70,49 @@ export default function LobbyPage() {
         giftsReceived: { believer: 0, atheist: 0 },
       });
       setTimeout(() => navigate(`/debate/${debateId}`), 600);
-    });
+    };
+
+    socket.on('WAITING_FOR_OPPONENT', onWaitingForOpponent);
+    socket.on('MATCH_ERROR', onMatchError);
+    socket.on('MATCH_FOUND', onMatchFound);
 
     return () => {
+      if (autoStartTimer) clearTimeout(autoStartTimer);
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
-      socket.off('WAITING_FOR_OPPONENT');
-      socket.off('MATCH_FOUND');
+      socket.off('WAITING_FOR_OPPONENT', onWaitingForOpponent);
+      socket.off('MATCH_ERROR', onMatchError);
+      socket.off('MATCH_FOUND', onMatchFound);
     };
   }, []);
 
   async function fetchLive() {
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/debates/live`);
-      if (res.ok) setLiveDebates(await res.json());
-    } catch {}
+      if (!res.ok) throw new Error('failed to load live debates');
+      setLiveDebates(await res.json());
+    } catch {
+      setLiveDebates([]);
+    }
   }
 
   function joinQueue() {
+    matchmakingActiveRef.current = true;
+    setMatchError('');
     setStatus('waiting');
     socket.emit('JOIN_QUEUE', { username: user.username, side: user.side });
   }
 
   function requestAI() {
+    matchmakingActiveRef.current = true;
+    setMatchError('');
     setStatus('waiting-ai');
     socket.emit('REQUEST_AI_DEBATE', { username: user.username, side: user.side });
   }
 
   function cancelQueue() {
+    matchmakingActiveRef.current = false;
+    setMatchError('');
     setStatus('idle');
     socket.emit('LEAVE_QUEUE');
   }
@@ -155,6 +184,15 @@ export default function LobbyPage() {
           <div className="card" style={{ textAlign: 'center', padding: 40 }}>
             <div style={{ fontSize: '2rem', marginBottom: 12 }}>⚡</div>
             <p style={{ fontSize: '1.2rem', fontWeight: 700 }}>נמצא יריב! מתחיל דיון...</p>
+          </div>
+        )}
+
+        {status === 'error' && (
+          <div className="card" style={{ textAlign: 'center', padding: 40 }}>
+            <p style={{ color: '#f87171', fontWeight: 700, marginBottom: 16 }}>
+              {matchError || 'לא ניתן להתחיל התאמה כרגע'}
+            </p>
+            <button type="button" className="btn btn-ghost" onClick={cancelQueue}>חזרה ללובי</button>
           </div>
         )}
 

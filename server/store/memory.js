@@ -1,9 +1,11 @@
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SNAPSHOT_PATH = path.join(__dirname, '..', 'store-snapshot.json');
+const REGISTERED_PASSWORDS_VERSION = 2;
 
 export const store = {
   users: new Map(),        // socketId → { username, side, score, voiceDebates, giftsReceived, lastSeen }
@@ -14,6 +16,7 @@ export const store = {
   archivedDebates: [],     // finished debates for knowledge base
   registeredCount: 0,      // persistent total registered users count
   registeredUsernames: new Set(), // track unique usernames to avoid double-counting
+  registeredPasswords: new Map(), // username -> password hash
 };
 
 export function createDebateState(debateId, believer, atheist, isAI = false, aiSide = null) {
@@ -68,12 +71,40 @@ export function updateUserScore(store, username, delta, options = {}) {
   if (options.side) profile.side = options.side;
 }
 
-export function registerUser(username) {
+function hashPassword(password) {
+  return crypto.createHash('sha256').update(String(password)).digest('hex');
+}
+
+export function registerUser(username, password = null, options = {}) {
+  let shouldSave = false;
+
+  if (password !== null) {
+    const passwordText = String(password);
+    if (passwordText.length !== 4) {
+      return { ok: false, error: 'הסיסמה חייבת להיות בדיוק 4 תווים' };
+    }
+
+    const nextHash = hashPassword(passwordText);
+    const existingHash = store.registeredPasswords.get(username);
+    if (existingHash && existingHash !== nextHash && !options.resetPassword) {
+      return { ok: false, error: 'הסיסמה אינה תואמת לשם המשתמש הזה' };
+    }
+
+    if (!existingHash || existingHash !== nextHash) {
+      store.registeredPasswords.set(username, nextHash);
+      shouldSave = true;
+    }
+  }
+
   if (!store.registeredUsernames.has(username)) {
     store.registeredUsernames.add(username);
     store.registeredCount++;
-    saveSnapshot();
+    shouldSave = true;
   }
+
+  if (shouldSave) saveSnapshot();
+
+  return { ok: true, registered: store.registeredCount };
 }
 
 export function saveSnapshot() {
@@ -83,6 +114,8 @@ export function saveSnapshot() {
       userScores: Object.fromEntries(store.userScores),
       registeredCount: store.registeredCount,
       registeredUsernames: [...store.registeredUsernames],
+      registeredPasswordsVersion: REGISTERED_PASSWORDS_VERSION,
+      registeredPasswords: Object.fromEntries(store.registeredPasswords),
       savedAt: new Date().toISOString(),
     };
     fs.writeFileSync(SNAPSHOT_PATH, JSON.stringify(data, null, 2), 'utf8');
@@ -104,6 +137,9 @@ export function loadSnapshot() {
     if (data.registeredCount) store.registeredCount = data.registeredCount;
     if (data.registeredUsernames) {
       store.registeredUsernames = new Set(data.registeredUsernames);
+    }
+    if (data.registeredPasswordsVersion === REGISTERED_PASSWORDS_VERSION && data.registeredPasswords) {
+      store.registeredPasswords = new Map(Object.entries(data.registeredPasswords));
     }
     console.log(`[store] Loaded ${store.archivedDebates.length} archived debates, ${store.registeredCount} registered users`);
   } catch (e) {

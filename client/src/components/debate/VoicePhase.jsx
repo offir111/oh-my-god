@@ -9,7 +9,7 @@ const VOICE_LIMIT = 5;
 export default function VoicePhase({ debateId, opponentRecording }) {
   const user = useAppStore(s => s.user);
   const debate = useAppStore(s => s.debate);
-  const { isRecording, audioBlob, duration, startRecording, stopRecording, clearBlob } = useMediaRecorder();
+  const { isRecording, audioBlob, duration, error, startRecording, stopRecording, clearBlob } = useMediaRecorder();
   const bottomRef = useRef(null);
 
   const myCount = debate?.voiceCount?.[user?.side] || 0;
@@ -20,13 +20,13 @@ export default function VoicePhase({ debateId, opponentRecording }) {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [debate?.voiceMessages?.length]);
 
-  function handleRecord() {
+  async function handleRecord() {
     if (isRecording) {
       stopRecording();
       socket.emit('VOICE_RECORDING_STOP', { debateId });
     } else {
-      startRecording();
-      socket.emit('VOICE_RECORDING_START', { debateId });
+      const started = await startRecording();
+      if (started) socket.emit('VOICE_RECORDING_START', { debateId });
     }
   }
 
@@ -119,6 +119,12 @@ export default function VoicePhase({ debateId, opponentRecording }) {
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {error && (
+        <div className="debate-hint" role="alert">
+          {error}
         </div>
       )}
 

@@ -6,28 +6,33 @@ export default function KnowledgeBasePage() {
   const [total, setTotal] = useState(0);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => { fetchDebates(); }, [query]);
 
   async function fetchDebates() {
     setLoading(true);
+    setError('');
     try {
       const qs = query ? `?q=${encodeURIComponent(query)}` : '';
       const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/debates${qs}`);
-      if (res.ok) {
-        const data = await res.json();
-        setDebates(data.items);
-        setTotal(data.total);
-      }
-    } catch {}
+      if (!res.ok) throw new Error('failed to load debates');
+      const data = await res.json();
+      setDebates(data.items);
+      setTotal(data.total);
+    } catch {
+      setDebates([]);
+      setTotal(0);
+      setError('לא ניתן לטעון את מאגר הידע כרגע. נסה שוב מאוחר יותר.');
+    }
     setLoading(false);
   }
 
   return (
     <div className="page">
       <div className="container">
-        <button onClick={() => navigate(-1)} style={{ background:'none', border:'none', color:'#aaa', fontSize:'0.9rem', cursor:'pointer', padding:'4px 0', marginBottom: 12 }}>← חזרה</button>
+        <button type="button" onClick={() => navigate('/')} style={{ background:'none', border:'none', color:'#aaa', fontSize:'0.9rem', cursor:'pointer', padding:'4px 0', marginBottom: 12 }}>← חזרה</button>
         <div style={{ marginBottom: 28 }}>
           <h1 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: 8 }}>📚 מאגר הידע</h1>
           <p style={{ color: 'var(--muted)' }}>ויקיפדיה של טענות בעד ונגד האמונה — {total} דיונים שמורים</p>
@@ -42,6 +47,10 @@ export default function KnowledgeBasePage() {
 
         {loading ? (
           <div style={{ textAlign: 'center', padding: 40 }}><div className="spinner" style={{ margin: '0 auto' }} /></div>
+        ) : error ? (
+          <div style={{ textAlign: 'center', padding: 60, color: 'var(--muted)' }}>
+            {error}
+          </div>
         ) : debates.length === 0 ? (
           <div style={{ textAlign: 'center', padding: 60, color: 'var(--muted)' }}>
             {query ? 'לא נמצאו תוצאות' : 'עדיין אין דיונים שמורים'}

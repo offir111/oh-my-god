@@ -4,12 +4,14 @@ export function useMediaRecorder() {
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState(null);
   const [duration, setDuration] = useState(0);
+  const [error, setError] = useState('');
   const mrRef = useRef(null);
   const startTimeRef = useRef(null);
   const chunksRef = useRef([]);
 
   async function startRecording() {
     try {
+      setError('');
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? 'audio/webm;codecs=opus'
@@ -31,9 +33,11 @@ export function useMediaRecorder() {
       startTimeRef.current = Date.now();
       setIsRecording(true);
       setAudioBlob(null);
+      return true;
     } catch (e) {
       console.error('Microphone error:', e);
-      alert('לא ניתן לגשת למיקרופון');
+      setError('לא ניתן לגשת למיקרופון. בדוק הרשאות ונסה שוב.');
+      return false;
     }
   }
 
@@ -47,7 +51,8 @@ export function useMediaRecorder() {
   function clearBlob() {
     setAudioBlob(null);
     setDuration(0);
+    setError('');
   }
 
-  return { isRecording, audioBlob, duration, startRecording, stopRecording, clearBlob };
+  return { isRecording, audioBlob, duration, error, startRecording, stopRecording, clearBlob };
 }

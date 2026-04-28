@@ -1,21 +1,22 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { socket } from '../socket.js';
 import { useAppStore } from '../store/appStore.js';
 
 export function useDebate(debateId) {
   const { addTextMessage, addVoiceMessage, setPhase, setTurn,
-          updateScore, setSpectatorCount, addGift, debate,
+          updateScore, setSpectatorCount, addGift,
           setStreamingMessage, appendStreamingChunk, clearStreamingMessage } = useAppStore();
   const [opponentTyping, setOpponentTyping] = useState(false);
   const [opponentRecording, setOpponentRecording] = useState(false);
   const [finished, setFinished] = useState(false);
   const [finishData, setFinishData] = useState(null);
   const [disconnected, setDisconnected] = useState(false);
+  const fallbackStreamIntervalsRef = useRef(new Set());
 
   useEffect(() => {
     if (!debateId) return;
 
-    socket.on('TEXT_MESSAGE_RECEIVED', (msg) => {
+    function onTextMessageReceived(msg) {
       setOpponentTyping(false);
       // Simulate streaming animation for AI messages (works even with old server)
       if (msg.isAI && msg.content) {
@@ -26,84 +27,126 @@ export function useDebate(debateId) {
           i += 3;
           if (i >= fullText.length) {
             clearInterval(interval);
+            fallbackStreamIntervalsRef.current.delete(interval);
             clearStreamingMessage();
             addTextMessage(msg);
           } else {
             appendStreamingChunk(fullText.slice(i - 3, i));
           }
-        }, 4500); // 80% slower than before
+        }, 10125); // Another 50% slower for a near-reading typing pace
+        fallbackStreamIntervalsRef.current.add(interval);
       } else {
         addTextMessage(msg);
       }
-    });
+    }
 
-    socket.on('VOICE_MESSAGE_RECEIVED', (msg) => {
+    function onVoiceMessageReceived(msg) {
       addVoiceMessage(msg);
       setOpponentRecording(false);
-    });
+    }
 
-    socket.on('TURN_CHANGED', ({ turn }) => setTurn(turn));
+    function onTurnChanged({ turn }) {
+      setTurn(turn);
+    }
 
-    socket.on('AI_TYPING', () => setOpponentTyping(true));
+    function onAITyping() {
+      setOpponentTyping(true);
+    }
 
-    socket.on('AI_STREAM_START', ({ side }) => {
+    function onAIStreamStart({ side }) {
       console.log('[stream] START', side);
       setOpponentTyping(false);
       setStreamingMessage({ side, content: '', isAI: true, timestamp: Date.now() });
-    });
-    socket.on('AI_STREAM_CHUNK', ({ chunk }) => {
+    }
+
+    function onAIStreamChunk({ chunk }) {
       console.log('[stream] CHUNK', chunk.length, 'chars:', chunk.substring(0, 30));
       appendStreamingChunk(chunk);
-    });
-    socket.on('AI_STREAM_END', ({ msg }) => {
+    }
+
+    function onAIStreamEnd({ msg }) {
       console.log('[stream] END', msg.content.length, 'chars');
       clearStreamingMessage();
       addTextMessage(msg);
-    });
-    socket.on('AI_STREAM_ERROR', () => {
+    }
+
+    function onAIStreamError() {
       console.log('[stream] ERROR');
       clearStreamingMessage();
-    });
+    }
 
-    socket.on('OPPONENT_RECORDING', () => setOpponentRecording(true));
-    socket.on('OPPONENT_STOPPED', () => setOpponentRecording(false));
+    function onOpponentRecording() {
+      setOpponentRecording(true);
+    }
 
-    socket.on('PHASE_CHANGED', ({ phase }) => {
+    function onOpponentStopped() {
+      setOpponentRecording(false);
+    }
+
+    function onPhaseChanged({ phase }) {
       setPhase(phase);
       setOpponentTyping(false);
       setOpponentRecording(false);
-    });
+    }
 
-    socket.on('DEBATE_FINISHED', (data) => {
+    function onDebateFinished(data) {
       setFinished(true);
       setFinishData(data);
-    });
+    }
 
-    socket.on('SCORE_UPDATED', ({ newScore }) => updateScore(newScore));
+    function onScoreUpdated({ newScore }) {
+      updateScore(newScore);
+    }
 
-    socket.on('SPECTATOR_COUNT_UPDATED', ({ count }) => setSpectatorCount(count));
+    function onSpectatorCountUpdated({ count }) {
+      setSpectatorCount(count);
+    }
 
-    socket.on('GIFT_RECEIVED', (gift) => addGift(gift));
+    function onGiftReceived(gift) {
+      addGift(gift);
+    }
 
-    socket.on('OPPONENT_DISCONNECTED', () => setDisconnected(true));
+    function onOpponentDisconnected() {
+      setDisconnected(true);
+    }
+
+    socket.on('TEXT_MESSAGE_RECEIVED', onTextMessageReceived);
+    socket.on('VOICE_MESSAGE_RECEIVED', onVoiceMessageReceived);
+    socket.on('TURN_CHANGED', onTurnChanged);
+    socket.on('AI_TYPING', onAITyping);
+    socket.on('AI_STREAM_START', onAIStreamStart);
+    socket.on('AI_STREAM_CHUNK', onAIStreamChunk);
+    socket.on('AI_STREAM_END', onAIStreamEnd);
+    socket.on('AI_STREAM_ERROR', onAIStreamError);
+    socket.on('OPPONENT_RECORDING', onOpponentRecording);
+    socket.on('OPPONENT_STOPPED', onOpponentStopped);
+    socket.on('PHASE_CHANGED', onPhaseChanged);
+    socket.on('DEBATE_FINISHED', onDebateFinished);
+    socket.on('SCORE_UPDATED', onScoreUpdated);
+    socket.on('SPECTATOR_COUNT_UPDATED', onSpectatorCountUpdated);
+    socket.on('GIFT_RECEIVED', onGiftReceived);
+    socket.on('OPPONENT_DISCONNECTED', onOpponentDisconnected);
 
     return () => {
-      socket.off('TEXT_MESSAGE_RECEIVED');
-      socket.off('VOICE_MESSAGE_RECEIVED');
-      socket.off('TURN_CHANGED');
-      socket.off('AI_TYPING');
-      socket.off('AI_STREAM_START');
-      socket.off('AI_STREAM_CHUNK');
-      socket.off('AI_STREAM_END');
-      socket.off('AI_STREAM_ERROR');
-      socket.off('OPPONENT_RECORDING');
-      socket.off('OPPONENT_STOPPED');
-      socket.off('PHASE_CHANGED');
-      socket.off('DEBATE_FINISHED');
-      socket.off('SCORE_UPDATED');
-      socket.off('SPECTATOR_COUNT_UPDATED');
-      socket.off('GIFT_RECEIVED');
-      socket.off('OPPONENT_DISCONNECTED');
+      for (const interval of fallbackStreamIntervalsRef.current) clearInterval(interval);
+      fallbackStreamIntervalsRef.current.clear();
+      clearStreamingMessage();
+      socket.off('TEXT_MESSAGE_RECEIVED', onTextMessageReceived);
+      socket.off('VOICE_MESSAGE_RECEIVED', onVoiceMessageReceived);
+      socket.off('TURN_CHANGED', onTurnChanged);
+      socket.off('AI_TYPING', onAITyping);
+      socket.off('AI_STREAM_START', onAIStreamStart);
+      socket.off('AI_STREAM_CHUNK', onAIStreamChunk);
+      socket.off('AI_STREAM_END', onAIStreamEnd);
+      socket.off('AI_STREAM_ERROR', onAIStreamError);
+      socket.off('OPPONENT_RECORDING', onOpponentRecording);
+      socket.off('OPPONENT_STOPPED', onOpponentStopped);
+      socket.off('PHASE_CHANGED', onPhaseChanged);
+      socket.off('DEBATE_FINISHED', onDebateFinished);
+      socket.off('SCORE_UPDATED', onScoreUpdated);
+      socket.off('SPECTATOR_COUNT_UPDATED', onSpectatorCountUpdated);
+      socket.off('GIFT_RECEIVED', onGiftReceived);
+      socket.off('OPPONENT_DISCONNECTED', onOpponentDisconnected);
     };
   }, [debateId]);
 

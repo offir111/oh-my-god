@@ -6,12 +6,20 @@ export default function LeaderboardPage() {
   const navigate = useNavigate();
   const [leaders, setLeaders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetch(`${import.meta.env.VITE_API_URL || ''}/api/leaderboard`)
-      .then(r => r.json())
-      .then(d => { setLeaders(d); setLoading(false); })
-      .catch(() => setLoading(false));
+      .then(r => {
+        if (!r.ok) throw new Error('failed to load leaderboard');
+        return r.json();
+      })
+      .then(d => { setLeaders(d); setError(''); setLoading(false); })
+      .catch(() => {
+        setLeaders([]);
+        setError('לא ניתן לטעון את טבלת המובילים כרגע.');
+        setLoading(false);
+      });
   }, []);
 
   const medals = ['🥇', '🥈', '🥉'];
@@ -19,7 +27,7 @@ export default function LeaderboardPage() {
   return (
     <div className="page">
       <div className="container" style={{ maxWidth: 600 }}>
-        <button onClick={() => navigate(-1)} style={backBtn}>← חזרה</button>
+        <button type="button" onClick={() => navigate('/')} style={backBtn}>← חזרה</button>
         <div style={{ marginBottom: 28 }}>
           <h1 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: 6 }}>🏆 טבלת מובילים</h1>
           <p style={{ color: 'var(--muted)' }}>TOP 20 הדיינים המובילים</p>
@@ -27,6 +35,10 @@ export default function LeaderboardPage() {
 
         {loading ? (
           <div style={{ textAlign: 'center', padding: 60 }}><div className="spinner" style={{ margin: '0 auto' }} /></div>
+        ) : error ? (
+          <div style={{ textAlign: 'center', padding: 60, color: 'var(--muted)' }}>
+            {error}
+          </div>
         ) : leaders.length === 0 ? (
           <div style={{ textAlign: 'center', padding: 60, color: 'var(--muted)' }}>
             עדיין אין דיינים ברשימה

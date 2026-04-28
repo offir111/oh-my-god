@@ -96,7 +96,7 @@ export default function StaticInfoPage({ pageId }) {
           <button
             type="button"
             className="ui-back-button"
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/')}
           >
             ← חזרה
           </button>

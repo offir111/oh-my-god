@@ -35,20 +35,29 @@ export default function TransparentImage({ src, alt, size = 120 }) {
   const [dataUrl, setDataUrl] = useState(null);
 
   useEffect(() => {
+    let cancelled = false;
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0);
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      floodFillRemoveBg(imageData, canvas.width, canvas.height);
-      ctx.putImageData(imageData, 0, 0);
-      setDataUrl(canvas.toDataURL());
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        floodFillRemoveBg(imageData, canvas.width, canvas.height);
+        ctx.putImageData(imageData, 0, 0);
+        if (!cancelled) setDataUrl(canvas.toDataURL());
+      } catch {
+        if (!cancelled) setDataUrl(src);
+      }
+    };
+    img.onerror = () => {
+      if (!cancelled) setDataUrl(src);
     };
     img.src = src;
+    return () => { cancelled = true; };
   }, [src]);
 
   if (!dataUrl) return <div style={{ width: size, height: size, flexShrink: 0 }} />;

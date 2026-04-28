@@ -108,7 +108,7 @@ export default function SettingsPage() {
 
       <div className="container settings-page" style={{ maxWidth: 520, paddingBottom: 40 }}>
         <p style={{ marginBottom: 20 }}>
-          <button type="button" className="ui-back-button" onClick={() => navigate(-1)}>
+          <button type="button" className="ui-back-button" onClick={() => navigate('/')}>
             ← חזרה
           </button>
         </p>

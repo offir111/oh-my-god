@@ -63,6 +63,14 @@ export default function BibleModal({ onClose }) {
 
   useEffect(() => { searchRef.current?.focus(); }, []);
 
+  useEffect(() => {
+    function onKey(e) {
+      if (e.key === 'Escape') onClose();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   const filtered = query.trim()
     ? BOOKS.filter(b => b.he.includes(query) || b.en.toLowerCase().includes(query.toLowerCase()))
     : BOOKS;
@@ -80,6 +88,7 @@ export default function BibleModal({ onClose }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: query.trim() }),
       });
+      if (!res.ok) throw new Error('bible search failed');
       const data = await res.json();
       setResults(data.results || []);
     } catch {
@@ -95,6 +104,7 @@ export default function BibleModal({ onClose }) {
     try {
       const ref = `${book.en}.${ch}`;
       const res = await fetch(`https://www.sefaria.org/api/texts/${encodeURIComponent(ref)}?lang=he&commentary=0`);
+      if (!res.ok) throw new Error('chapter load failed');
       const data = await res.json();
       const heArr = data.he || [];
       setVerses(heArr);

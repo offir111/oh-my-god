@@ -39,7 +39,6 @@ export default function App() {
       return;
     }
     connectSocket(socketUsername, socketSide);
-    return () => disconnectSocket();
   }, [socketUsername, socketSide]);
 
   return (

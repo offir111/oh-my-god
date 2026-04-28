@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const EVENTS = [
@@ -15,6 +15,17 @@ const EVENTS = [
 
 export default function LiveEventsPage() {
   const navigate = useNavigate();
+  const [registeredEvents, setRegisteredEvents] = useState(() => new Set());
+  const [reminders, setReminders] = useState(() => new Set());
+
+  function registerForEvent(eventId) {
+    setRegisteredEvents(prev => new Set(prev).add(eventId));
+  }
+
+  function setReminder(eventId) {
+    setReminders(prev => new Set(prev).add(eventId));
+  }
+
   return (
     <>
       <style>{`
@@ -264,7 +275,7 @@ export default function LiveEventsPage() {
       <style>{`.back-btn-inline{background:none;border:none;color:#aaa;font-size:0.9rem;cursor:pointer;align-self:flex-start;padding:4px 0;}`}</style>
 
       <div className="live-events-page">
-        <button onClick={() => navigate(-1)} style={backBtn}>← חזרה</button>
+        <button type="button" onClick={() => navigate('/')} style={backBtn}>← חזרה</button>
         <div>
           <h1 className="live-events-title">רב <span style={{color:'#FFE566'}}>VS</span> מדען</h1>
           <p className="live-events-subtitle">אירועי לייב מתוכננים באפליקציה</p>
@@ -295,8 +306,22 @@ export default function LiveEventsPage() {
             <div className="event-body">
               <div className="event-question">"{ev.question}"</div>
               <div className="event-description">{ev.description}</div>
-              <button className="event-cta">📺 הרשמה לצפייה בלייב</button>
-              <button className="event-reminder">🔔 תזכורת לאירוע</button>
+              <button
+                type="button"
+                className="event-cta"
+                onClick={() => registerForEvent(ev.id)}
+                aria-pressed={registeredEvents.has(ev.id)}
+              >
+                {registeredEvents.has(ev.id) ? 'נרשמת לצפייה בלייב' : '📺 הרשמה לצפייה בלייב'}
+              </button>
+              <button
+                type="button"
+                className="event-reminder"
+                onClick={() => setReminder(ev.id)}
+                aria-pressed={reminders.has(ev.id)}
+              >
+                {reminders.has(ev.id) ? 'תזכורת נשמרה' : '🔔 תזכורת לאירוע'}
+              </button>
             </div>
           </div>
         ))}

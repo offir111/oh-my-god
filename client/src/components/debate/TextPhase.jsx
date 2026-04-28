@@ -14,7 +14,8 @@ export default function TextPhase({ debateId, opponentTyping }) {
 
   const myCount = debate?.textCount?.[user?.side] || 0;
   const isMyTurn = debate?.turn === user?.side;
-  const remaining = TEXT_LIMIT - myCount;
+  const hasTextLimit = !debate?.isAI;
+  const remaining = hasTextLimit ? TEXT_LIMIT - myCount : Infinity;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -30,7 +31,7 @@ export default function TextPhase({ debateId, opponentTyping }) {
     <div className="debate-phase-stack">
       <div className="debate-feed-toolbar">
         <span className="toolbar-muted">
-          שלב טקסט — הודעות שלי: <strong>{myCount}/{TEXT_LIMIT}</strong>
+          שלב טקסט — הודעות שלי: <strong>{hasTextLimit ? `${myCount}/${TEXT_LIMIT}` : myCount}</strong>
         </span>
         {isMyTurn ? (
           <span className="debate-turn-pill debate-turn-pill--active">תורך לכתוב</span>

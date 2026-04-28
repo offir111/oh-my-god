@@ -9,10 +9,25 @@ export default function DebateDetailPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL || ''}/api/debates/${id}`)
-      .then(r => r.json())
-      .then(d => { setDebate(d); setLoading(false); })
-      .catch(() => setLoading(false));
+    let cancelled = false;
+
+    async function fetchDebate() {
+      setLoading(true);
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/debates/${id}`);
+        if (!res.ok) throw new Error('debate not found');
+        const data = await res.json();
+        if (!data?.believer || !data?.atheist) throw new Error('invalid debate response');
+        if (!cancelled) setDebate(data);
+      } catch {
+        if (!cancelled) setDebate(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    fetchDebate();
+    return () => { cancelled = true; };
   }, [id]);
 
   if (loading) return (

@@ -58,10 +58,13 @@ app.get('/api/stats', (_, res) => {
 /** רישום שם משתמש (אחרי טופס הרישום בלקוח) — מעדכן רשומים; idempotent לפי שם */
 app.post('/api/register', (req, res) => {
   const username = String(req.body?.username || '').trim();
+  const password = String(req.body?.password || '');
+  const resetPassword = req.body?.resetPassword === true;
   if (username.length < 2 || username.length > 64) {
     return res.status(400).json({ error: 'invalid username' });
   }
-  registerUser(username);
+  const result = registerUser(username, password, { resetPassword });
+  if (!result.ok) return res.status(409).json({ error: result.error });
   res.json({ ok: true, registered: store.registeredCount });
 });
 
