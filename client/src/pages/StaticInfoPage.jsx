@@ -112,7 +112,7 @@ export default function StaticInfoPage({ pageId }) {
           {' · '}
           <Link to="/settings" style={{ color: 'var(--muted)' }}>הגדרות</Link>
           {' · '}
-          <Link to="/arguments" style={{ color: 'var(--muted)' }}>בעד ונגד</Link>
+          <Link to="/knowledge" style={{ color: 'var(--muted)' }}>בעד ונגד</Link>
           {' · '}
           <Link to="/live-events" style={{ color: 'var(--muted)' }}>אירועים</Link>
         </p>

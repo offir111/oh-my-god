@@ -5,7 +5,6 @@ import { disconnectSocket } from '../../socket.js';
 import BibleModal from '../ui/BibleModal.jsx';
 
 const STATS_CACHE_KEY = 'omg_stats_cache';
-
 function readCachedStats() {
   try {
     const cached = JSON.parse(localStorage.getItem(STATS_CACHE_KEY) || 'null');
@@ -213,7 +212,7 @@ export default function AppHeader() {
         .app-header {
           position: fixed;
           top: 0; left: 0; right: 0;
-          height: 52px;
+          height: 58px;
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -229,7 +228,8 @@ export default function AppHeader() {
         }
         .app-header > * { pointer-events: all; }
         .header-zone {
-          height: 38px;
+          min-height: 52px;
+          height: auto;
           display: flex;
           align-items: center;
           gap: 6px;
@@ -254,32 +254,355 @@ export default function AppHeader() {
         }
         .header-dots-btn:active { transform: scale(0.95); }
         .header-app-brand {
-          height: 38px;
+          width: 96px;
           display: flex;
+          flex-direction: column;
           align-items: center;
+          justify-content: center;
+          gap: 3px;
+          gap: 1mm;
           box-sizing: border-box;
-          background: none;
+          background: transparent;
           border: none;
           cursor: pointer;
-          font-family: var(--font-sans, Rubik, sans-serif);
-          font-size: 0.88rem;
-          font-weight: 800;
-          letter-spacing: 0.05em;
-          color: var(--text, #fff);
-          padding: 6px 10px;
-          border-radius: 10px;
-          transition: opacity 0.2s, background 0.2s, transform 0.12s;
-          white-space: nowrap;
+          padding: 1px 0 3px;
+          border-radius: 999px;
+          transition: opacity 0.2s, filter 0.2s, transform 0.12s;
           pointer-events: all;
         }
+        .header-logo-watermark {
+          font-size: 0.62rem;
+          font-weight: 700;
+          letter-spacing: 0.34em;
+          color: rgba(255, 255, 255, 0.52);
+          text-shadow:
+            0 1px 2px rgba(0, 0, 0, 0.55),
+            0 0 12px rgba(255, 255, 255, 0.18);
+          user-select: none;
+          pointer-events: none;
+          line-height: 1;
+          direction: ltr;
+          unicode-bidi: isolate;
+          text-transform: uppercase;
+          padding-inline-start: 0.34em;
+          margin: 0;
+        }
         .header-app-brand:hover {
-          background: rgba(255,255,255,0.08);
           opacity: 0.95;
+          filter: brightness(1.08);
         }
         .header-app-brand:active { transform: scale(0.98); }
         .header-app-brand:focus-visible {
           outline: 2px solid var(--accent, #6366f1);
           outline-offset: 2px;
+        }
+        /* עוטף: הגדלה קלה + צמוד לאותיות (~מ״מ אחד בין קצה הלוגו לטקסט) */
+        .header-logo-mark-wrap {
+          display: flex;
+          align-items: flex-end;
+          justify-content: center;
+          width: 94px;
+          min-height: 46px;
+        }
+        .header-logo-mark {
+          position: relative;
+          width: 82px;
+          height: 41px;
+          overflow: visible;
+          border-radius: 999px;
+          isolation: isolate;
+          transform: scale(1.09);
+          transform-origin: 50% 100%;
+          /* סנכרון אנימציית שמש + קליטת אור על כדור לבן */
+          --logo-sun-cycle: 8s;
+        }
+        .header-logo-mark::before {
+          content: '';
+          position: absolute;
+          inset: 3px 1px;
+          border-radius: 999px;
+          background:
+            radial-gradient(ellipse at 50% 50%, rgba(255,255,255,0.038), transparent 48%),
+            radial-gradient(ellipse at 50% 68%, rgba(0,0,0,0.23), transparent 68%);
+          filter: blur(1.5px);
+          z-index: 0;
+        }
+        .header-logo-orbit {
+          position: absolute;
+          left: 1px;
+          right: 1px;
+          top: 51%;
+          height: 16px;
+          border: 3px solid #ff2400;
+          border-top-color: rgba(255, 36, 0, 0.58);
+          border-bottom-color: #ff951a;
+          border-radius: 50%;
+          transform: translateY(-50%) rotate(-7deg);
+          box-shadow:
+            0 0 0 0.35px rgba(0,0,0,0.72),
+            0 0 8px rgba(255, 36, 0, 0.45),
+            0 0 14px rgba(255, 122, 0, 0.21),
+            0 3px 8px rgba(0,0,0,0.21),
+            inset 0 -1px 2px rgba(255,255,255,0.34);
+          z-index: 3;
+        }
+        .header-logo-orbit::after {
+          content: '';
+          position: absolute;
+          left: 12%;
+          right: 12%;
+          bottom: -2px;
+          height: 2px;
+          border-radius: 999px;
+          background: linear-gradient(90deg, transparent, rgba(255, 149, 26, 0.92), transparent);
+          filter: blur(1px);
+          animation: headerOrbitFrontGold 5.2s ease-in-out infinite;
+        }
+        .header-logo-planet {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          width: 32px;
+          height: 32px;
+          border: 2px solid rgba(255, 255, 255, 1);
+          background: radial-gradient(circle at 40% 32%, rgba(255,255,255,0.18), transparent 38%);
+          border-radius: 50%;
+          transform: translate(-50%, -50%);
+          box-shadow:
+            0 0 0 0.35px rgba(0,0,0,0.74),
+            0 0 6px rgba(255, 255, 255, 0.24),
+            0 3px 8px rgba(0,0,0,0.22),
+            inset -7px -6px 13px rgba(0,0,0,0.25),
+            inset 0 0 7px rgba(255, 255, 255, 0.13);
+          z-index: 2;
+          overflow: hidden;
+        }
+        /* אור מהכדור הצהוב — נשאר בתוך עיגול הפנים (מתחת למסגרת הלבנה) */
+        .header-logo-planet::before {
+          content: '';
+          position: absolute;
+          inset: 3px;
+          border-radius: 50%;
+          pointer-events: none;
+          z-index: 1;
+          transform-origin: 28% 66%;
+          mix-blend-mode: soft-light;
+          background:
+            radial-gradient(
+              ellipse 92% 88% at 26% 68%,
+              rgba(255, 248, 210, 0.82) 0%,
+              rgba(255, 228, 145, 0.48) 28%,
+              rgba(255, 205, 92, 0.22) 46%,
+              transparent 58%
+            ),
+            radial-gradient(
+              circle at 54% 42%,
+              rgba(255, 255, 255, 0.28) 0%,
+              transparent 46%
+            );
+          opacity: 0;
+          animation: headerPlanetSunlit var(--logo-sun-cycle) linear infinite;
+        }
+        .header-logo-shine {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          width: 86px;
+          height: 2px;
+          border-radius: 999px;
+          background: linear-gradient(90deg, transparent, rgba(255, 204, 38, 0.9), transparent);
+          transform: translate(-50%, -50%) rotate(-7deg);
+          filter: blur(0.5px);
+          pointer-events: none;
+          z-index: 4;
+          animation: headerLogoShineSweep 5.2s ease-in-out infinite;
+        }
+        @keyframes headerLogoShineSweep {
+          0%, 100% {
+            opacity: 0.28;
+            transform: translate(-54%, -50%) rotate(-7deg) scaleX(0.62);
+            filter: blur(0.5px) saturate(1.2);
+          }
+          38%, 58% {
+            opacity: 0.92;
+            transform: translate(-46%, -50%) rotate(-7deg) scaleX(1);
+            filter: blur(0.5px) saturate(1.6) brightness(1.18);
+          }
+        }
+        @keyframes headerOrbitFrontGold {
+          0%, 100% {
+            opacity: 0.72;
+            background: linear-gradient(90deg, transparent, rgba(255, 138, 24, 0.72), transparent);
+          }
+          38%, 58% {
+            opacity: 1;
+            background: linear-gradient(90deg, transparent, rgba(255, 156, 36, 1), transparent);
+          }
+        }
+        .header-logo-satellite {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 10px;
+          height: 10px;
+          border: 2px solid rgba(255, 222, 49, 0.56);
+          border-radius: 50%;
+          /* תאורה קבועה עדינה — הפנים לא נשארות שחורות רוב המחזור */
+          background: radial-gradient(
+            circle at 50% 50%,
+            rgba(255, 205, 95, 0.42) 0%,
+            rgba(255, 175, 58, 0.2) 58%,
+            rgba(255, 155, 45, 0.08) 78%,
+            transparent 94%
+          );
+          isolation: isolate;
+          box-shadow:
+            0 0 5px rgba(255, 222, 49, 0.35),
+            0 0 9px rgba(255, 153, 0, 0.15),
+            inset 0 0 6px rgba(255, 195, 85, 0.45);
+          pointer-events: none;
+          z-index: 5;
+          offset-path: ellipse(38px 6.35px at 41px 23.05px);
+          offset-distance: 56%;
+          offset-rotate: 0deg;
+          opacity: 1;
+          filter: brightness(1.08) saturate(1.04);
+        }
+        /* הבהוב פנימי: נפתח חזק (+50%), מתפרס על כל הכדור, נשאר 2s פתוח, מתכווץ */
+        .header-logo-satellite::after {
+          content: '';
+          position: absolute;
+          pointer-events: none;
+          /* 15%–40% = 2 שניות מתוך 8s — שיא מואר ולא כהה */
+          animation: headerSatelliteInnerGlow var(--logo-sun-cycle) linear infinite;
+        }
+        @keyframes headerSatelliteInnerGlow {
+          0%, 8%, 48%, 100% {
+            top: 6px;
+            right: 12%;
+            bottom: auto;
+            left: 12%;
+            width: auto;
+            height: 2px;
+            border-radius: 999px;
+            background: linear-gradient(
+              90deg,
+              transparent,
+              rgba(255, 200, 72, 0.92),
+              rgba(255, 218, 110, 0.95),
+              rgba(255, 200, 72, 0.92),
+              transparent
+            );
+            opacity: 0.9;
+            filter: blur(0.48px) saturate(1.14) brightness(1.08);
+            box-shadow: 0 0 7px rgba(255, 195, 75, 0.45);
+          }
+          /* שיא: 2 שניות מלאות מוארות */
+          15%, 40% {
+            top: 1px;
+            right: 1px;
+            bottom: 1px;
+            left: 1px;
+            width: auto;
+            height: auto;
+            border-radius: 50%;
+            background:
+              radial-gradient(
+                circle at 46% 40%,
+                rgba(255, 252, 210, 1) 0%,
+                rgba(255, 228, 130, 1) 18%,
+                rgba(255, 206, 78, 0.98) 38%,
+                rgba(255, 182, 52, 0.92) 58%,
+                rgba(255, 158, 42, 0.78) 76%,
+                rgba(255, 138, 36, 0.38) 90%,
+                rgba(255, 125, 28, 0.12) 97%,
+                transparent 100%
+              );
+            opacity: 1;
+            filter: blur(0.24px) brightness(1.52) saturate(1.15);
+            box-shadow:
+              inset 0 0 18px rgba(255, 235, 160, 1),
+              inset 0 -2px 12px rgba(255, 175, 55, 0.85),
+              0 0 14px rgba(255, 205, 90, 0.82),
+              0 0 22px rgba(255, 175, 55, 0.55);
+          }
+        }
+        .header-logo-planet::after {
+          content: '';
+          position: absolute;
+          inset: 5px 8px auto auto;
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: rgba(255,255,255,0.58);
+          filter: blur(2px);
+          z-index: 3;
+        }
+        @keyframes headerPlanetSunlit {
+          /* נשאר כבוי בזמן שהכדור הצהוב נפתח (עד סוף המעבר לשיא) */
+          0%, 8%, 15% {
+            opacity: 0;
+            transform: rotate(-14deg) scale(0.92);
+            filter: blur(2px) brightness(0.88);
+          }
+          /* תגובת האור על הלבן רק אחרי שהשמש כבר פתוחה */
+          16% {
+            opacity: 0.16;
+            transform: rotate(-12deg) scale(0.94);
+            filter: blur(1.35px) brightness(0.92);
+          }
+          18% {
+            opacity: 0.42;
+            transform: rotate(-11deg) scale(0.97);
+            filter: blur(0.85px) brightness(1);
+          }
+          20% {
+            opacity: 0.68;
+            transform: rotate(-10deg) scale(1);
+            filter: blur(0.35px) brightness(1.08);
+          }
+          22% {
+            opacity: 0.84;
+            transform: rotate(-10deg) scale(1.015);
+            filter: blur(0px) brightness(1.14);
+          }
+          /* תנועת קבלת אור בזמן שהשמש בשיא */
+          24% {
+            opacity: 1;
+            transform: rotate(-6deg) scale(1.035);
+            filter: blur(0px) brightness(1.22);
+          }
+          31% {
+            opacity: 1;
+            transform: rotate(-11deg) scale(1.025);
+            filter: blur(0px) brightness(1.26);
+          }
+          37% {
+            opacity: 1;
+            transform: rotate(-7deg) scale(1.04);
+            filter: blur(0px) brightness(1.2);
+          }
+          /* ירידה עם סגירת השמש */
+          40% {
+            opacity: 0.94;
+            transform: rotate(-9deg) scale(1.02);
+            filter: blur(0px) brightness(1.14);
+          }
+          43% {
+            opacity: 0.58;
+            transform: rotate(-11deg) scale(0.98);
+            filter: blur(1px) brightness(1.05);
+          }
+          46% {
+            opacity: 0.22;
+            transform: rotate(-13deg) scale(0.94);
+            filter: blur(1.6px) brightness(0.95);
+          }
+          48%, 100% {
+            opacity: 0;
+            transform: rotate(-14deg) scale(0.92);
+            filter: blur(2px) brightness(0.88);
+          }
         }
         /* RTL: הכפתור בקצה המסך השמאלי; right:0 גרם לתפריט להימתח שמאלה (מחוץ למסך) — left:0 פותח לתוך הדף */
         .header-dots-menu {
@@ -333,13 +656,14 @@ export default function AppHeader() {
           border: 2px solid var(--border-strong, rgba(255,255,255,0.14));
           cursor: default;
           display: flex; align-items: center; justify-content: center;
-          overflow: hidden;
+          overflow: visible;
+          position: relative;
           transition: border-color 0.3s, box-shadow 0.3s, transform 0.2s;
         }
         .header-avatar.logged-in {
-          border-color: var(--atheist, #00c853);
-          box-shadow: 0 0 16px var(--atheist-glow, rgba(0,200,83,0.35));
-          background: rgba(0, 200, 83, 0.08);
+          border-color: rgba(148, 163, 184, 0.34);
+          box-shadow: 0 0 10px rgba(15, 23, 42, 0.34);
+          background: rgba(71, 85, 105, 0.22);
           cursor: pointer;
         }
         .header-avatar.logged-in.header-avatar--pending {
@@ -355,10 +679,35 @@ export default function AppHeader() {
           outline: 2px solid var(--accent, #6366f1);
           outline-offset: 2px;
         }
+        .header-online-dot {
+          position: absolute;
+          left: 50%;
+          bottom: 6px;
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #22c55e;
+          border: 1px solid rgba(7,7,12,0.92);
+          box-shadow: 0 0 0 rgba(34,197,94,0.36);
+          transform: translateX(-50%);
+          animation: headerOnlinePulse 2.4s ease-in-out infinite;
+        }
+        @keyframes headerOnlinePulse {
+          0%, 100% {
+            opacity: 0.68;
+            transform: translateX(-50%) scale(0.82);
+            box-shadow: 0 0 0 0 rgba(34,197,94,0.22);
+          }
+          50% {
+            opacity: 1;
+            transform: translateX(-50%) scale(1);
+            box-shadow: 0 0 0 3px rgba(34,197,94,0.07);
+          }
+        }
         .header-avatar svg { width: 22px; height: 22px; }
         .header-avatar-initial {
-          font-size: clamp(0.62rem, 2.8vw, 0.78rem);
-          font-weight: 800;
+          font-size: clamp(0.58rem, 2.5vw, 0.7rem);
+          font-weight: 500;
           font-family: var(--font-sans, Rubik, sans-serif);
           color: var(--text, #fff);
           line-height: 1;
@@ -369,7 +718,7 @@ export default function AppHeader() {
           white-space: nowrap;
           padding: 0 2px;
         }
-        .header-avatar.logged-in .header-avatar-initial { color: var(--atheist, #00c853); }
+        .header-avatar.logged-in .header-avatar-initial { color: rgba(203,213,225,0.78); }
         .header-avatar.logged-in.header-avatar--pending .header-avatar-initial { color: var(--gold, #fbbf24); }
         /* תפריט משתמש — מתחת לעיגול, פנימה (ימין מיושר ל־wrap ב־RTL) */
         .header-user-menu {
@@ -683,6 +1032,7 @@ export default function AppHeader() {
                     <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
                   </svg>
                 )}
+                <span className="header-online-dot" aria-hidden="true" />
               </button>
             ) : (
               <div className="header-avatar">
@@ -805,7 +1155,15 @@ export default function AppHeader() {
         {/* Left: מותג (דף הבית) + תפריט נקודות */}
         <div className="header-zone header-zone--brand">
           <button type="button" className="header-app-brand" onClick={goAppHome} aria-label="דף הבית">
-            oh my GOD
+            <span className="header-logo-mark-wrap">
+              <span className="header-logo-mark" aria-hidden="true">
+                <span className="header-logo-orbit" />
+                <span className="header-logo-planet" />
+                <span className="header-logo-shine" />
+                <span className="header-logo-satellite" />
+              </span>
+            </span>
+            <span className="header-logo-watermark" aria-hidden="true">O M G</span>
           </button>
           <div ref={menuRef} className="header-dots-wrap" style={{ position: 'relative' }}>
           <button

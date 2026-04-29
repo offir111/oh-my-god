@@ -11,7 +11,6 @@ import SpectatorPage from './pages/SpectatorPage.jsx';
 import KnowledgeBasePage from './pages/KnowledgeBasePage.jsx';
 import DebateDetailPage from './pages/DebateDetailPage.jsx';
 import LeaderboardPage from './pages/LeaderboardPage.jsx';
-import ArgumentsPage from './pages/ArgumentsPage.jsx';
 import LiveEventsPage from './pages/LiveEventsPage.jsx';
 import LivrPage from './pages/LivrPage.jsx';
 import StaticInfoPage from './pages/StaticInfoPage.jsx';
@@ -56,7 +55,7 @@ export default function App() {
           <Route path="/knowledge" element={<KnowledgeBasePage />} />
           <Route path="/knowledge/:id" element={<DebateDetailPage />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
-          <Route path="/arguments" element={<ArgumentsPage />} />
+          <Route path="/arguments" element={<Navigate to="/knowledge" replace />} />
           <Route path="/live-events" element={<LiveEventsPage />} />
           <Route path="/livr" element={<RequireAuth><LivrPage /></RequireAuth>} />
           <Route path="/settings" element={<SettingsPage />} />

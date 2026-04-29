@@ -292,12 +292,12 @@ export default function LoginPage() {
     <>
       <style>{`
         .login-page {
-          min-height: calc(100vh - 52px);
+          min-height: calc(100vh - var(--appheader-h));
           display: flex;
           flex-direction: column;
           align-items: center;
-          justify-content: center;
-          padding: clamp(18px, 4vw, 34px) 16px 32px;
+          justify-content: flex-start;
+          padding: clamp(8px, 2.5vh, 22px) 16px 32px;
           background: transparent;
           gap: 16px;
           box-sizing: border-box;
@@ -361,6 +361,8 @@ export default function LoginPage() {
           -webkit-backdrop-filter: blur(10px);
           direction: ltr;
           margin-bottom: 8px;
+          margin-top: 0;
+          flex-shrink: 0;
           box-shadow: var(--shadow-sm, 0 4px 14px rgba(0,0,0,0.35));
         }
         .ticker-inner {
@@ -987,11 +989,13 @@ export default function LoginPage() {
               </p>
               <p className="login-secondary-copy">בחר חוויה: התאמה חיה מול משתמש אחר או דיון מיידי מול AI.</p>
               <button
-                className={`login-panel ${selectedSide === 'believer' ? 'panel-believer' : 'panel-atheist'}`}
+                className={`login-panel ${selectedSide === 'believer' ? 'panel-atheist' : 'panel-believer'}`}
                 style={{ width: '100%', maxWidth: '100%', padding: '18px 24px', borderRadius: 16, fontSize: '1.1rem', fontWeight: 800 }}
                 onClick={handleHuman}
               >
-                נגד יריב אנושי
+                {selectedSide === 'believer'
+                  ? 'נגד יריב אנושי (אתאיסט)'
+                  : 'נגד יריב אנושי (מאמין)'}
               </button>
               <button
                 className="login-panel"
@@ -1013,7 +1017,7 @@ export default function LoginPage() {
         </section>
 
         <div className="login-links">
-          <Link to="/arguments" className="login-link">📚 בעד ונגד</Link>
+          <Link to="/knowledge" className="login-link">📚 בעד ונגד</Link>
           <Link to="/live-events" className="login-link">🏆 רב VS מדען</Link>
         </div>
       </div>

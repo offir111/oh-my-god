@@ -7,6 +7,16 @@ const SPECIAL_RABBIS = ['הרב מאיר', 'הרב שלמה', 'הרב יצחק']
 const SPECIAL_SCIENTISTS = ['פרופ׳ דניאל', 'פרופ׳ רחל', 'פרופ׳ אמיר'];
 const ALL_SPECIAL = [...SPECIAL_RABBIS, ...SPECIAL_SCIENTISTS];
 
+/** כמו socket.js — בפרודקשן בלי VITE_API_URL הבקשה ל־/api על CDN נתקעת */
+const FALLBACK_API_ORIGIN = 'https://oh-my-god-production.up.railway.app';
+
+function knowledgeAskEndpointUrl() {
+  const env = (import.meta.env.VITE_API_URL || '').trim().replace(/\/$/, '');
+  if (env) return `${env}/api/knowledge-ask`;
+  if (import.meta.env.PROD) return `${FALLBACK_API_ORIGIN}/api/knowledge-ask`;
+  return '/api/knowledge-ask';
+}
+
 const INITIAL_DATA = {
   'קיום האלוהים': {
     pro: [
@@ -352,6 +362,23 @@ const RELIGIONS = [
   { name: 'דתות נוספות', nameList: 'קונפוציאניזם, דת מצרית עתיקה, דת שומרית, דת כנענית עתיקה, דת בבלית, דת אשורית, דת יוונית עתיקה, דת רומית עתיקה, דת נורדית עתיקה, דת קלטית עתיקה, דת סלאבית עתיקה, דת פינית עתיקה, דת גרמאנית עתיקה, דת פרסית עתיקה, זורווניזם, מניכאיזם, גנוסטיקה, מיתראיזם, הרמטיציזם, יזידים, אלווים, עלווים, אחמדים, איבאדיה, סופיות, מורמונים, עדי יהוה, אדוונטיזם, מדע נוצרי, קווייקרים, אוניטריאניזם, כנסיית האיחוד, סיינטולוגיה, ראליזם, פאלון גונג, טנגריזם, שמאניזם סיבירי, שמאניזם מונגולי, דתות ילידיות אמריקאיות, דת האינקה, דת המאיה, דת האצטקים, יורובה, איפה, וודו, וודון, סנטריה, קנדומבלה, אומבנדה, דתות אפריקאיות מסורתיות, דת זולו, דת אקאן, דת דוגון, דת מסאי, דתות אבוריג׳יניות אוסטרליות, דת מאורית, דת פולינזית, דת הוואית עתיקה, דתות אינואיטיות, דת סינית עממית, צ׳אונדואיזם, מוּאִיזם קוריאני, בון טיבטי, קאודהיזם, אאום שינריקיו, אומוטו, סייקו נו איה, סובוד, תיאוסופיה, אנתרופוסופיה, אקנקר, אוניברסליזם אוניטרי, נאו-דרואידיזם, הלניזם מודרני, רודנובריה, אסאטרו, קמטיזם, תלמה, שבתאות, קראים, ביתא ישראל' },
 ];
 
+const EVOLUTION_TREE_IMAGE = '/evolutionary-tree-of-life-high-res.png';
+
+const EVOLUTION_DETAILED_TIMELINE = [
+  { era: 'ראשית החיים', time: 'לפני כ-3.8-3.5 מיליארד שנה', group: 'LUCA, חיידקים וארכאונים', note: 'התפצלות ראשונית של החיים ליצורים חד-תאיים קדומים.' },
+  { era: 'תאים מורכבים', time: 'לפני כ-2.1-1.6 מיליארד שנה', group: 'איקריוטים ראשונים', note: 'תאים עם גרעין ואברונים, בסיס לשושלות הצמחים, הפטריות ובעלי החיים.' },
+  { era: 'פוטוסינתזה ואצות', time: 'לפני כ-1.5 מיליארד-700 מיליון שנה', group: 'אצות וקווי צמחים מוקדמים', note: 'התבססות יצרנים פוטוסינתטיים ששינו את האטמוספרה ואת מארג המזון.' },
+  { era: 'רב-תאיים קדומים', time: 'לפני כ-800-600 מיליון שנה', group: 'בעלי חיים פשוטים ופטריות מוקדמות', note: 'התפתחות גוף רב-תאי ושיתופי פעולה בין תאים מתמחים.' },
+  { era: 'פיצוץ הקמבריון', time: 'לפני כ-541 מיליון שנה', group: 'פרוקי רגליים, רכיכות, תולעים וקו מיתרניים', note: 'הופעה מהירה יחסית של תוכניות גוף רבות שמיוצגות בענפי בעלי החיים.' },
+  { era: 'חולייתנים ימיים', time: 'לפני כ-500-420 מיליון שנה', group: 'דגים קדומים, כרישים ודגי גרם', note: 'עמוד שדרה, לסתות וסנפירים הפכו לבסיס להתפשטות החולייתנים.' },
+  { era: 'עלייה ליבשה', time: 'לפני כ-420-360 מיליון שנה', group: 'צמחי יבשה, חרקים ודו-חיים', note: 'בתי גידול יבשתיים נפתחו לצמחים, פרוקי רגליים וחולייתנים ראשונים.' },
+  { era: 'ביצת האמניון', time: 'לפני כ-320-250 מיליון שנה', group: 'זוחלים קדומים וקווי יונקים מוקדמים', note: 'רבייה פחות תלויה במים אפשרה התרחבות ליבשה יבשה יותר.' },
+  { era: 'עידן הדינוזאורים', time: 'לפני כ-230-66 מיליון שנה', group: 'דינוזאורים, תנינים, צבים ועופות מוקדמים', note: 'העופות הסתעפו מתוך דינוזאורים תרופודים, לצד ענפי זוחלים נוספים.' },
+  { era: 'התפשטות יונקים', time: 'לפני כ-66-20 מיליון שנה', group: 'יונקים, לווייתנים, עטלפים, טורפים ופרימטים', note: 'לאחר הכחדת סוף הקרטיקון יונקים תפסו נישות רבות בים, באוויר וביבשה.' },
+  { era: 'קופי אדם והומינינים', time: 'לפני כ-20-2 מיליון שנה', group: 'קופי אדם, אוסטרלופיתקים ואבות הסוג Homo', note: 'התפתחות הליכה זקופה, מוח גדול יותר וכלים מוקדמים.' },
+  { era: 'אדם מודרני', time: 'לפני כ-300 אלף שנה ועד היום', group: 'Homo sapiens', note: 'מין האדם המודרני התפשט מאפריקה ופיתח תרבות, שפה וטכנולוגיה מורכבות.' },
+];
+
 const STORAGE_KEY = 'omg_arguments';
 
 function loadArguments() {
@@ -365,6 +392,7 @@ function saveArguments(data) {
 function ReligionsTable() {
   return (
     <>
+      <p className="religions-intro-line">קיימות מעל 4000 דתות בעולם</p>
       <div className="religions-table-wrap">
         <table className="religions-table">
           <thead>
@@ -416,6 +444,51 @@ function ReligionsTable() {
   );
 }
 
+function EvolutionTreePanel() {
+  return (
+    <section className="evolution-tree-panel" aria-label="עץ החיים האבולוציוני">
+      <div className="evolution-image-card">
+        <a className="evolution-image-link" href={EVOLUTION_TREE_IMAGE} target="_blank" rel="noreferrer">
+          <img src={EVOLUTION_TREE_IMAGE} alt="עץ החיים האבולוציוני" />
+        </a>
+        <div className="evolution-image-caption">
+          עץ החיים האבולוציוני — לחץ לפתיחה בגודל מלא
+          <span className="evolution-image-credit">מקור: UsefulCharts.com</span>
+        </div>
+      </div>
+
+      <p className="evolution-note">
+        עץ החיים מסודר על ציר זמן אבולוציוני, מהקדום לחדש.
+      </p>
+
+      <div className="evolution-table-wrap">
+        <table className="evolution-table evolution-table-detailed">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>שלב מהקדום לחדש</th>
+              <th>זמן משוער</th>
+              <th>מינים / קבוצות בעץ</th>
+              <th>מה השתנה</th>
+            </tr>
+          </thead>
+          <tbody>
+            {EVOLUTION_DETAILED_TIMELINE.map((item, index) => (
+              <tr key={item.era}>
+                <td className="evolution-index">{index + 1}</td>
+                <td className="evolution-era">{item.era}</td>
+                <td>{item.time}</td>
+                <td>{item.group}</td>
+                <td>{item.note}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 function argMatchesQuery(arg, query) {
   if (!query) return true;
   const q = query.toLowerCase();
@@ -426,17 +499,22 @@ export default function ArgumentsPage({
   title = 'דתות',
   subtitle = 'טבלת דתות ומסורות מרכזיות בעולם לפי סדר שביקשת ונתוני מאמינים מקורבים',
   showSearch = false,
+  showKnowledgeAiAssistant = false,
   showBack = true,
   editorsPlacement = 'bottom',
 }) {
   const user = useAppStore(s => s.user);
   const navigate = useNavigate();
   const categoriesRef = useRef(null);
-  const [activeCategory, setActiveCategory] = useState(Object.keys(INITIAL_DATA)[0]);
+  const [activeCategory, setActiveCategory] = useState(BIBLE_CATEGORY);
   const [customArgs, setCustomArgs] = useState(loadArguments);
   const [searchQuery, setSearchQuery] = useState('');
   const [newPro, setNewPro] = useState('');
   const [newCon, setNewCon] = useState('');
+  const [editorsOpen, setEditorsOpen] = useState(false);
+  const [knowledgeAiAnswer, setKnowledgeAiAnswer] = useState('');
+  const [knowledgeAiLoading, setKnowledgeAiLoading] = useState(false);
+  const [knowledgeAiError, setKnowledgeAiError] = useState('');
 
   const isSpecial = ALL_SPECIAL.includes(user?.username);
   const isRabbi = SPECIAL_RABBIS.includes(user?.username);
@@ -476,8 +554,94 @@ export default function ArgumentsPage({
     });
   }
 
+  async function fetchKnowledgeAiAnswer() {
+    const q = searchQuery.trim();
+    if (!q || knowledgeAiLoading || !showKnowledgeAiAssistant) return;
+    setKnowledgeAiLoading(true);
+    setKnowledgeAiError('');
+    setKnowledgeAiAnswer('');
+    const ctrl = new AbortController();
+    const timeoutMs = 120000;
+    const tid = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const res = await fetch(knowledgeAskEndpointUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: q }),
+        signal: ctrl.signal,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'לא ניתן לקבל תשובה');
+      const answer = typeof data.answer === 'string' ? data.answer.trim() : '';
+      if (!answer) throw new Error('לא התקבלה תשובה מהשרת');
+      setKnowledgeAiAnswer(answer);
+    } catch (e) {
+      const name = e?.name;
+      if (name === 'AbortError') {
+        setKnowledgeAiError('תם הזמן — לא התקבלה תשובה. בדוק חיבור לאינטרנט או נסה שוב.');
+      } else if (name === 'TypeError') {
+        setKnowledgeAiError('לא ניתן להתחבר לשרת (בדוק רשת או הגדרות API).');
+      } else {
+        setKnowledgeAiError(e.message || 'שגיאה');
+      }
+    } finally {
+      clearTimeout(tid);
+      setKnowledgeAiLoading(false);
+    }
+  }
+
+  function renderKnowledgeAiSlot() {
+    if (!showKnowledgeAiAssistant || (!knowledgeAiLoading && !knowledgeAiAnswer && !knowledgeAiError)) return null;
+    return (
+      <div className="args-knowledge-ai-slot">
+        {knowledgeAiLoading && (
+          <div className="args-knowledge-ai-inner args-knowledge-ai-inner--loading">טוען תשובה…</div>
+        )}
+        {knowledgeAiError && !knowledgeAiLoading && (
+          <div className="args-knowledge-ai-inner args-knowledge-ai-inner--err">{knowledgeAiError}</div>
+        )}
+        {knowledgeAiAnswer && !knowledgeAiLoading && !knowledgeAiError && (
+          <div className="args-knowledge-ai-inner">{knowledgeAiAnswer}</div>
+        )}
+      </div>
+    );
+  }
+
+  function renderSearchRow() {
+    if (!showSearch) return null;
+    return (
+      <div className={`args-search${showKnowledgeAiAssistant ? ' args-search--triple' : ''}`}>
+        <input
+          placeholder="חפש טענה, נושא או שם כותב…"
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+        />
+        <button type="button" onClick={() => setSearchQuery(searchQuery.trim())} aria-label="חיפוש במאגר">
+          🔍
+        </button>
+        {showKnowledgeAiAssistant && (
+          <button
+            type="button"
+            className="args-search-ai-trigger"
+            disabled={!searchQuery.trim() || knowledgeAiLoading}
+            onClick={fetchKnowledgeAiAnswer}
+            aria-label="שאל את ה־AI לפי הטקסט בשורה"
+          >
+            {knowledgeAiLoading ? '…' : 'שאל AI'}
+          </button>
+        )}
+      </div>
+    );
+  }
+
   const categories = useMemo(() => {
-    const baseCategories = isReligionsPage ? Object.keys(INITIAL_DATA) : [BIBLE_CATEGORY, ...Object.keys(INITIAL_DATA), RELIGIONS_CATEGORY];
+    const priorityCategories = [BIBLE_CATEGORY, 'אבולוציה', RELIGIONS_CATEGORY];
+    const baseCategories = isReligionsPage
+      ? Object.keys(INITIAL_DATA)
+      : [
+        ...priorityCategories,
+        ...Object.keys(INITIAL_DATA).filter(category => !priorityCategories.includes(category)),
+      ];
 
     return baseCategories.filter(category => {
     if (!normalizedSearch) return true;
@@ -518,7 +682,7 @@ export default function ArgumentsPage({
       <>
         <style>{`
           .religions-page {
-            min-height: calc(100vh - 52px);
+            min-height: calc(100vh - var(--appheader-h));
             color: var(--text);
             direction: rtl;
             padding: 0 16px 48px;
@@ -555,6 +719,16 @@ export default function ArgumentsPage({
             padding: 8px 14px;
             border-radius: 10px;
             cursor: pointer;
+          }
+          .religions-intro-line {
+            max-width: 1160px;
+            margin: 8px auto 14px;
+            padding: 0 16px;
+            color: rgba(248, 250, 252, 0.94);
+            font-size: calc(0.95rem * 0.7);
+            font-weight: 700;
+            text-align: center;
+            line-height: 1.55;
           }
           .religions-table-wrap {
             max-width: 1160px;
@@ -636,7 +810,7 @@ export default function ArgumentsPage({
     <>
       <style>{`
         .args-page {
-          min-height: calc(100vh - 52px);
+          min-height: calc(100vh - var(--appheader-h));
           background: transparent;
           color: var(--text);
           direction: rtl;
@@ -679,13 +853,69 @@ export default function ArgumentsPage({
           padding: 13px 15px;
           text-align: right;
         }
-        .args-search button {
+        .args-search > button:first-of-type {
           width: 48px;
           border-radius: 14px;
           border: 1px solid var(--border-strong);
           background: rgba(255,255,255,0.08);
           color: var(--text);
           font-weight: 900;
+        }
+        .args-search--triple {
+          flex-wrap: wrap;
+          max-width: min(640px, 100%);
+          justify-content: center;
+        }
+        .args-search-ai-trigger {
+          flex: 1 1 108px;
+          max-width: 140px;
+          min-height: 48px;
+          padding: 10px 14px;
+          width: auto;
+          border-radius: 14px;
+          border: 1px solid rgba(99, 102, 241, 0.48);
+          background: rgba(99, 102, 241, 0.22);
+          color: #e0e7ff;
+          font-weight: 800;
+          font-size: 0.84rem;
+          cursor: pointer;
+          transition: background 0.2s, border-color 0.2s;
+        }
+        .args-search-ai-trigger:hover:not(:disabled) {
+          background: rgba(99, 102, 241, 0.32);
+          border-color: rgba(129, 140, 248, 0.65);
+        }
+        .args-search-ai-trigger:disabled {
+          opacity: 0.45;
+          cursor: not-allowed;
+        }
+        .args-knowledge-ai-slot {
+          max-width: min(1160px, calc(100% - 32px));
+          margin: 0 auto;
+          padding: 14px 16px 18px;
+          border-bottom: 1px solid var(--border);
+          direction: rtl;
+          text-align: right;
+        }
+        .args-knowledge-ai-inner {
+          padding: 16px 18px;
+          border-radius: 16px;
+          background: rgba(255,255,255,0.045);
+          border: 1px solid var(--border);
+          font-size: 0.92rem;
+          line-height: 1.6;
+          white-space: pre-wrap;
+          word-break: break-word;
+          color: var(--text);
+        }
+        .args-knowledge-ai-inner--loading {
+          color: var(--muted);
+          font-weight: 700;
+        }
+        .args-knowledge-ai-inner--err {
+          border-color: rgba(248, 113, 113, 0.42);
+          background: rgba(248, 113, 113, 0.1);
+          color: #fecaca;
         }
         .args-active-title {
           display: block;
@@ -820,6 +1050,16 @@ export default function ArgumentsPage({
           max-width: 960px;
           margin: 0 auto;
         }
+        .religions-intro-line {
+          max-width: 1160px;
+          margin: 8px auto 14px;
+          padding: 0 16px;
+          color: rgba(248, 250, 252, 0.94);
+          font-size: calc(0.95rem * 0.7);
+          font-weight: 700;
+          text-align: center;
+          line-height: 1.55;
+        }
         .religions-table-wrap {
           max-width: 1160px;
           margin: 24px auto 0;
@@ -888,6 +1128,107 @@ export default function ArgumentsPage({
           max-width: none;
           max-height: none;
           min-height: 620px;
+        }
+        .evolution-tree-panel {
+          max-width: 1040px;
+          margin: 24px auto 0;
+          padding: 0 16px;
+        }
+        .evolution-image-card {
+          overflow: hidden;
+          border: 1px solid var(--border);
+          border-radius: 22px;
+          background: rgba(255,255,255,0.04);
+          box-shadow: var(--shadow-md);
+        }
+        .evolution-image-link {
+          display: block;
+          cursor: zoom-in;
+        }
+        .evolution-image-card img {
+          display: block;
+          width: 100%;
+          height: auto;
+          object-fit: contain;
+          background: rgba(0,0,0,0.22);
+        }
+        .evolution-image-caption {
+          position: relative;
+          padding: 14px 16px;
+          border-top: 1px solid var(--border);
+          color: #f8fafc;
+          font-size: 1rem;
+          font-weight: 900;
+          text-align: center;
+        }
+        .evolution-image-credit {
+          position: absolute;
+          left: 16px;
+          top: 50%;
+          transform: translateY(-50%);
+          color: var(--muted);
+          font-size: 0.72rem;
+          font-weight: 600;
+        }
+        @media (max-width: 560px) {
+          .evolution-image-credit {
+            position: static;
+            display: block;
+            margin-top: 5px;
+            transform: none;
+          }
+        }
+        .evolution-table-wrap {
+          margin-top: 18px;
+          overflow-x: auto;
+          border: 1px solid var(--border);
+          border-radius: 18px;
+          background: rgba(255,255,255,0.035);
+          box-shadow: var(--shadow-sm);
+        }
+        .evolution-table {
+          width: 100%;
+          min-width: 880px;
+          border-collapse: collapse;
+        }
+        .evolution-table th,
+        .evolution-table td {
+          padding: 13px 15px;
+          border-bottom: 1px solid var(--border);
+          text-align: right;
+          vertical-align: top;
+          line-height: 1.55;
+          font-size: 0.84rem;
+        }
+        .evolution-table th {
+          background: rgba(15,23,42,0.96);
+          color: #f8fafc;
+          font-size: 0.78rem;
+          font-weight: 900;
+          white-space: nowrap;
+        }
+        .evolution-table tbody tr:hover {
+          background: rgba(255,255,255,0.05);
+        }
+        .evolution-table tbody tr:last-child td {
+          border-bottom: none;
+        }
+        .evolution-index {
+          color: #f4b942;
+          font-weight: 900;
+          text-align: center;
+        }
+        .evolution-era {
+          color: #ffffff;
+          font-weight: 900;
+          white-space: nowrap;
+        }
+        .evolution-note {
+          color: var(--muted);
+          font-size: 0.78rem;
+          line-height: 1.6;
+          text-align: center;
+          margin-top: 12px;
         }
         .args-col {
           padding: 20px 16px;
@@ -1031,12 +1372,44 @@ export default function ArgumentsPage({
           padding: 0 16px;
           align-items: start;
         }
+        .editors-top.collapsed {
+          grid-template-columns: minmax(280px, 1fr);
+          max-width: 620px;
+        }
         .editors-top-center {
           grid-column: 2;
           padding-top: 2px;
         }
+        .editors-top.collapsed .editors-top-center {
+          grid-column: 1;
+        }
         .editors-top-center h1 {
           margin-bottom: 5px;
+        }
+        .editors-toggle {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          margin: 0 auto 8px;
+          padding: 4px 12px;
+          border-radius: 999px;
+          border: 1px solid rgba(255,255,255,0.1);
+          background: rgba(255,255,255,0.035);
+          color: rgba(226,232,240,0.72);
+          font-size: 0.78rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: color 0.18s, background 0.18s, border-color 0.18s;
+        }
+        .editors-toggle:hover {
+          color: var(--text);
+          background: rgba(255,255,255,0.07);
+          border-color: var(--border-strong);
+        }
+        .editors-toggle-arrow {
+          font-size: 0.8rem;
+          opacity: 0.72;
         }
         .editors-top-center p {
           margin-bottom: 0;
@@ -1141,55 +1514,50 @@ export default function ArgumentsPage({
         <div className="args-header">
           {showBack && <button type="button" className="args-back" onClick={() => navigate('/')}>← חזרה</button>}
           {editorsPlacement === 'top' && (
-            <div className="editors-top" aria-label="עורכים מורשים">
-              <div className="editors-top-list science">
-                <div className="editors-top-title">עורכים מורשים מדע ואתאיזם</div>
-                {SPECIAL_SCIENTISTS.map(name => (
-                  <div className="editor-mini-card" key={name}>
-                    🔬 {name}
-                    <span>עורך טענות מדע</span>
-                  </div>
-                ))}
-              </div>
+            <div className={`editors-top${editorsOpen ? '' : ' collapsed'}`} aria-label="עורכים מורשים">
+              {editorsOpen && (
+                <div className="editors-top-list science">
+                  <div className="editors-top-title">עורכים מורשים לאתאיזם</div>
+                  {SPECIAL_SCIENTISTS.map(name => (
+                    <div className="editor-mini-card" key={name}>
+                      🔬 {name}
+                      <span>עורך טענות מדע</span>
+                    </div>
+                  ))}
+                </div>
+              )}
               <div className="editors-top-center">
                 <h1>{title}</h1>
+                <button
+                  type="button"
+                  className="editors-toggle"
+                  onClick={() => setEditorsOpen(open => !open)}
+                  aria-expanded={editorsOpen}
+                >
+                  עורכים מורשים
+                  <span className="editors-toggle-arrow">{editorsOpen ? '▲' : '▼'}</span>
+                </button>
                 <p>{subtitle}</p>
-                {showSearch && (
-                  <div className="args-search">
-                    <input
-                      placeholder="חפש טענה, נושא או שם כותב..."
-                      value={searchQuery}
-                      onChange={e => setSearchQuery(e.target.value)}
-                    />
-                    <button type="button" onClick={() => setSearchQuery(searchQuery.trim())} aria-label="חיפוש">🔍</button>
-                  </div>
-                )}
+                {renderSearchRow()}
               </div>
-              <div className="editors-top-list rabbis">
-                <div className="editors-top-title">עורכים מורשים בעד אמונה</div>
-                {SPECIAL_RABBIS.map(name => (
-                  <div className="editor-mini-card" key={name}>
-                    🕍 {name}
-                    <span>עורך טענות אמונה</span>
-                  </div>
-                ))}
-              </div>
+              {editorsOpen && (
+                <div className="editors-top-list rabbis">
+                  <div className="editors-top-title">עורכים מורשים לדת</div>
+                  {SPECIAL_RABBIS.map(name => (
+                    <div className="editor-mini-card" key={name}>
+                      🕍 {name}
+                      <span>עורך טענות אמונה</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
           {editorsPlacement !== 'top' && (
             <>
               <h1>{title}</h1>
               <p>{subtitle}</p>
-              {showSearch && (
-                <div className="args-search">
-                  <input
-                    placeholder="חפש טענה, נושא או שם כותב..."
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                  />
-                  <button type="button" onClick={() => setSearchQuery(searchQuery.trim())} aria-label="חיפוש">🔍</button>
-                </div>
-              )}
+              {renderSearchRow()}
             </>
           )}
         </div>
@@ -1215,71 +1583,81 @@ export default function ArgumentsPage({
             לא נמצאו טענות שמתאימות לחיפוש
           </div>
         ) : activeCategory === RELIGIONS_CATEGORY ? (
-          <ReligionsTable />
+          <>
+            {renderKnowledgeAiSlot()}
+            <ReligionsTable />
+          </>
         ) : activeCategory === BIBLE_CATEGORY ? (
-          <div className="knowledge-bible-panel">
-            <BiblePanel embedded />
-          </div>
+          <>
+            {renderKnowledgeAiSlot()}
+            <div className="knowledge-bible-panel">
+              <BiblePanel embedded />
+            </div>
+          </>
         ) : (
-        <div className="args-columns">
-          {/* Pro — belief */}
-          <div className="args-col col-pro">
-            <div className="args-col-title">{columnTitles.pro}</div>
-            {getArgs(activeCategory, 'pro').map((arg, i) => (
-              <div className="arg-card" key={i}>
-                <div>{arg.text}</div>
-                <div className="arg-card-author">
-                  {SPECIAL_RABBIS.includes(arg.author) && <span className="special-badge badge-rabbi">🕍 רב</span>}
-                  {SPECIAL_SCIENTISTS.includes(arg.author) && <span className="special-badge badge-scientist">🔬 מדען</span>}
-                  {arg.author}
+        <>
+          {activeCategory === 'אבולוציה' && <EvolutionTreePanel />}
+          {renderKnowledgeAiSlot()}
+          <div className="args-columns">
+            {/* Pro — belief */}
+            <div className="args-col col-pro">
+              <div className="args-col-title">{columnTitles.pro}</div>
+              {getArgs(activeCategory, 'pro').map((arg, i) => (
+                <div className="arg-card" key={i}>
+                  <div>{arg.text}</div>
+                  <div className="arg-card-author">
+                    {SPECIAL_RABBIS.includes(arg.author) && <span className="special-badge badge-rabbi">🕍 רב</span>}
+                    {SPECIAL_SCIENTISTS.includes(arg.author) && <span className="special-badge badge-scientist">🔬 מדען</span>}
+                    {arg.author}
+                  </div>
                 </div>
-              </div>
-            ))}
-            {isSpecial && (
-              <div className="args-special">
-                <div className="args-special-title">
-                  {isRabbi ? '🕍 הוסף טענה בעד אמונה' : '🔬 הוסף טענה בעד אמונה'}
+              ))}
+              {isSpecial && (
+                <div className="args-special">
+                  <div className="args-special-title">
+                    {isRabbi ? '🕍 הוסף טענה בעד אמונה' : '🔬 הוסף טענה בעד אמונה'}
+                  </div>
+                  <textarea
+                    className="args-add-input"
+                    placeholder="כתוב את הטענה כאן..."
+                    value={newPro}
+                    onChange={e => setNewPro(e.target.value)}
+                  />
+                  <button className="args-add-btn btn-pro" onClick={() => addArg('pro')}>➕ הוסף</button>
                 </div>
-                <textarea
-                  className="args-add-input"
-                  placeholder="כתוב את הטענה כאן..."
-                  value={newPro}
-                  onChange={e => setNewPro(e.target.value)}
-                />
-                <button className="args-add-btn btn-pro" onClick={() => addArg('pro')}>➕ הוסף</button>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
 
-          {/* Con — science */}
-          <div className="args-col col-con">
-            <div className="args-col-title">{columnTitles.con}</div>
-            {getArgs(activeCategory, 'con').map((arg, i) => (
-              <div className="arg-card" key={i}>
-                <div>{arg.text}</div>
-                <div className="arg-card-author">
-                  {SPECIAL_RABBIS.includes(arg.author) && <span className="special-badge badge-rabbi">🕍 רב</span>}
-                  {SPECIAL_SCIENTISTS.includes(arg.author) && <span className="special-badge badge-scientist">🔬 מדען</span>}
-                  {arg.author}
+            {/* Con — science */}
+            <div className="args-col col-con">
+              <div className="args-col-title">{columnTitles.con}</div>
+              {getArgs(activeCategory, 'con').map((arg, i) => (
+                <div className="arg-card" key={i}>
+                  <div>{arg.text}</div>
+                  <div className="arg-card-author">
+                    {SPECIAL_RABBIS.includes(arg.author) && <span className="special-badge badge-rabbi">🕍 רב</span>}
+                    {SPECIAL_SCIENTISTS.includes(arg.author) && <span className="special-badge badge-scientist">🔬 מדען</span>}
+                    {arg.author}
+                  </div>
                 </div>
-              </div>
-            ))}
-            {isSpecial && (
-              <div className="args-special">
-                <div className="args-special-title">
-                  {isScientist ? '🔬 הוסף טענה מדעית' : '🕍 הוסף טענה מדעית'}
+              ))}
+              {isSpecial && (
+                <div className="args-special">
+                  <div className="args-special-title">
+                    {isScientist ? '🔬 הוסף טענה מדעית' : '🕍 הוסף טענה מדעית'}
+                  </div>
+                  <textarea
+                    className="args-add-input"
+                    placeholder="כתוב את הטענה כאן..."
+                    value={newCon}
+                    onChange={e => setNewCon(e.target.value)}
+                  />
+                  <button className="args-add-btn btn-con" onClick={() => addArg('con')}>➕ הוסף</button>
                 </div>
-                <textarea
-                  className="args-add-input"
-                  placeholder="כתוב את הטענה כאן..."
-                  value={newCon}
-                  onChange={e => setNewCon(e.target.value)}
-                />
-                <button className="args-add-btn btn-con" onClick={() => addArg('con')}>➕ הוסף</button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
+        </>
         )}
 
         {editorsPlacement === 'bottom' && (

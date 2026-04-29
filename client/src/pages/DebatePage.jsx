@@ -192,7 +192,7 @@ export default function DebatePage() {
 const styles = {
   page: {
     display: 'flex', flexDirection: 'column',
-    height: 'calc(100vh - 110px)', /* AppHeader + Navbar */
+    height: 'calc(100vh - var(--total-h))', /* AppHeader + Navbar */
     padding: '0',
     overflow: 'hidden',
   },

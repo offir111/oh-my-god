@@ -33,9 +33,9 @@
   --radius: 16px;
   --radius-sm: 10px;
   --radius-pill: 999px;
-  --appheader-h: 52px;
+  --appheader-h: 58px;
   --navbar-h: 58px;
-  --total-h: 110px;
+  --total-h: 116px;
 
   /* Depth */
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.45);
@@ -886,7 +886,7 @@ html {
 
 /* —— Spectator page —— */
 .spectator-page {
-  min-height: calc(100vh - 52px);
+  min-height: calc(100vh - var(--appheader-h));
   display: flex;
   flex-direction: column;
   background: var(--bg-deep);

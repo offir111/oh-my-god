@@ -141,6 +141,48 @@ app.post('/api/bible-search', async (req, res) => {
   }
 });
 
+/** תשובת AI במאגר ידע — שאלה חופשית; התשובה מוצגת בלוח מתחת לטאבים */
+app.post('/api/knowledge-ask', async (req, res) => {
+  const question = String(req.body?.question ?? '').trim();
+  if (!question) return res.status(400).json({ error: 'חסרה שאלה' });
+  if (question.length > 6000) return res.status(400).json({ error: 'השאלה ארוכה מדי' });
+
+  if (!process.env.GROQ_API_KEY) {
+    console.warn('[knowledge-ask] GROQ_API_KEY missing');
+    return res.status(503).json({ error: 'שירות ה־AI לא זמין כרגע' });
+  }
+
+  try {
+    const Groq = (await import('groq-sdk')).default;
+    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
+    const response = await groq.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      max_tokens: 1600,
+      messages: [
+        {
+          role: 'system',
+          content: `אתה עוזר ידע כללי. השב בעברית בלבד — ניתן לשאול על כל נושא (מדע, היסטוריה, טכנולוגיה, תרבות, פילוסופיה ועוד).
+
+כללים:
+1. תשובה ברורה ומסודרת; פסקאות קצרות כשנדרש.
+2. ניטרלי ומכובד; בנושאים רגישים הצג גונים שונים בלי להטיף.
+3. בלי markdown (#, **); טקסט רגיל בלבד.
+4. אם חסר מידע — ציין זאת בקצרה.`,
+        },
+        { role: 'user', content: question },
+      ],
+    });
+
+    const answer = response.choices[0]?.message?.content?.trim();
+    if (!answer) return res.status(502).json({ error: 'לא התקבלה תשובה מהשרת' });
+    res.json({ answer });
+  } catch (e) {
+    console.error('[knowledge-ask] error:', e.message);
+    res.status(503).json({ error: 'לא ניתן לקבל תשובה כרגע. נסה שוב בעוד רגע.' });
+  }
+});
+
 // Admin: manually set registered count (one-time use)
 app.post('/api/admin/set-count', express.json(), (req, res) => {
   const { count, usernames } = req.body;

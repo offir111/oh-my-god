@@ -30,7 +30,7 @@ export default function LiveEventsPage() {
     <>
       <style>{`
         .live-events-page {
-          min-height: calc(100vh - 52px);
+          min-height: calc(100vh - var(--appheader-h));
           background: transparent;
           padding: 24px 16px;
           display: flex;
@@ -199,6 +199,13 @@ export default function LiveEventsPage() {
           transition: border-color 0.2s, color 0.2s;
         }
         .event-reminder:hover { border-color: #FFE566; color: #FFE566; }
+        .event-demo-note {
+          color: #777;
+          font-size: 0.78rem;
+          text-align: center;
+          line-height: 1.5;
+          margin-top: -6px;
+        }
         .events-empty-notice {
           color: #555;
           font-size: 0.88rem;
@@ -322,6 +329,7 @@ export default function LiveEventsPage() {
               >
                 {reminders.has(ev.id) ? 'תזכורת נשמרה' : '🔔 תזכורת לאירוע'}
               </button>
+              <div className="event-demo-note">השיחה הנ"ל למטרת המחשה בלבד</div>
             </div>
           </div>
         ))}
