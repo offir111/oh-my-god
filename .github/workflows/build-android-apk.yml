@@ -1,0 +1,70 @@
+# בונה APK אחד במכונה בענן — אין צורך ב-Java במחשב שלך.
+name: Build Oh My GOD APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'client/**'
+      - 'android/**'
+      - 'capacitor.config.json'
+      - '.github/workflows/build-android-apk.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            client/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm ci --prefix client
+
+      - name: Build web + sync Capacitor
+        run: npm run android:sync
+
+      - name: Build APK (Gradle)
+        working-directory: android
+        env:
+          GRADLE_OPTS: '-Xmx4g'
+        run: chmod +x ./gradlew && ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Prepare APK filename
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk Oh-My-GOD-install.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Oh-My-GOD-install-apk
+          path: Oh-My-GOD-install.apk
+          retention-days: 90
+
+      - name: Publish APK on Releases (קישור ישיר להורדה בטלפון)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          gh release view nightly-apk -R "${{ github.repository }}" 2>/dev/null && gh release delete nightly-apk -R "${{ github.repository }}" --yes || true
+          gh release create nightly-apk Oh-My-GOD-install.apk \
+            -R "${{ github.repository }}" \
+            --title "Oh My GOD — התקנה מהירה" \
+            --notes "קובץ התקנה לאנדרואיד (סמסונג). בטלפון: הורד מכאן ← פתח את הקובץ ← התקן ← פתח. (נדרש אישור התקנה אחד — חוק אנדרואיד.)"

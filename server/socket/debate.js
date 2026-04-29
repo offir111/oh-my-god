@@ -1,4 +1,5 @@
 import { store, isValidTurn, advanceTurn, updateUserScore, saveSnapshot } from '../store/memory.js';
+import { recordMessageTopics } from '../lib/topicTracking.js';
 
 // Lazy-load AI functions to prevent startup crash if groq-sdk has issues
 async function getAIResponse(...args) {
@@ -55,6 +56,7 @@ export function registerDebate(io) {
 
       debate.textMessages.push(msg);
       debate.textCount[side]++;
+      recordMessageTopics(store, msg.content);
       advanceTurn(debate);
 
       io.to(debateId).emit('TEXT_MESSAGE_RECEIVED', msg);
@@ -152,6 +154,7 @@ async function handleAITextTurn(io, debate) {
     const msg = { side: debate.aiSide, content: text, timestamp: Date.now(), isAI: true };
     debate.textMessages.push(msg);
     debate.textCount[debate.aiSide]++;
+    recordMessageTopics(store, text);
     advanceTurn(debate);
     debate.isAITurn = false;
 
@@ -179,6 +182,7 @@ async function handleAIVoiceTurn(io, debate) {
       history: [...debate.textMessages, ...debate.voiceMessages],
       phase: 'voice',
     });
+    recordMessageTopics(store, text);
     const msg = { side: debate.aiSide, isAIText: true, content: text, duration: 0, timestamp: Date.now() };
     debate.voiceMessages.push(msg);
     debate.voiceCount[debate.aiSide]++;

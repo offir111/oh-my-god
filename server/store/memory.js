@@ -17,6 +17,7 @@ export const store = {
   registeredCount: 0,      // persistent total registered users count
   registeredUsernames: new Set(), // track unique usernames to avoid double-counting
   registeredPasswords: new Map(), // username -> password hash
+  topicCounts: new Map(),   // topicId → מספר אזכורים בהודעות טקסט (אדם + AI)
 };
 
 export function createDebateState(debateId, believer, atheist, isAI = false, aiSide = null) {
@@ -122,6 +123,7 @@ export function saveSnapshot() {
       registeredUsernames: [...store.registeredUsernames],
       registeredPasswordsVersion: REGISTERED_PASSWORDS_VERSION,
       registeredPasswords: Object.fromEntries(store.registeredPasswords),
+      topicCounts: Object.fromEntries(store.topicCounts),
       savedAt: new Date().toISOString(),
     };
     fs.writeFileSync(SNAPSHOT_PATH, JSON.stringify(data, null, 2), 'utf8');
@@ -146,6 +148,9 @@ export function loadSnapshot() {
     }
     if (data.registeredPasswordsVersion === REGISTERED_PASSWORDS_VERSION && data.registeredPasswords) {
       store.registeredPasswords = new Map(Object.entries(data.registeredPasswords));
+    }
+    if (data.topicCounts && typeof data.topicCounts === 'object') {
+      store.topicCounts = new Map(Object.entries(data.topicCounts).map(([k, v]) => [k, Number(v) || 0]));
     }
     store.registeredCount = Math.max(store.registeredCount, store.registeredUsernames.size, store.registeredPasswords.size);
     console.log(`[store] Loaded ${store.archivedDebates.length} archived debates, ${store.registeredCount} registered users`);

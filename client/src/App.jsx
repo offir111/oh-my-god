@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useAppStore } from './store/appStore.js';
+import React, { useEffect, useLayoutEffect } from 'react';
+import { BrowserRouter, HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
+import { useAppStore, rehydrateUserIfNeeded } from './store/appStore.js';
 import { connectSocket, disconnectSocket } from './socket.js';
 import Navbar from './components/layout/Navbar.jsx';
 import AppHeader from './components/layout/AppHeader.jsx';
@@ -18,18 +19,31 @@ import SettingsPage from './pages/SettingsPage.jsx';
 import { applyPreferencesToDocument, loadPreferences } from './lib/appPreferences.js';
 
 function RequireAuth({ children }) {
+  useLayoutEffect(() => {
+    rehydrateUserIfNeeded();
+  }, []);
   const user = useAppStore(s => s.user);
   if (!user) return <Navigate to="/login" replace />;
   return children;
 }
 
 export default function App() {
+  /** נקבע בהרצת הקומפוננטה כדי שהזיהוי של Capacitor יהיה אחרי טעינת ה-WebView */
+  const AppRouter = React.useMemo(
+    () => (Capacitor.isNativePlatform() ? HashRouter : BrowserRouter),
+    [],
+  );
+
   const user = useAppStore(s => s.user);
   const socketUsername = user?.username;
   const socketSide = user?.side;
 
   useEffect(() => {
     applyPreferencesToDocument(loadPreferences());
+  }, []);
+
+  useEffect(() => {
+    rehydrateUserIfNeeded();
   }, []);
 
   // Reconnect only when identity changes, not when `user` is replaced (e.g. updateScore clones the object).
@@ -42,7 +56,7 @@ export default function App() {
   }, [socketUsername, socketSide]);
 
   return (
-    <BrowserRouter>
+    <AppRouter>
       <AppHeader />
       {user && <Navbar />}
       <main id="main-content" className="app-main" tabIndex={-1}>
@@ -64,6 +78,6 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
-    </BrowserRouter>
+    </AppRouter>
   );
 }

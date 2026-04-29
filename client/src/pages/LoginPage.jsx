@@ -1,6 +1,6 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useLayoutEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { useAppStore } from '../store/appStore.js';
+import { useAppStore, rehydrateUserIfNeeded } from '../store/appStore.js';
 import { connectSocket, socket } from '../socket.js';
 import TransparentImage from '../components/ui/TransparentImage.jsx';
 
@@ -104,20 +104,54 @@ export default function LoginPage() {
   const matchFoundHandlerRef = useRef(null);
   const matchErrorHandlerRef = useRef(null);
   const aiTimeoutRef = useRef(null);
-  const shouldPlayHomePanels = homeAnimationRun > 0 && Boolean(registered || currentUser);
+  const aiAbortRef = useRef(false);
+  /** בריפוי דף הבית — הסרת connect שנותר מזרימת AI */
+  const aiConnectSendRef = useRef(null);
+  /** שם פעיל לפאנלים ול-AI גם כש־registered אופס אחרי לוגו ויש רק currentUser או טקט בשדות */
+  const sessionUsername =
+    registered?.username?.trim()
+    || currentUser?.username?.trim()
+    || (username.trim() ? username.trim() : undefined);
+  const shouldPlayHomePanels = homeAnimationRun > 0;
 
   function playHomeAnimationSequence() {
     setHomeAnimationRun(run => run + 1);
   }
 
   function resetHomePage() {
-    const activeUsername = currentUser?.username || readStoredLoginUsername();
-    setRegistered(currentUser ? { username: currentUser.username } : null);
+    rehydrateUserIfNeeded();
+    aiAbortRef.current = true;
+    if (aiConnectSendRef.current) {
+      socket.off('connect', aiConnectSendRef.current);
+      aiConnectSendRef.current = null;
+    }
+    if (matchFoundHandlerRef.current) {
+      socket.off('MATCH_FOUND', matchFoundHandlerRef.current);
+      matchFoundHandlerRef.current = null;
+    }
+    if (matchErrorHandlerRef.current) {
+      socket.off('MATCH_ERROR', matchErrorHandlerRef.current);
+      matchErrorHandlerRef.current = null;
+    }
+    if (aiTimeoutRef.current) {
+      clearTimeout(aiTimeoutRef.current);
+      aiTimeoutRef.current = null;
+    }
+
+    const activeUsername =
+      useAppStore.getState().user?.username
+      || readStoredLoginUsername();
+    setRegistered(null);
     setSelectedSide(null);
     setAiLoading(false);
     setError('');
     setPassword('');
     setUsername(activeUsername);
+
+    const u = useAppStore.getState().user;
+    if (u?.username && (u.side === 'believer' || u.side === 'atheist')) {
+      connectSocket(u.username, u.side);
+    }
   }
 
   useEffect(() => {
@@ -125,9 +159,42 @@ export default function LoginPage() {
   }, []);
 
   useEffect(() => {
-    if (!location.state?.homeResetAt) return;
+    const params = new URLSearchParams(location.search);
+    if (!params.has('homeReset')) return;
+    rehydrateUserIfNeeded();
+    const u = useAppStore.getState().user;
+    /** מחוברים: לוגו/איפוס לא אמורים "לנקות" את המסך כאילו התנתקו — חוזים ללובי כמו לחיצת בית אמיתית */
+    if (u?.username && (u.side === 'believer' || u.side === 'atheist')) {
+      navigate(`/lobby?homeTap=${encodeURIComponent(String(Date.now()))}`, { replace: true });
+      return;
+    }
     resetHomePage();
-  }, [location.state?.homeResetAt]);
+    navigate('/login', { replace: true });
+  }, [location.search, navigate]);
+
+  /** מחוברים שמגיעים ל־/login בלי לוגו — חוזים ללובי; עם ?logo= זה דף הבית מהלוגו — נשארים במסך הכניסה */
+  useLayoutEffect(() => {
+    if (location.pathname !== '/login') return;
+    const params = new URLSearchParams(location.search);
+    if (params.has('homeReset')) return;
+    if (params.has('logo')) return;
+    rehydrateUserIfNeeded();
+    const u = useAppStore.getState().user;
+    if (u?.username && (u.side === 'believer' || u.side === 'atheist')) {
+      navigate('/lobby', { replace: true });
+    }
+  }, [location.pathname, location.search, navigate]);
+
+  /** חיבור סוקט מפורש אחרי הגעה עם ?logo= — מונע רגע „מנותק” בהדר ובכותרת */
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (!params.has('logo')) return;
+    rehydrateUserIfNeeded();
+    const u = useAppStore.getState().user;
+    if (u?.username && (u.side === 'believer' || u.side === 'atheist')) {
+      connectSocket(u.username, u.side);
+    }
+  }, [location.search]);
 
   useEffect(() => {
     if (currentUser) return;
@@ -183,13 +250,12 @@ export default function LoginPage() {
     persistLoginPassword(name, password);
     setRegistered(pending);
     playHomeAnimationSequence();
-    // Do not clear an existing logged-in user just because they visited the home/registration page.
-    // The active user is replaced only when they actually choose a side/mode below.
-    if (!currentUser) setPendingUser(pending);
+    rehydrateUserIfNeeded();
+    if (!useAppStore.getState().user) setPendingUser(pending);
   }
 
   function handlePanelClick(side) {
-    const name = registered?.username;
+    const name = sessionUsername?.trim();
     if (!name) { setError('נא להזין שם משתמש תחילה'); return; }
     setSelectedSide(side);
   }
@@ -201,13 +267,14 @@ export default function LoginPage() {
   }
 
   function handleHuman() {
-    const name = registered?.username;
+    const name = sessionUsername;
     setUser({ username: name, side: selectedSide, score: 0, voiceDebates: 0, giftsReceived: 0, humanDebates: 0, aiDebates: 0 });
     connectSocket(name, selectedSide);
     navigate('/lobby');
   }
 
   function startAIDebate(name, side) {
+    aiAbortRef.current = false;
     setUser({ username: name, side, score: 0, voiceDebates: 0, giftsReceived: 0, humanDebates: 0, aiDebates: 0 });
     setAiLoading(true);
 
@@ -216,8 +283,13 @@ export default function LoginPage() {
     if (matchFoundHandlerRef.current) socket.off('MATCH_FOUND', matchFoundHandlerRef.current);
     if (matchErrorHandlerRef.current) socket.off('MATCH_ERROR', matchErrorHandlerRef.current);
     if (aiTimeoutRef.current) clearTimeout(aiTimeoutRef.current);
+    if (aiConnectSendRef.current) {
+      socket.off('connect', aiConnectSendRef.current);
+      aiConnectSendRef.current = null;
+    }
 
     const onMatchFound = ({ debateId, isAI, believer, atheist, aiSide, turn }) => {
+      if (aiAbortRef.current) return;
       socket.off('MATCH_ERROR', onMatchError);
       matchFoundHandlerRef.current = null;
       matchErrorHandlerRef.current = null;
@@ -235,6 +307,7 @@ export default function LoginPage() {
     };
 
     const onMatchError = ({ message }) => {
+      if (aiAbortRef.current) return;
       socket.off('MATCH_FOUND', onMatchFound);
       matchFoundHandlerRef.current = null;
       matchErrorHandlerRef.current = null;
@@ -250,18 +323,22 @@ export default function LoginPage() {
 
     // Wait for connection then emit — don't use fixed timeout
     function sendRequest() {
+      if (aiAbortRef.current) return;
       console.log('[login] socket connected, emitting REQUEST_AI_DEBATE');
       socket.emit('REQUEST_AI_DEBATE', { username: name, side });
+      aiConnectSendRef.current = null;
     }
 
     if (socket.connected) {
       sendRequest();
     } else {
+      aiConnectSendRef.current = sendRequest;
       socket.once('connect', sendRequest);
       // Connection timeout after 8 seconds
       aiTimeoutRef.current = setTimeout(() => {
         if (!socket.connected) {
           console.error('[login] socket failed to connect after 8s');
+          aiAbortRef.current = true;
           socket.off('MATCH_FOUND', onMatchFound);
           socket.off('MATCH_ERROR', onMatchError);
           matchFoundHandlerRef.current = null;
@@ -276,13 +353,13 @@ export default function LoginPage() {
   }
 
   function handleAIMode() {
-    const name = registered?.username;
+    const name = sessionUsername;
     if (!name || !selectedSide) { setError('נא לבחור צד לפני התחלת דיון מול AI'); return; }
     startAIDebate(name, selectedSide);
   }
 
   function handleAI() {
-    const name = registered?.username;
+    const name = sessionUsername;
     if (!name) { setError('נא להזין שם משתמש תחילה'); return; }
     setSelectedSide('believer');
     startAIDebate(name, 'believer');
@@ -847,10 +924,17 @@ export default function LoginPage() {
             </span>
             <h1 className="login-title" dir="ltr">
               <Link
-                to="/login"
+                to={{ pathname: '/login', search: location.search }}
                 className="login-title-homelink login-title-phrase"
                 aria-label="דף הכניסה"
-                onClick={() => {
+                onClick={(e) => {
+                  /** אל תנווט ל־/login בלי query — זה מוחק ?logo= ואז הפניה אוטומטית ללובי מרפרטת את הסוקט */
+                  if (currentUser) {
+                    e.preventDefault();
+                    playHomeAnimationSequence();
+                    window.scrollTo(0, 0);
+                    return;
+                  }
                   resetHomePage();
                   window.scrollTo(0, 0);
                 }}
@@ -895,7 +979,7 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {!registered ? (
+          {!registered && !currentUser ? (
             <div className="login-input-row">
               <div className="login-input-wrap">
                 <input
@@ -927,6 +1011,7 @@ export default function LoginPage() {
             </div>
           ) : null}
 
+          <>
           {aiLoading ? (
             <div style={{ textAlign: 'center', padding: '40px 0' }}>
               <div className="spinner" style={{ margin: '0 auto 20px' }} />
@@ -1044,6 +1129,7 @@ export default function LoginPage() {
               </button>
             </div>
           )}
+            </>
         </section>
 
         <div className="login-links">

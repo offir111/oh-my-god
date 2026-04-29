@@ -337,6 +337,8 @@ const CATEGORY_COLUMN_TITLES = {
 
 const RELIGIONS_CATEGORY = 'דתות';
 const BIBLE_CATEGORY = 'התנך';
+/** קטגוריה במאגר ידע — מעל המלבנים יוצג משפט תיאולוגי קצר */
+const GOD_EXISTENCE_CATEGORY = 'קיום האלוהים';
 
 const RELIGIONS = [
   { name: 'יהדות', belief: 'אל אחד', messenger: 'משה ומשיח עתידי', origin: 'ישראל / המזרח הקדום', followers: 'כ-15 מיליון', age: 'כ-3,000 שנה', principle: 'ברית בין עם ישראל לאל אחד דרך תורה, מצוות ומוסר.' },
@@ -564,6 +566,41 @@ function argMatchesQuery(arg, query) {
   return `${arg.text} ${arg.author}`.toLowerCase().includes(q);
 }
 
+/** סינון קטגוריות לפי תיבת החיפוש — משמש גם להחלטה אם לפנות ל־AI לחיפוש כללי */
+function getMatchingCategories(searchRaw, customArgsState, religionsPageFlag) {
+  const normalizedSearch = searchRaw.trim().toLowerCase();
+  const priorityCategories = [BIBLE_CATEGORY, 'אבולוציה', RELIGIONS_CATEGORY];
+  const baseCategories = religionsPageFlag
+    ? Object.keys(INITIAL_DATA)
+    : [
+        ...priorityCategories,
+        ...Object.keys(INITIAL_DATA).filter(category => !priorityCategories.includes(category)),
+      ];
+
+  if (!normalizedSearch) return baseCategories;
+
+  return baseCategories.filter((category) => {
+    if (category === BIBLE_CATEGORY) {
+      return 'התנך תנך ספר התנך תורה נביאים כתובים בראשית שמות ויקרא במדבר דברים תהילים משלי'
+        .includes(normalizedSearch);
+    }
+    if (category === RELIGIONS_CATEGORY) {
+      return RELIGIONS.some((religion) => (
+        `${religion.name} ${religion.belief} ${religion.origin} ${religion.followers} ${religion.age} ${religion.principle}`
+          .toLowerCase()
+          .includes(normalizedSearch)
+      ));
+    }
+    const allArgs = [
+      ...(INITIAL_DATA[category]?.pro || []),
+      ...(INITIAL_DATA[category]?.con || []),
+      ...(customArgsState[category]?.pro || []),
+      ...(customArgsState[category]?.con || []),
+    ];
+    return category.toLowerCase().includes(normalizedSearch) || allArgs.some((arg) => argMatchesQuery(arg, normalizedSearch));
+  });
+}
+
 export default function ArgumentsPage({
   title = 'דתות',
   subtitle = 'טבלת דתות ומסורות מרכזיות בעולם לפי סדר שביקשת ונתוני מאמינים מקורבים',
@@ -623,8 +660,8 @@ export default function ArgumentsPage({
     });
   }
 
-  async function fetchKnowledgeAiAnswer() {
-    const q = searchQuery.trim();
+  async function fetchKnowledgeAiAnswer(questionOverride) {
+    const q = String(questionOverride ?? searchQuery).trim();
     if (!q || knowledgeAiLoading || !showKnowledgeAiAssistant) return;
     setKnowledgeAiLoading(true);
     setKnowledgeAiError('');
@@ -659,6 +696,14 @@ export default function ArgumentsPage({
     }
   }
 
+  function handleSearchMagnifier() {
+    const q = searchQuery.trim();
+    setSearchQuery(q);
+    if (!showKnowledgeAiAssistant || !q) return;
+    const matched = getMatchingCategories(q, customArgs, isReligionsPage);
+    if (matched.length === 0) void fetchKnowledgeAiAnswer(q);
+  }
+
   function renderKnowledgeAiSlot() {
     if (!showKnowledgeAiAssistant || (!knowledgeAiLoading && !knowledgeAiAnswer && !knowledgeAiError)) return null;
     return (
@@ -681,11 +726,17 @@ export default function ArgumentsPage({
     return (
       <div className={`args-search${showKnowledgeAiAssistant ? ' args-search--triple' : ''}`}>
         <input
-          placeholder="חפש טענה, נושא או שם כותב…"
+          placeholder="חיפוש במאגר המובנה או כל שאלה כללית — Enter או 🔍; ללא התאמה יופנה ל-AI"
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleSearchMagnifier();
+            }
+          }}
         />
-        <button type="button" onClick={() => setSearchQuery(searchQuery.trim())} aria-label="חיפוש במאגר">
+        <button type="button" onClick={handleSearchMagnifier} aria-label="חיפוש במאגר או חיפוש כללי עם AI כשאין התאמה">
           🔍
         </button>
         {showKnowledgeAiAssistant && (
@@ -693,8 +744,8 @@ export default function ArgumentsPage({
             type="button"
             className="args-search-ai-trigger"
             disabled={!searchQuery.trim() || knowledgeAiLoading}
-            onClick={fetchKnowledgeAiAnswer}
-            aria-label="שאל את ה־AI לפי הטקסט בשורה"
+            onClick={() => fetchKnowledgeAiAnswer()}
+            aria-label="שאל את ה-AI — תשובה כללית בעברית לכל נושא"
           >
             {knowledgeAiLoading ? '…' : 'שאל AI'}
           </button>
@@ -703,37 +754,10 @@ export default function ArgumentsPage({
     );
   }
 
-  const categories = useMemo(() => {
-    const priorityCategories = [BIBLE_CATEGORY, 'אבולוציה', RELIGIONS_CATEGORY];
-    const baseCategories = isReligionsPage
-      ? Object.keys(INITIAL_DATA)
-      : [
-        ...priorityCategories,
-        ...Object.keys(INITIAL_DATA).filter(category => !priorityCategories.includes(category)),
-      ];
-
-    return baseCategories.filter(category => {
-    if (!normalizedSearch) return true;
-    if (category === BIBLE_CATEGORY) {
-      return 'התנך תנך ספר התנך תורה נביאים כתובים בראשית שמות ויקרא במדבר דברים תהילים משלי'
-        .includes(normalizedSearch);
-    }
-    if (category === RELIGIONS_CATEGORY) {
-      return RELIGIONS.some(religion => (
-        `${religion.name} ${religion.belief} ${religion.origin} ${religion.followers} ${religion.age} ${religion.principle}`
-          .toLowerCase()
-          .includes(normalizedSearch)
-      ));
-    }
-    const allArgs = [
-      ...(INITIAL_DATA[category]?.pro || []),
-      ...(INITIAL_DATA[category]?.con || []),
-      ...(customArgs[category]?.pro || []),
-      ...(customArgs[category]?.con || []),
-    ];
-    return category.toLowerCase().includes(normalizedSearch) || allArgs.some(arg => argMatchesQuery(arg, normalizedSearch));
-    });
-  }, [customArgs, isReligionsPage, normalizedSearch]);
+  const categories = useMemo(
+    () => getMatchingCategories(searchQuery, customArgs, isReligionsPage),
+    [searchQuery, customArgs, isReligionsPage],
+  );
 
   useEffect(() => {
     if (categories.length > 0 && !categories.includes(activeCategory)) {
@@ -790,43 +814,44 @@ export default function ArgumentsPage({
             cursor: pointer;
           }
           .religions-intro-line {
-            max-width: 1160px;
-            margin: 8px auto 14px;
-            padding: 0 16px;
+            max-width: 900px;
+            margin: 6px auto 10px;
+            padding: 0 10px;
             color: rgba(248, 250, 252, 0.94);
-            font-size: calc(0.95rem * 0.7);
+            font-size: calc(0.85rem * 0.72);
             font-weight: 700;
             text-align: center;
-            line-height: 1.55;
+            line-height: 1.35;
           }
           .religions-table-wrap {
-            max-width: 1160px;
+            max-width: 900px;
             margin: 0 auto;
             overflow-x: auto;
             border: 1px solid var(--border);
-            border-radius: 18px;
+            border-radius: 14px;
             background: rgba(255,255,255,0.035);
             box-shadow: var(--shadow-sm);
           }
           .religions-table {
             width: 100%;
-            min-width: 940px;
+            min-width: 680px;
             border-collapse: collapse;
+            font-size: 0.74rem;
           }
           .religions-table th,
           .religions-table td {
-            padding: 14px 16px;
+            padding: 6px 5px;
             border-bottom: 1px solid var(--border);
             text-align: right;
             vertical-align: top;
-            line-height: 1.55;
+            line-height: 1.32;
           }
           .religions-table th {
             position: sticky;
             top: 0;
             background: rgba(15,23,42,0.96);
             color: #f8fafc;
-            font-size: 0.82rem;
+            font-size: 0.7rem;
             font-weight: 900;
             white-space: nowrap;
           }
@@ -844,14 +869,16 @@ export default function ArgumentsPage({
           .religion-name {
             font-weight: 900;
             color: #ffffff;
-            white-space: nowrap;
+            white-space: normal;
+            font-size: 0.74rem;
           }
           .religion-note {
-            max-width: 1160px;
-            margin: 14px auto 0;
+            max-width: 900px;
+            margin: 10px auto 0;
+            padding: 0 10px;
             color: var(--muted);
-            font-size: 0.78rem;
-            line-height: 1.6;
+            font-size: 0.72rem;
+            line-height: 1.45;
             text-align: center;
           }
           @media (max-width: 560px) {
@@ -1112,6 +1139,17 @@ export default function ArgumentsPage({
             transform: translateX(-50%) scaleX(1);
           }
         }
+        .existence-god-quote {
+          max-width: 960px;
+          margin: 0 auto 14px;
+          padding: 12px 16px;
+          text-align: center;
+          font-weight: 680;
+          font-size: clamp(0.78rem, 2.2vw, 0.92rem);
+          color: rgba(248, 250, 252, 0.93);
+          line-height: 1.62;
+          letter-spacing: 0.015em;
+        }
         .args-columns {
           display: grid;
           grid-template-columns: 1fr 1fr;
@@ -1120,43 +1158,44 @@ export default function ArgumentsPage({
           margin: 0 auto;
         }
         .religions-intro-line {
-          max-width: 1160px;
-          margin: 8px auto 14px;
-          padding: 0 16px;
+          max-width: 900px;
+          margin: 6px auto 10px;
+          padding: 0 10px;
           color: rgba(248, 250, 252, 0.94);
-          font-size: calc(0.95rem * 0.7);
+          font-size: calc(0.85rem * 0.72);
           font-weight: 700;
           text-align: center;
-          line-height: 1.55;
+          line-height: 1.35;
         }
         .religions-table-wrap {
-          max-width: 1160px;
-          margin: 24px auto 0;
+          max-width: 900px;
+          margin: 16px auto 0;
           overflow-x: auto;
           border: 1px solid var(--border);
-          border-radius: 18px;
+          border-radius: 14px;
           background: rgba(255,255,255,0.035);
           box-shadow: var(--shadow-sm);
         }
         .religions-table {
           width: 100%;
-          min-width: 940px;
+          min-width: 680px;
           border-collapse: collapse;
+          font-size: 0.74rem;
         }
         .religions-table th,
         .religions-table td {
-          padding: 14px 16px;
+          padding: 6px 5px;
           border-bottom: 1px solid var(--border);
           text-align: right;
           vertical-align: top;
-          line-height: 1.55;
+          line-height: 1.32;
         }
         .religions-table th {
           position: sticky;
           top: 0;
           background: rgba(15,23,42,0.96);
           color: #f8fafc;
-          font-size: 0.82rem;
+          font-size: 0.7rem;
           font-weight: 900;
           white-space: nowrap;
         }
@@ -1174,19 +1213,22 @@ export default function ArgumentsPage({
         .religion-name {
           font-weight: 900;
           color: #ffffff;
-          white-space: nowrap;
+          white-space: normal;
+          font-size: 0.74rem;
         }
         .religion-name-list {
           color: rgba(248,250,252,0.92);
           font-weight: 700;
-          line-height: 1.8;
+          line-height: 1.42;
+          font-size: 0.73rem;
         }
         .religion-note {
-          max-width: 1160px;
-          margin: 14px auto 0;
+          max-width: 900px;
+          margin: 10px auto 0;
+          padding: 0 10px;
           color: var(--muted);
-          font-size: 0.78rem;
-          line-height: 1.6;
+          font-size: 0.72rem;
+          line-height: 1.45;
           text-align: center;
         }
         .knowledge-bible-panel {
@@ -1747,18 +1789,28 @@ export default function ArgumentsPage({
           </div>
         )}
 
+        {showKnowledgeAiAssistant && renderKnowledgeAiSlot()}
+
         {categories.length === 0 ? (
-          <div className="state-card" style={{ maxWidth: 720, margin: '24px auto' }}>
-            לא נמצאו טענות שמתאימות לחיפוש
+          <div className="state-card" style={{ maxWidth: 720, margin: '24px auto', textAlign: 'center', lineHeight: 1.65 }}>
+            {normalizedSearch && showKnowledgeAiAssistant ? (
+              <>
+                לא נמצאו התאמות בטענות ובטבלאות המובנות של המאגר.
+                <br />
+                <span style={{ color: 'var(--muted)', fontSize: '0.9rem', display: 'inline-block', marginTop: 10 }}>
+                  לחץ 🔍 או Enter לקבלת תשובה כללית בעברית מה-AI — או «שאל AI» ידנית (ידע עולמי, לא רק תוכן העמוד).
+                </span>
+              </>
+            ) : (
+              'לא נמצאו טענות שמתאימות לחיפוש'
+            )}
           </div>
         ) : activeCategory === RELIGIONS_CATEGORY ? (
           <>
-            {renderKnowledgeAiSlot()}
             <ReligionsTable />
           </>
         ) : activeCategory === BIBLE_CATEGORY ? (
           <>
-            {renderKnowledgeAiSlot()}
             <div className="knowledge-bible-panel">
               <BiblePanel embedded />
             </div>
@@ -1766,7 +1818,11 @@ export default function ArgumentsPage({
         ) : (
         <>
           {activeCategory === 'אבולוציה' && <EvolutionTreePanel />}
-          {renderKnowledgeAiSlot()}
+          {activeCategory === GOD_EXISTENCE_CATEGORY && (
+            <p className="existence-god-quote" dir="rtl">
+              {`ע״פ האמונה — לאלוהים אין זמן ואין מקום אין לו גם יוצר — המונח אלוהים מוזכר בתנ״ך למעלה מ־2600 פעמים, והשם המפורש, יהוה, מוזכר למעלה מ־6800 פעמים, כאשר השם המלא יהוה בדרך כלל מוחלף בקריאה במילה אדוני — (ע״פ בדיקת AI).`}
+            </p>
+          )}
           <div className="args-columns">
             {/* Pro — belief */}
             <div className="args-col col-pro">

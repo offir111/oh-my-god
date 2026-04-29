@@ -2,12 +2,59 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/appStore.js';
 
+const CONTACT_EMAIL = 'omgomgo044@gmail.com';
+/** לקישור wa.me */
+const CONTACT_WHATSAPP_E164 = '972545770566';
+
 const PAGES = {
   contact: {
     title: 'צור קשר',
-    text: 'לשאלות, הצעות ודיווח על תוכן: השתמשו בערוצי התמיכה שיפורסמו כאן.',
   },
 };
+
+function ContactContent() {
+  const pStyle = {
+    color: 'var(--text-secondary)',
+    lineHeight: 1.85,
+    fontSize: '0.98rem',
+    margin: '0 0 18px',
+  };
+  const labelStyle = {
+    display: 'block',
+    fontWeight: 800,
+    color: 'var(--text)',
+    marginBottom: 6,
+    fontSize: '0.92rem',
+  };
+  const linkStyle = {
+    color: 'var(--accent)',
+    fontWeight: 600,
+    wordBreak: 'break-all',
+  };
+
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <p style={{ ...pStyle, marginBottom: 22 }}>
+        לשאלות, הצעות ודיווח על תוכן ניתן לפנות באימייל או בוואטסאפ:
+      </p>
+      <section style={{ marginBottom: 20 }}>
+        <span style={labelStyle}>אימייל</span>
+        <a href={`mailto:${CONTACT_EMAIL}`} style={linkStyle}>{CONTACT_EMAIL}</a>
+      </section>
+      <section>
+        <span style={labelStyle}>וואטסאפ</span>
+        <a
+          href={`https://wa.me/${CONTACT_WHATSAPP_E164}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={linkStyle}
+        >
+          054-5770566
+        </a>
+      </section>
+    </div>
+  );
+}
 
 /** תקנון גנרי ותמציתי — כנהוג באפליקציות */
 function TermsContent() {
@@ -104,9 +151,7 @@ export default function StaticInfoPage({ pageId }) {
         <h1 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: 16, letterSpacing: '0.02em' }}>
           {isTerms ? 'תקנון שימוש' : c.title}
         </h1>
-        {isTerms ? <TermsContent /> : (
-          <p style={{ color: 'var(--text-secondary)', lineHeight: 1.85, marginBottom: 24 }}>{c.text}</p>
-        )}
+        {isTerms ? <TermsContent /> : <ContactContent />}
         <p style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>
           <Link to={home} style={{ color: 'var(--accent)', fontWeight: 600 }}>מעבר ל{user ? 'לובי' : 'דף הבית'}</Link>
           {' · '}

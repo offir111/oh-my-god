@@ -133,3 +133,18 @@ export const useAppStore = create((set) => ({
 
   resetDebate: () => set({ debate: null, debateId: null, gifts: [], spectatorCount: 0 }),
 }));
+
+/** משחזר user מהדפדפן אם ה־store ריק — חובה לפני setPendingUser שמוחק את omg_user */
+export function rehydrateUserIfNeeded() {
+  const store = useAppStore.getState();
+  const existing = store.user;
+  if (existing?.username && (existing.side === 'believer' || existing.side === 'atheist')) {
+    return existing;
+  }
+  const fromLs = readStoredUser();
+  if (fromLs) {
+    store.setUser(fromLs);
+    return fromLs;
+  }
+  return null;
+}

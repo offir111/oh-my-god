@@ -29,7 +29,7 @@ export default function Navbar() {
           מאגר ידע
         </NavLink>
         <NavLink to="/leaderboard" className={navClass}>
-          טבלת מובילים
+          נושאים מובילים
         </NavLink>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

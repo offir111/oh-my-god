@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { useAppStore } from '../../store/appStore.js';
-import { disconnectSocket } from '../../socket.js';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useAppStore, rehydrateUserIfNeeded } from '../../store/appStore.js';
+import { disconnectSocket, connectSocket } from '../../socket.js';
 import BibleModal from '../ui/BibleModal.jsx';
 
 const STATS_CACHE_KEY = 'omg_stats_cache';
@@ -40,6 +40,7 @@ export default function AppHeader() {
   const setPendingUser = useAppStore(s => s.setPendingUser);
   const resetDebate = useAppStore(s => s.resetDebate);
   const navigate = useNavigate();
+  const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const [bibleOpen, setBibleOpen] = useState(false);
@@ -187,13 +188,49 @@ export default function AppHeader() {
     navigate('/login');
   }
 
-  /** דף הבית — דף ההרשמה ובחירת הצד; לא מנתק מהחשבון */
+  /**
+   * דף הבית = מסך הכניסה (/login עם ?logo כשמחוברים). query (?homeReset / ?logo)
+   * מתעדכן בראוטר גם בלי מעבר ל־URL אחר לפעמים — נשמר תאום עם LoginPage.
+   */
   function goAppHome() {
     setMenuOpen(false);
     setListOpen(null);
     setOnlineModalOpen(false);
     setAvatarMenuOpen(false);
-    navigate('/login', { state: { homeResetAt: Date.now() } });
+
+    const ts = Date.now();
+    const path = location.pathname;
+    const fromDebate = path.startsWith('/debate');
+    if (fromDebate) resetDebate();
+
+    /** WebView/Capacitor: זיכרון ה־store לפעמים לא עקבי — קוראים סשן מ-localStorage לפני החלטת ניווט */
+    rehydrateUserIfNeeded();
+    const sessionUser = useAppStore.getState().user;
+    const hasFullSession =
+      Boolean(sessionUser?.username) &&
+      (sessionUser.side === 'believer' || sessionUser.side === 'atheist');
+
+    /** דף הבית = מסך הכניסה (/login), לא הלובי. פרמטר logo מונע הפניה אוטומטית חזרה ללובי */
+    if (path === '/login') {
+      if (hasFullSession) {
+        navigate(`/login?logo=${encodeURIComponent(String(ts))}`, { replace: true });
+      } else {
+        navigate(`/login?homeReset=${encodeURIComponent(String(ts))}`, { replace: true });
+      }
+    } else if (hasFullSession) {
+      navigate(`/login?logo=${encodeURIComponent(String(ts))}`, { replace: true });
+    } else {
+      navigate(`/login?homeReset=${encodeURIComponent(String(ts))}`, { replace: true });
+    }
+
+    rehydrateUserIfNeeded();
+    const u = useAppStore.getState().user;
+    if (u?.username && (u.side === 'believer' || u.side === 'atheist')) {
+      connectSocket(u.username, u.side);
+    }
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    document.getElementById('main-content')?.scrollTo?.({ top: 0, behavior: 'smooth' });
   }
 
   function openLivrChat() {
@@ -239,6 +276,9 @@ export default function AppHeader() {
           gap: 0;
           margin-inline-end: -2px;
           align-items: center;
+          flex-shrink: 0;
+          position: relative;
+          z-index: 12;
         }
         .header-dots-wrap {
           margin-inline-start: -10px;
@@ -287,7 +327,14 @@ export default function AppHeader() {
           padding: 1px 0 3px;
           border-radius: 999px;
           transition: opacity 0.2s, filter 0.2s, transform 0.12s;
-          pointer-events: all;
+          pointer-events: auto;
+          font: inherit;
+          font-family: inherit;
+          color: inherit;
+          appearance: none;
+          -webkit-appearance: none;
+          -webkit-tap-highlight-color: transparent;
+          touch-action: manipulation;
         }
         .header-logo-watermark {
           font-size: 0.62rem;
@@ -863,9 +910,19 @@ export default function AppHeader() {
           height: 38px;
           direction: rtl;
           position: relative;
+          flex: 1;
+          justify-content: center;
+          min-width: 0;
+          /* רק כפתורי הסטט נקליקים — לא הרחבת הרקע השקוף מעל הלוגו */
+          pointer-events: none;
         }
         .header-stats.header-zone {
           position: relative;
+        }
+        .header-stats > button.header-stat,
+        .header-stats > .header-stat:not(.header-stat--disabled),
+        .header-stats .stats-list-popup {
+          pointer-events: auto;
         }
         .header-stat {
           display: flex;

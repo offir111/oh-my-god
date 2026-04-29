@@ -2,3 +2,16 @@ node_modules/
 .env
 store-snapshot.json
 dist/
+
+# Android / Capacitor
+android/app/build/
+android/build/
+android/.gradle/
+android/local.properties
+capacitor-cordova-android-plugins/
+
+# iOS / Capacitor (בנייה ב-macOS)
+ios/App/Pods/
+ios/App/build/
+ios/DerivedData/
+

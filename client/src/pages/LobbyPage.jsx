@@ -86,6 +86,18 @@ export default function LobbyPage() {
     };
   }, []);
 
+  /** לחיצה על לוגו בראש המסך — מאפס התאמה / המתנה ל-AI גם כשנשארים ב־/lobby (?homeTap מאלץ עדכון URL) */
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tap = params.get('homeTap');
+    if (!tap) return;
+    matchmakingActiveRef.current = false;
+    setMatchError('');
+    setStatus('idle');
+    socket.emit('LEAVE_QUEUE');
+    navigate('/lobby', { replace: true });
+  }, [location.search, navigate]);
+
   async function fetchLive() {
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/debates/live`);

@@ -1,5 +1,6 @@
 import express from 'express';
 import { store } from '../store/memory.js';
+import { TOPIC_DEFINITIONS } from '../lib/topicTracking.js';
 
 const router = express.Router();
 
@@ -14,7 +15,17 @@ router.get('/', (req, res) => {
   }));
 
   entries.sort((a, b) => b.score - a.score || b.qualityScore - a.qualityScore);
-  res.json(entries.slice(0, 20));
+
+  const topics = TOPIC_DEFINITIONS.map(({ id, label }) => ({
+    id,
+    label,
+    count: store.topicCounts.get(id) || 0,
+  })).sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'he'));
+
+  res.json({
+    leaders: entries.slice(0, 20),
+    topics,
+  });
 });
 
 export default router;
