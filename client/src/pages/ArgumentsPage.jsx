@@ -445,17 +445,86 @@ function ReligionsTable() {
 }
 
 function EvolutionTreePanel() {
+  const [zoomOpen, setZoomOpen] = useState(false);
+
+  useEffect(() => {
+    if (!zoomOpen) return;
+    function onKey(e) {
+      if (e.key === 'Escape') setZoomOpen(false);
+    }
+    window.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [zoomOpen]);
+
   return (
     <section className="evolution-tree-panel" aria-label="עץ החיים האבולוציוני">
       <div className="evolution-image-card">
-        <a className="evolution-image-link" href={EVOLUTION_TREE_IMAGE} target="_blank" rel="noreferrer">
-          <img src={EVOLUTION_TREE_IMAGE} alt="עץ החיים האבולוציוני" />
-        </a>
+        <button
+          type="button"
+          className="evolution-image-link"
+          onClick={() => setZoomOpen(true)}
+          aria-haspopup="dialog"
+          aria-expanded={zoomOpen}
+          aria-label="הגדל עץ החיים לקריאה בגודל מלא"
+        >
+          <img
+            src={EVOLUTION_TREE_IMAGE}
+            alt="עץ החיים האבולוציוני"
+            decoding="async"
+            loading="eager"
+            fetchPriority="high"
+          />
+        </button>
         <div className="evolution-image-caption">
-          עץ החיים האבולוציוני — לחץ לפתיחה בגודל מלא
+          עץ החיים האבולוציוני — לחץ לתצוגה מלאה וגלילה (איכות מקורית)
           <span className="evolution-image-credit">מקור: UsefulCharts.com</span>
         </div>
       </div>
+
+      {zoomOpen && (
+        <div
+          className="evolution-zoom-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="עץ החיים — תצוגה מלאה"
+          onClick={() => setZoomOpen(false)}
+        >
+          <div className="evolution-zoom-inner" onClick={e => e.stopPropagation()}>
+            <button
+              type="button"
+              className="evolution-zoom-close"
+              onClick={() => setZoomOpen(false)}
+              aria-label="סגור תצוגה מלאה"
+            >
+              × סגור
+            </button>
+            <div className="evolution-zoom-scroll" tabIndex={0}>
+              <img
+                className="evolution-zoom-img"
+                src={EVOLUTION_TREE_IMAGE}
+                alt="עץ החיים האבולוציוני — גלול לכל הפרטים בקריאות גבוהה"
+                decoding="sync"
+                loading="eager"
+                fetchPriority="high"
+              />
+            </div>
+            <p className="evolution-zoom-hint">גלול באזור התמונה כדי לעבור על כל האזורים — התמונה מוצגת ברזולוציית המקור.</p>
+            <a
+              className="evolution-zoom-open-tab"
+              href={EVOLUTION_TREE_IMAGE}
+              target="_blank"
+              rel="noreferrer"
+            >
+              פתיחת קובץ התמונה בלשונית חדשה
+            </a>
+          </div>
+        </div>
+      )}
 
       <p className="evolution-note">
         עץ החיים מסודר על ציר זמן אבולוציוני, מהקדום לחדש.
@@ -1144,6 +1213,14 @@ export default function ArgumentsPage({
         .evolution-image-link {
           display: block;
           cursor: zoom-in;
+          border: none;
+          padding: 0;
+          margin: 0;
+          width: 100%;
+          background: transparent;
+          font: inherit;
+          color: inherit;
+          text-align: inherit;
         }
         .evolution-image-card img {
           display: block;
@@ -1151,15 +1228,101 @@ export default function ArgumentsPage({
           height: auto;
           object-fit: contain;
           background: rgba(0,0,0,0.22);
+          image-rendering: auto;
+          -webkit-font-smoothing: antialiased;
+        }
+        .evolution-zoom-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 5000;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 48px 14px 24px;
+          box-sizing: border-box;
+          background: rgba(5, 5, 12, 0.94);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          direction: rtl;
+        }
+        .evolution-zoom-inner {
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          align-items: stretch;
+          gap: 12px;
+          width: min(96vw, 4020px);
+          max-height: calc(100vh - 36px);
+        }
+        .evolution-zoom-close {
+          align-self: flex-start;
+          padding: 10px 18px;
+          border-radius: 12px;
+          border: 1px solid rgba(255,255,255,0.14);
+          background: rgba(255,255,255,0.06);
+          color: var(--text);
+          font-size: 0.92rem;
+          font-weight: 700;
+          cursor: pointer;
+          transition: background 0.15s;
+        }
+        .evolution-zoom-close:hover {
+          background: rgba(255,255,255,0.11);
+        }
+        .evolution-zoom-scroll {
+          overflow: auto;
+          flex: 1;
+          min-height: 0;
+          max-height: min(82vh, 2160px);
+          border-radius: 14px;
+          border: 1px solid rgba(255,255,255,0.1);
+          box-shadow: 0 28px 90px rgba(0,0,0,0.65);
+          -webkit-overflow-scrolling: touch;
+          overscroll-behavior: contain;
+          touch-action: pan-x pan-y pinch-zoom;
+          background: rgba(0,0,0,0.35);
+        }
+        .evolution-zoom-img {
+          display: block;
+          width: auto !important;
+          height: auto !important;
+          max-width: none !important;
+          max-height: none !important;
+          margin: 0 auto;
+          image-rendering: auto;
+          -webkit-font-smoothing: antialiased;
+          transform: translateZ(0);
+          backface-visibility: hidden;
+        }
+        .evolution-zoom-hint {
+          margin: 0;
+          font-size: clamp(0.82rem, 2.2vw, 0.92rem);
+          font-weight: 650;
+          color: rgba(226, 232, 240, 0.88);
+          text-align: center;
+          line-height: 1.45;
+        }
+        .evolution-zoom-open-tab {
+          align-self: center;
+          font-size: 0.84rem;
+          font-weight: 700;
+          color: var(--accent, #818cf8);
+          text-decoration: underline;
+          text-underline-offset: 3px;
+        }
+        .evolution-zoom-open-tab:hover {
+          color: #a5b4fc;
         }
         .evolution-image-caption {
           position: relative;
           padding: 14px 16px;
           border-top: 1px solid var(--border);
           color: #f8fafc;
-          font-size: 1rem;
-          font-weight: 900;
+          font-size: clamp(0.98rem, 2.6vw, 1.08rem);
+          font-weight: 850;
           text-align: center;
+          line-height: 1.42;
+          letter-spacing: 0.01em;
         }
         .evolution-image-credit {
           position: absolute;
@@ -1197,8 +1360,8 @@ export default function ArgumentsPage({
           border-bottom: 1px solid var(--border);
           text-align: right;
           vertical-align: top;
-          line-height: 1.55;
-          font-size: 0.84rem;
+          line-height: 1.58;
+          font-size: clamp(0.86rem, 1.85vw, 0.96rem);
         }
         .evolution-table th {
           background: rgba(15,23,42,0.96);
@@ -1314,14 +1477,20 @@ export default function ArgumentsPage({
         }
         .args-add-btn:active { transform: scale(0.98); }
         .btn-pro {
-          background: linear-gradient(180deg, #ef5350, var(--believer));
           color: #fff;
-          box-shadow: 0 0 20px var(--believer-glow);
+          background:
+            radial-gradient(ellipse 110% 92% at 75% 10%, rgba(244, 63, 94, 0.45), transparent 52%),
+            linear-gradient(178deg, rgba(244, 63, 94, 0.92) 0%, rgba(52, 14, 22, 0.96) 100%);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          box-shadow: 0 0 28px var(--believer-glow), inset 0 1px 0 rgba(255, 255, 255, 0.12);
         }
         .btn-con {
-          background: linear-gradient(180deg, #69f0ae, var(--atheist));
-          color: #031a0c;
-          box-shadow: 0 0 20px var(--atheist-glow);
+          color: #ecfdf5;
+          background:
+            radial-gradient(ellipse 110% 92% at 28% 14%, rgba(52, 211, 153, 0.38), transparent 50%),
+            linear-gradient(178deg, rgba(16, 185, 129, 0.88) 0%, rgba(5, 46, 34, 0.95) 100%);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          box-shadow: 0 0 26px var(--atheist-glow), inset 0 1px 0 rgba(255, 255, 255, 0.1);
         }
         .special-badge {
           display: inline-block;
@@ -1331,7 +1500,7 @@ export default function ArgumentsPage({
           margin-right: 6px;
           font-weight: 800;
         }
-        .badge-rabbi { background: rgba(229,57,53,0.25); color: #ffcdd2; border: 1px solid rgba(229,57,53,0.35); }
+        .badge-rabbi { background: rgba(244,63,94,0.22); color: #fecdd3; border: 1px solid rgba(244,63,94,0.32); }
         .badge-scientist { background: rgba(99,102,241,0.2); color: #c7d2fe; border: 1px solid rgba(99,102,241,0.35); }
         .editors-section {
           max-width: 960px;

@@ -10,13 +10,13 @@
   --border-strong: rgba(255, 255, 255, 0.14);
   --border-glow: rgba(255, 255, 255, 0.06);
 
-  /* Sides — vivid, readable on dark */
-  --believer: #e53935;
-  --believer-dim: #5c1010;
-  --believer-glow: rgba(229, 57, 53, 0.35);
-  --atheist: #00c853;
-  --atheist-dim: #003d1a;
-  --atheist-glow: rgba(0, 200, 83, 0.32);
+  /* Sides — rose red & emerald (illuminated / 2026 palette), still clearly אדום / ירוק */
+  --believer: #f43f5e;
+  --believer-dim: #2a1218;
+  --believer-glow: rgba(244, 63, 94, 0.38);
+  --atheist: #10b981;
+  --atheist-dim: #05261c;
+  --atheist-glow: rgba(16, 185, 129, 0.34);
 
   /* Text */
   --text: #f4f4f8;
@@ -59,8 +59,8 @@ html, body {
   height: 100%;
   background-color: var(--bg-deep);
   background-image:
-    radial-gradient(ellipse 100% 70% at 50% -25%, rgba(229, 57, 53, 0.14), transparent 55%),
-    radial-gradient(ellipse 70% 55% at 100% 40%, rgba(0, 200, 83, 0.08), transparent 50%),
+    radial-gradient(ellipse 100% 70% at 50% -25%, rgba(244, 63, 94, 0.14), transparent 55%),
+    radial-gradient(ellipse 70% 55% at 100% 40%, rgba(16, 185, 129, 0.09), transparent 50%),
     radial-gradient(ellipse 50% 45% at 0% 100%, rgba(99, 102, 241, 0.07), transparent 45%);
   background-attachment: fixed;
   color: var(--text);
@@ -239,8 +239,8 @@ input:focus, textarea:focus {
   border: 1px solid var(--border);
   border-radius: 24px;
   background:
-    radial-gradient(circle at 15% 0%, rgba(229, 57, 53, 0.13), transparent 32%),
-    radial-gradient(circle at 85% 20%, rgba(0, 200, 83, 0.1), transparent 34%),
+    radial-gradient(circle at 15% 0%, rgba(244, 63, 94, 0.13), transparent 32%),
+    radial-gradient(circle at 85% 20%, rgba(16, 185, 129, 0.1), transparent 34%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03));
   box-shadow: var(--shadow-md);
   overflow: hidden;
@@ -391,16 +391,30 @@ input:focus, textarea:focus {
 }
 
 .btn-believer {
-  background: linear-gradient(180deg, #ef5350 0%, var(--believer) 55%, #b71c1c 100%);
   color: #fff;
-  box-shadow: var(--shadow-xs), 0 0 24px var(--believer-glow);
+  background:
+    radial-gradient(ellipse 110% 95% at 72% 8%, rgba(244, 63, 94, 0.48), transparent 54%),
+    radial-gradient(ellipse 95% 78% at 12% 92%, rgba(88, 28, 38, 0.55), transparent 48%),
+    linear-gradient(175deg, rgba(244, 63, 94, 0.92) 0%, rgba(62, 14, 22, 0.98) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    var(--shadow-xs),
+    0 0 36px var(--believer-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 .btn-atheist {
-  background: linear-gradient(180deg, #69f0ae 0%, var(--atheist) 50%, #009624 100%);
-  color: #031a0c;
+  color: #ecfdf5;
   font-weight: 800;
-  box-shadow: var(--shadow-xs), 0 0 24px var(--atheist-glow);
+  background:
+    radial-gradient(ellipse 105% 92% at 28% 12%, rgba(52, 211, 153, 0.42), transparent 52%),
+    radial-gradient(ellipse 92% 78% at 88% 85%, rgba(4, 120, 87, 0.48), transparent 46%),
+    linear-gradient(175deg, rgba(16, 185, 129, 0.88) 0%, rgba(5, 46, 34, 0.97) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  box-shadow:
+    var(--shadow-xs),
+    0 0 34px var(--atheist-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .btn-ghost {
@@ -451,15 +465,15 @@ input:focus, textarea:focus {
 }
 
 .badge-believer {
-  background: rgba(229, 57, 53, 0.2);
-  color: #ffcdd2;
-  border: 1px solid rgba(229, 57, 53, 0.35);
+  background: rgba(244, 63, 94, 0.2);
+  color: #fecdd3;
+  border: 1px solid rgba(244, 63, 94, 0.35);
 }
 
 .badge-atheist {
-  background: rgba(0, 200, 83, 0.18);
-  color: #b9f6ca;
-  border: 1px solid rgba(0, 200, 83, 0.35);
+  background: rgba(16, 185, 129, 0.18);
+  color: #a7f3d0;
+  border: 1px solid rgba(16, 185, 129, 0.35);
 }
 
 /* Optional: section title on long pages */
@@ -579,8 +593,8 @@ html[data-font-scale="xlarge"] {
 /* רקע נקי יותר */
 html[data-calm-bg="on"] body {
   background-image:
-    radial-gradient(ellipse 100% 70% at 50% -25%, rgba(229, 57, 53, 0.05), transparent 55%),
-    radial-gradient(ellipse 70% 55% at 100% 40%, rgba(0, 200, 83, 0.03), transparent 50%),
+    radial-gradient(ellipse 100% 70% at 50% -25%, rgba(244, 63, 94, 0.05), transparent 55%),
+    radial-gradient(ellipse 70% 55% at 100% 40%, rgba(16, 185, 129, 0.035), transparent 50%),
     radial-gradient(ellipse 50% 45% at 0% 100%, rgba(99, 102, 241, 0.03), transparent 45%) !important;
 }
 
@@ -621,14 +635,18 @@ html {
 }
 
 .msg-bubble--believer {
-  border-color: rgba(229, 57, 53, 0.45);
-  background: linear-gradient(165deg, rgba(229, 57, 53, 0.2) 0%, var(--believer-dim) 100%);
+  border-color: rgba(244, 63, 94, 0.42);
+  background:
+    radial-gradient(ellipse 120% 90% at 90% 15%, rgba(244, 63, 94, 0.28), transparent 48%),
+    linear-gradient(165deg, rgba(244, 63, 94, 0.18) 0%, var(--believer-dim) 100%);
   color: var(--text);
 }
 
 .msg-bubble--atheist {
-  border-color: rgba(0, 200, 83, 0.42);
-  background: linear-gradient(165deg, rgba(0, 200, 83, 0.16) 0%, var(--atheist-dim) 100%);
+  border-color: rgba(16, 185, 129, 0.38);
+  background:
+    radial-gradient(ellipse 120% 90% at 10% 18%, rgba(52, 211, 153, 0.22), transparent 48%),
+    linear-gradient(165deg, rgba(16, 185, 129, 0.14) 0%, var(--atheist-dim) 100%);
   color: var(--text);
 }
 
@@ -644,7 +662,7 @@ html {
 }
 
 .msg-bubble--atheist .msg-bubble__meta {
-  color: #b9f6ca;
+  color: #a7f3d0;
 }
 
 .msg-voice-wrap {
@@ -666,13 +684,17 @@ html {
 }
 
 .msg-voice-bubble--believer {
-  border-color: rgba(229, 57, 53, 0.45);
-  background: linear-gradient(165deg, rgba(229, 57, 53, 0.18) 0%, var(--believer-dim) 100%);
+  border-color: rgba(244, 63, 94, 0.4);
+  background:
+    radial-gradient(ellipse 110% 85% at 88% 12%, rgba(244, 63, 94, 0.26), transparent 46%),
+    linear-gradient(165deg, rgba(244, 63, 94, 0.16) 0%, var(--believer-dim) 100%);
 }
 
 .msg-voice-bubble--atheist {
-  border-color: rgba(0, 200, 83, 0.42);
-  background: linear-gradient(165deg, rgba(0, 200, 83, 0.14) 0%, var(--atheist-dim) 100%);
+  border-color: rgba(16, 185, 129, 0.36);
+  background:
+    radial-gradient(ellipse 110% 85% at 12% 14%, rgba(52, 211, 153, 0.18), transparent 46%),
+    linear-gradient(165deg, rgba(16, 185, 129, 0.12) 0%, var(--atheist-dim) 100%);
 }
 
 .msg-voice-bubble .msg-bubble__meta {
@@ -701,12 +723,16 @@ html {
 }
 
 .msg-play-btn--believer {
-  background: linear-gradient(145deg, #ef5350, var(--believer));
+  background:
+    radial-gradient(ellipse 140% 120% at 35% 18%, rgba(251, 113, 133, 0.55), transparent 52%),
+    linear-gradient(145deg, #fb7185, var(--believer));
 }
 
 .msg-play-btn--atheist {
-  background: linear-gradient(145deg, #69f0ae, var(--atheist));
-  color: #031a0c;
+  background:
+    radial-gradient(ellipse 140% 120% at 40% 22%, rgba(110, 231, 183, 0.45), transparent 50%),
+    linear-gradient(145deg, #34d399, var(--atheist));
+  color: #042f24;
 }
 
 .msg-voice-meta {

@@ -327,7 +327,7 @@ export default function LoginPage() {
           inset: -1px;
           z-index: -1;
           border-radius: inherit;
-          background: linear-gradient(135deg, rgba(229,57,53,0.28), transparent 35%, rgba(0,200,83,0.22));
+          background: linear-gradient(135deg, rgba(244,63,94,0.32), transparent 35%, rgba(16,185,129,0.24));
           opacity: 0.75;
         }
         .login-brand-block {
@@ -515,10 +515,17 @@ export default function LoginPage() {
         }
         .login-enter-btn:hover { transform: scale(1.03); }
         .login-enter-btn.ready {
-          background: linear-gradient(145deg, #26e070 0%, var(--atheist, #00c853) 45%, #009624 100%);
-          border-color: transparent;
-          color: #031a0c;
-          box-shadow: 0 0 28px var(--atheist-glow, rgba(0,200,83,0.35));
+          border-color: rgba(16, 185, 129, 0.35);
+          background:
+            radial-gradient(ellipse 125% 95% at 28% 12%, rgba(52, 211, 153, 0.48), transparent 54%),
+            radial-gradient(ellipse 96% 78% at 88% 82%, rgba(4, 120, 87, 0.42), transparent 46%),
+            linear-gradient(158deg, rgba(16, 185, 129, 0.92) 0%, rgba(5, 38, 28, 0.96) 100%);
+          color: #ecfdf5;
+          box-shadow:
+            0 0 34px var(--atheist-glow, rgba(16,185,129,0.34)),
+            inset 0 1px 0 rgba(255,255,255,0.14);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
         }
         .login-choose {
           color: var(--text, #fff);
@@ -557,8 +564,20 @@ export default function LoginPage() {
         }
         .panel-believer {
           position: relative;
-          background: linear-gradient(165deg, #ef5350 0%, var(--believer, #e53935) 42%, #8b1515 100%);
-          box-shadow: 0 6px 0 #5c1010, 0 14px 32px rgba(0,0,0,0.45), 0 0 36px var(--believer-glow, rgba(229,57,53,0.35));
+          isolation: isolate;
+          overflow: hidden;
+          background:
+            radial-gradient(ellipse 118% 96% at 78% 10%, rgba(244, 63, 94, 0.52), transparent 54%),
+            radial-gradient(ellipse 94% 76% at 14% 86%, rgba(127, 29, 29, 0.44), transparent 50%),
+            linear-gradient(168deg, rgba(26, 14, 18, 0.94) 0%, rgba(10, 8, 14, 0.97) 100%);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          border: 1px solid rgba(255, 255, 255, 0.14);
+          box-shadow:
+            0 0 0 1px rgba(244, 63, 94, 0.11),
+            0 12px 42px rgba(0, 0, 0, 0.36),
+            0 0 52px rgba(244, 63, 94, 0.16),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
           color: #fff;
         }
         .panel-believer > .panel-title,
@@ -634,10 +653,21 @@ export default function LoginPage() {
         }
         .panel-atheist {
           position: relative;
+          isolation: isolate;
           overflow: visible;
-          background: linear-gradient(165deg, #69f0ae 0%, var(--atheist, #00c853) 40%, #00682a 100%);
-          box-shadow: 0 6px 0 #003d1a, 0 14px 32px rgba(0,0,0,0.45), 0 0 36px var(--atheist-glow, rgba(0,200,83,0.32));
-          color: #031a0c;
+          background:
+            radial-gradient(ellipse 108% 90% at 24% 14%, rgba(52, 211, 153, 0.42), transparent 52%),
+            radial-gradient(ellipse 92% 74% at 86% 84%, rgba(6, 95, 70, 0.4), transparent 48%),
+            linear-gradient(172deg, rgba(8, 26, 22, 0.94) 0%, rgba(6, 14, 14, 0.97) 100%);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          border: 1px solid rgba(255, 255, 255, 0.13);
+          box-shadow:
+            0 0 0 1px rgba(52, 211, 153, 0.1),
+            0 12px 42px rgba(0, 0, 0, 0.32),
+            0 0 48px rgba(16, 185, 129, 0.14),
+            inset 0 1px 0 rgba(255, 255, 255, 0.09);
+          color: #ecfdf5;
         }
         .panel-atheist > img,
         .panel-atheist > .panel-title,

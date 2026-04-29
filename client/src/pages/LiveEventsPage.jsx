@@ -118,10 +118,22 @@ export default function LiveEventsPage() {
           gap: 6px;
         }
         .event-side-believer {
-          background: linear-gradient(180deg, #550000 0%, #2a0000 100%);
+          background:
+            radial-gradient(ellipse 105% 88% at 72% 18%, rgba(244, 63, 94, 0.38), transparent 52%),
+            radial-gradient(ellipse 85% 70% at 18% 88%, rgba(72, 16, 24, 0.42), transparent 46%),
+            linear-gradient(185deg, rgba(22, 12, 16, 0.93) 0%, rgba(8, 6, 12, 0.96) 100%);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
         }
         .event-side-scientist {
-          background: linear-gradient(180deg, #005522 0%, #002a11 100%);
+          background:
+            radial-gradient(ellipse 105% 88% at 30% 18%, rgba(52, 211, 153, 0.32), transparent 52%),
+            radial-gradient(ellipse 85% 72% at 82% 82%, rgba(5, 80, 58, 0.38), transparent 46%),
+            linear-gradient(185deg, rgba(8, 22, 20, 0.93) 0%, rgba(6, 12, 14, 0.96) 100%);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
         }
         .event-side-icon {
           font-size: 2rem;

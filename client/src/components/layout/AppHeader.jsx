@@ -216,7 +216,8 @@ export default function AppHeader() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 0 16px;
+          padding-inline-start: 16px;
+          padding-inline-end: 4px;
           z-index: 1000;
           overflow: visible;
           pointer-events: none;
@@ -234,25 +235,43 @@ export default function AppHeader() {
           align-items: center;
           gap: 6px;
         }
+        .header-zone--brand {
+          gap: 0;
+          margin-inline-end: -2px;
+          align-items: center;
+        }
+        .header-dots-wrap {
+          margin-inline-start: -10px;
+        }
 
         .header-dots-btn {
-          width: 38px; height: 38px;
           box-sizing: border-box;
-          border-radius: 50%;
-          border: 1px solid var(--border, rgba(255,255,255,0.1));
-          background: rgba(255,255,255,0.05);
+          margin: 0;
+          padding-block: 8px;
+          padding-inline-start: 4px;
+          padding-inline-end: 12px;
+          min-width: 40px;
+          min-height: 44px;
+          border: none;
+          border-radius: 10px;
+          background: transparent;
           color: var(--text, #fff);
           font-size: 1.35rem;
-          cursor: pointer;
-          display: flex; align-items: center; justify-content: center;
           line-height: 1;
-          transition: background 0.2s, border-color 0.2s, transform 0.12s;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: background 0.18s, opacity 0.18s, transform 0.12s;
         }
         .header-dots-btn:hover {
-          background: rgba(255,255,255,0.1);
-          border-color: rgba(255,255,255,0.18);
+          background: rgba(255,255,255,0.07);
         }
-        .header-dots-btn:active { transform: scale(0.95); }
+        .header-dots-btn:active { transform: scale(0.96); }
+        .header-dots-btn:focus-visible {
+          outline: 2px solid var(--accent, #6366f1);
+          outline-offset: 2px;
+        }
         .header-app-brand {
           width: 96px;
           display: flex;
@@ -604,7 +623,7 @@ export default function AppHeader() {
             filter: blur(2px) brightness(0.88);
           }
         }
-        /* RTL: הכפתור בקצה המסך השמאלי; right:0 גרם לתפריט להימתח שמאלה (מחוץ למסך) — left:0 פותח לתוך הדף */
+        /* התפריט נפתח מתחת לכפתור הנקודות בלבד; left:0 — מתפשט לכיוון המרכז (לא מתחת ללוגו משמאל) */
         .header-dots-menu {
           position: absolute;
           top: calc(100% + 8px);
@@ -1152,7 +1171,7 @@ export default function AppHeader() {
           )}
         </div>
 
-        {/* Left: מותג (דף הבית) + תפריט נקודות */}
+        {/* RTL: לוגו ראשון ב-DOM (ימין), נקודות שני — תפריט בצד שמאל */}
         <div className="header-zone header-zone--brand">
           <button type="button" className="header-app-brand" onClick={goAppHome} aria-label="דף הבית">
             <span className="header-logo-mark-wrap">
@@ -1166,26 +1185,26 @@ export default function AppHeader() {
             <span className="header-logo-watermark" aria-hidden="true">O M G</span>
           </button>
           <div ref={menuRef} className="header-dots-wrap" style={{ position: 'relative' }}>
-          <button
-            type="button"
-            className="header-dots-btn"
-            onClick={() => setMenuOpen(o => !o)}
-            aria-label="תפריט"
-            aria-haspopup="true"
-            aria-expanded={menuOpen}
-          >
-            ⋮
-          </button>
-          {menuOpen && (
-            <div className="header-dots-menu" role="menu">
-              <button type="button" className="header-menu-bible" onClick={() => { setBibleOpen(true); setMenuOpen(false); }}>
-                📖 ספר התנ״ך
-              </button>
-              <Link to="/settings" onClick={() => setMenuOpen(false)}>⚙️ הגדרות</Link>
-              <Link to="/terms" onClick={() => setMenuOpen(false)}>📋 תקנון</Link>
-              <Link to="/contact" onClick={() => setMenuOpen(false)}>✉️ צור קשר</Link>
-            </div>
-          )}
+            <button
+              type="button"
+              className="header-dots-btn"
+              onClick={() => setMenuOpen(o => !o)}
+              aria-label="תפריט"
+              aria-haspopup="true"
+              aria-expanded={menuOpen}
+            >
+              ⋮
+            </button>
+            {menuOpen && (
+              <div className="header-dots-menu" role="menu">
+                <button type="button" className="header-menu-bible" onClick={() => { setBibleOpen(true); setMenuOpen(false); }}>
+                  📖 ספר התנ״ך
+                </button>
+                <Link to="/settings" onClick={() => setMenuOpen(false)}>⚙️ הגדרות</Link>
+                <Link to="/terms" onClick={() => setMenuOpen(false)}>📋 תקנון</Link>
+                <Link to="/contact" onClick={() => setMenuOpen(false)}>✉️ צור קשר</Link>
+              </div>
+            )}
           </div>
         </div>
       </div>
