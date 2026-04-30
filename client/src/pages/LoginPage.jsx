@@ -5,11 +5,23 @@ import { connectSocket, socket } from '../socket.js';
 import { getApiBaseUrl } from '../lib/apiBaseUrl.js';
 
 /**
- * דמויות דף הכניסה: קבצי ה־JPEG הקנוניים מה־APK (rabbis / torah “איינשטיין”) שמורים ב־src/assets/login/samsung-apk
- * והועתקו ל־public/login/. מוצגים כ־img מקורי בלי TransparentImage כדי למנוע חיתוך חובבני ב־canvas;
- * רקע לבן נמוסס בתוך הפאנל דרך mix-blend-mode. Bump PANEL_IMG_STAMP כשמשתנים הנכסים.
+ * ════════════════════════════════════════════════════════════════════════
+ * ⚠️  אל תשנה את עיצוב הדמויות (איינשטיין + רקדנים) בלי לקרוא זאת קודם!
+ * ════════════════════════════════════════════════════════════════════════
+ *
+ * הדמויות הן JPEG עם רקע לבן.  על רקע כהה, mix-blend-mode: multiply
+ * הופך את הרקע הלבן לשקוף — אך מכהה בחזרה את הדמות עצמה ועושה אותה
+ * קטנה ועמומה (באג שחזר 5 פעמים!).
+ *
+ * הכלל הקבוע:
+ *   mix-blend-mode: NORMAL  ← אסור לשנות ל-multiply / screen / וכד׳
+ *   width: min(190px, 40vw) ← גדול מספיק כדי להיות נראה
+ *   filter: saturate/contrast/brightness בלבד — לא להוסיף opacity
+ *
+ * PANEL_IMG_STAMP — מספר גרסה לצרכי debugging בלבד, אין לו השפעה על
+ * ה-render. Bump כשמשתנים קבצי התמונה עצמם.
  */
-const PANEL_IMG_STAMP = 'login-panels-apk-multiply-blend-20260430';
+const PANEL_IMG_STAMP = 'login-panels-apk-normal-blend-v6-20260430';
 
 const LOGIN_USERNAME_KEY = 'omg_login_username';
 const LOGIN_PASSWORD_PREFIX = 'omg_login_password:';
@@ -659,11 +671,11 @@ export default function LoginPage() {
           justify-content: center;
           gap: 10px;
           width: 100%;
-          max-width: 390px;
+          max-width: 430px;
         }
         .login-panel {
           flex: 1;
-          max-width: 160px;
+          max-width: 195px;
           padding: clamp(10px, 2.4vw, 21px) clamp(7px, 1.8vw, 14px);
           border-radius: 18px;
           cursor: pointer;
@@ -713,13 +725,14 @@ export default function LoginPage() {
         .believer-dancers.is-home-animating {
           animation: believerDance 1.18s ease-in-out 4s 2 both;
         }
+        /* ⚠️ mix-blend-mode חייב להיות normal — ראה הערה בראש הקובץ */
         .login-panel-figure {
           display: block;
           position: relative;
           z-index: 5;
-          width: min(126px, 28vw);
-          min-width: 56px;
-          min-height: 56px;
+          width: min(190px, 40vw);
+          min-width: 90px;
+          min-height: 90px;
           aspect-ratio: 1;
           object-fit: contain;
           margin: 0 auto;
@@ -727,9 +740,9 @@ export default function LoginPage() {
           pointer-events: none;
           user-select: none;
           -webkit-user-drag: none;
-          /* אלו JPG מה־APK השמורים ב־public; multiply ממיס את הלבן לתוך גראדיאנט הפאנל ללא ארטיפקטס של flood-fill */
-          mix-blend-mode: multiply;
-          filter: saturate(1.06) contrast(1.02);
+          border-radius: 14px;
+          mix-blend-mode: normal; /* אסור לשנות! JPEG לבן על רקע כהה — ראה הערה בראש */
+          filter: saturate(1.08) contrast(1.03) brightness(1.04);
         }
         .believer-water-ripple {
           position: absolute;
