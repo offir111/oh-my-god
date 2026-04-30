@@ -1,0 +1,18 @@
+﻿Backup folder: 2026-04-29_2047
+APK: OHMYGOD-INSTALL.apk (Desktop Samsung install)
+Samsung WebView login uses /rabbis.jpg (believer) and /torah.jpg (atheist panel — Einstein illustration in this build).
+
+SHA256 before replace:
+97F105E8300DA241BF056D65761404AF8AB625FAE040D389ABCA35FE1B818D1D  PREVIOUS believer src
+F575AC18151A1E86EC4002AFEE6E1B6298F6B3B7C86387DA91CD30E6E79CDA70  PREVIOUS atheist src
+
+SHA256 apk-raw:
+E0B29367E98ADDC2B3F19CCDCD1FADDDE46454A3902D06DEF650F2027F8559B0  einstein.jpg
+97F105E8300DA241BF056D65761404AF8AB625FAE040D389ABCA35FE1B818D1D  rabbis_two-haredim.jpg
+F575AC18151A1E86EC4002AFEE6E1B6298F6B3B7C86387DA91CD30E6E79CDA70  torah_used-on-device-for-atheist-panel-Einstein-art.jpg
+
+---
+APK naming (same install file):
+- rabbis.jpg = two Haredim -> believer panel (red UI frame).
+- torah.jpg = Einstein cartoon -> atheist panel (green UI). DO NOT use einstein.jpg from APK for atheist; that file is a Torah-scroll illustration.
+Restore previous art: see RESTORE.txt in this backups folder.

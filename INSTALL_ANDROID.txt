@@ -1,0 +1,41 @@
+הפיכת האפליקציה ל־APK (סמסונג / אנדרואיד)
+============================================
+
+מה כבר מוכן בפרויקט
+---------------------
+• Capacitor + תיקיית android/
+• אייקון המפעיל (shortcut במסך הבית): נבנה מתוך client/public/earth-ring-logo-integrated.png עם:
+  node scripts/generate-android-launcher-icons.mjs
+  החלפת לוגו: שים קובץ PNG חדש (או הגדר משתנה סביבה OMG_LAUNCHER_SRC=נתיב/לקובץ.png) והרץ את הפקודה לפני android:sync.
+• בניית קליינט לפרודקשן משתמשת ב־client/.env.production — רק כתובת השרת (VITE_API_URL).
+  לא מוגדר שם VITE_STATS_ADMIN_USERNAME (מנהל סטטיסטיקות), כדי שלא יוטמע שם משתמש בקובץ ההתקנה.
+
+יצירת קובץ APK להעברה לבת (קובץ התקנה)
+---------------------------------------
+1. התקן JDK 17 ו־Android Studio (כולל Android SDK).
+   הגדר JAVA_HOME ו־ANDROID_HOME לפי ההוראות של אנדרואיד סטודיו.
+
+2. מהשורש של המאגר:
+   npm install
+   npm run android:sync
+
+3. אפשרות א׳ — משורת הפקודות:
+   cd android
+   gradlew.bat assembleDebug
+   הקובץ יופיע ב:
+   android\app\build\outputs\apk\debug\app-debug.apk
+
+4. אפשרות ב׳ — ב־Android Studio:
+   File → Open → בחר תיקיית android.
+   Build → Build Bundle(s) / APK(s) → Build APK(s).
+   אותו נתיב כמו למעלה.
+
+5. שלח לבית את app-debug.apk (ווטסאפ / דרייב / כבל).
+   בפעם הראשונה בסמסונג: הגדרות → אבטחה → התקנה ממקורות לא ידועים — לאפשר למנהל הקבצים או לדרייב.
+
+חתימה לחנות (Play) — לא נדרש לשיתוף משפחתי; APK לדיבוג מספיק לבדיקה ביתית.
+
+עדכון גרסת האפליקציה אחרי שינוי קוד
+-----------------------------------
+   npm run android:sync
+   ואז בנה APK מחדש כמו בשלבים 3–4.

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR — oh my GOD</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #000;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card {
+      background: #111;
+      border: 1px solid #333;
+      border-radius: 20px;
+      padding: 28px 32px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.7);
+      max-width: 300px;
+      width: 100%;
+    }
+    .title {
+      font-size: 1.5rem;
+      font-weight: 900;
+      letter-spacing: 1px;
+      color: #FFE566;
+    }
+    .subtitle {
+      font-size: 0.8rem;
+      color: #888;
+      text-align: center;
+    }
+    #qrcode canvas, #qrcode img {
+      border-radius: 12px;
+      display: block;
+    }
+    .url {
+      font-size: 0.72rem;
+      color: #555;
+      word-break: break-all;
+      text-align: center;
+    }
+    .open-btn {
+      background: #FFE566;
+      color: #000;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 24px;
+      font-size: 0.9rem;
+      font-weight: 800;
+      cursor: pointer;
+      width: 100%;
+    }
+    .open-btn:hover { opacity: 0.85; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">oh my GOD</div>
+    <div class="subtitle">סרוק כדי לפתוח את האפליקציה</div>
+    <div id="qrcode"></div>
+    <div class="url">https://client-offir1.vercel.app</div>
+    <button class="open-btn" onclick="window.open('https://client-offir1.vercel.app','_blank')">
+      פתח את האפליקציה
+    </button>
+  </div>
+
+  <script>
+    new QRCode(document.getElementById('qrcode'), {
+      text: 'https://client-offir1.vercel.app',
+      width: 200,
+      height: 200,
+      colorDark: '#ffffff',
+      colorLight: '#111111',
+      correctLevel: QRCode.CorrectLevel.H
+    });
+  </script>
+</body>
+</html>

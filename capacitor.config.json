@@ -1,0 +1,8 @@
+{
+  "appId": "app.omg.debate",
+  "appName": "Oh My GOD",
+  "webDir": "client/dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}

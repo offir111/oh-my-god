@@ -1,0 +1,6 @@
+עותקים קנוניים של דמויות דף הכניסה (כמו בסמסונג/APK):
+
+- believer-two-haredim.jpg ↔ rabbis מתוך ההתקנה (שני חרדים מאמין)
+- atheist-einstein.jpg ↔ torah / איילוסטרציית איינשטיין מהפאנל הירוק (לא החלף ב-einstein.jpg מגולגלת מה־APK)
+
+כשמשנים תמונה: עדכן כאן, העתק ל-client/public/login/ באותן שמות, והעלה את PANEL_IMG_STAMP ב-LoginPage.jsx.

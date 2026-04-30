@@ -1,0 +1,15 @@
+שחזור תמונות דף הכניסה לגרסה שגובתה לפני עדכון
+================================================
+
+הקבצים המגובים נמצאים בתת-תיקיות עם חותמת זמן, למשל:
+  backups/2026-04-29_2047/
+
+שחזור ידני:
+1. העתק ל-client/public/login/:
+   PREVIOUS-login-panel-believer__public.jpg  ->  believer-two-haredim.jpg
+   PREVIOUS-login-panel-atheist__public.jpg   ->  atheist-einstein.jpg
+   (אופציונלי: עדכן גם את ../samsung-apk/ מאותם קבצים.)
+2. ב-LoginPage.jsx העלה את PANEL_IMG_STAMP כדי לשבור מטמון דפדפן.
+3. הפעל מחדש npm run dev.
+
+Restore (English): copy PREVIOUS-*__public.jpg over client/public/login/*.jpg, bump PANEL_IMG_STAMP in LoginPage.jsx, restart Vite.
