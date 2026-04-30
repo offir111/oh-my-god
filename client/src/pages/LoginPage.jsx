@@ -6,22 +6,21 @@ import { getApiBaseUrl } from '../lib/apiBaseUrl.js';
 
 /**
  * ════════════════════════════════════════════════════════════════════════
- * ⚠️  אל תשנה את עיצוב הדמויות (איינשטיין + רקדנים) בלי לקרוא זאת קודם!
+ * ✅  דמויות דף הכניסה — PNG עם רקע שקוף (תוקן סופית!)
  * ════════════════════════════════════════════════════════════════════════
  *
- * הדמויות הן JPEG עם רקע לבן.  על רקע כהה, mix-blend-mode: multiply
- * הופך את הרקע הלבן לשקוף — אך מכהה בחזרה את הדמות עצמה ועושה אותה
- * קטנה ועמומה (באג שחזר 5 פעמים!).
+ * הקבצים:  public/login/atheist-einstein.png
+ *           public/login/believer-two-haredim.png
  *
- * הכלל הקבוע:
- *   mix-blend-mode: NORMAL  ← אסור לשנות ל-multiply / screen / וכד׳
- *   width: min(190px, 40vw) ← גדול מספיק כדי להיות נראה
- *   filter: saturate/contrast/brightness בלבד — לא להוסיף opacity
+ * שניהם PNG עם רקע שקוף לחלוטין — הרקע הלבן הוסר ב-scripts/remove-bg.mjs.
+ * בגלל זה אין צורך ב-mix-blend-mode בכלל, ואין "קופסא לבנה" סביב הדמויות.
  *
- * PANEL_IMG_STAMP — מספר גרסה לצרכי debugging בלבד, אין לו השפעה על
- * ה-render. Bump כשמשתנים קבצי התמונה עצמם.
+ * ⚠️  אל תחזיר לפורמט JPEG! הרקע הלבן יחזור ויגרום לקופסא לבנה על הפאנל.
+ * ⚠️  אם רוצים לשנות תמונות — להריץ: node scripts/remove-bg.mjs
+ *
+ * PANEL_IMG_STAMP — מספר גרסה לאחסון מטמון בלבד.
  */
-const PANEL_IMG_STAMP = 'login-panels-apk-normal-blend-v6-20260430';
+const PANEL_IMG_STAMP = 'login-panels-png-transparent-v7-20260430';
 
 const LOGIN_USERNAME_KEY = 'omg_login_username';
 const LOGIN_PASSWORD_PREFIX = 'omg_login_password:';
@@ -124,8 +123,8 @@ export default function LoginPage() {
     const root = import.meta.env.BASE_URL || '/';
     const v = import.meta.env.DEV ? `dev-${Date.now()}` : PANEL_IMG_STAMP;
     return {
-      believer: `${root}login/believer-two-haredim.jpg?v=${v}`,
-      atheist: `${root}login/atheist-einstein.jpg?v=${v}`,
+      believer: `${root}login/believer-two-haredim.png?v=${v}`,
+      atheist: `${root}login/atheist-einstein.png?v=${v}`,
     };
   }, []);
 
@@ -725,7 +724,10 @@ export default function LoginPage() {
         .believer-dancers.is-home-animating {
           animation: believerDance 1.18s ease-in-out 4s 2 both;
         }
-        /* ⚠️ mix-blend-mode חייב להיות normal — ראה הערה בראש הקובץ */
+        /*
+         * ✅ PNG עם רקע שקוף — אין צורך ב-mix-blend-mode בכלל!
+         * אין לשנות לפורמט JPEG — הרקע הלבן יחזור. ראה הערה בראש הקובץ.
+         */
         .login-panel-figure {
           display: block;
           position: relative;
@@ -740,9 +742,8 @@ export default function LoginPage() {
           pointer-events: none;
           user-select: none;
           -webkit-user-drag: none;
-          border-radius: 14px;
-          mix-blend-mode: normal; /* אסור לשנות! JPEG לבן על רקע כהה — ראה הערה בראש */
-          filter: saturate(1.08) contrast(1.03) brightness(1.04);
+          mix-blend-mode: normal;
+          filter: drop-shadow(0 4px 12px rgba(0,0,0,0.35)) saturate(1.1);
         }
         .believer-water-ripple {
           position: absolute;
