@@ -1,9 +1,15 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { BiblePanel } from '../components/ui/BibleModal.jsx';
 import FaithChatPanel from '../components/faith/FaithChatPanel.jsx';
 import { FaithSubnavTabs } from '../components/faith/FaithSubnavTabs.jsx';
 import { RABBI_QUESTION_GROUPS } from '../data/rabbiCommonQuestions.js';
+import { fetchIsraelShabbatCandles } from '../lib/hebcalShabbatTimes.js';
+import {
+  lookupShabbatHalacha,
+  listShabbatHalachaArchive,
+  SHABBAT_HALACHA_BY_HEBREW_MONTH_DAY,
+} from '../data/shabbatHalachaDaily.js';
 
 const FALLBACK_API_ORIGIN = 'https://oh-my-god-production.up.railway.app';
 function knowledgeAskUrl() {
@@ -22,6 +28,22 @@ export default function ReligionFaithPage() {
   const [rabbiSearchPlaceholder, setRabbiSearchPlaceholder] = useState(false);
   const [faithSearchFocused, setFaithSearchFocused] = useState(false);
   const faithSearchInputRef = useRef(null);
+  const shabbatEnterWrapRef = useRef(null);
+  const halachaAnchorWrapRef = useRef(null);
+  const candleAbortRef = useRef(null);
+  const halachaAbortRef = useRef(null);
+
+  const [shabbatEnterPopoverOpen, setShabbatEnterPopoverOpen] = useState(false);
+  const [candleRows, setCandleRows] = useState(null);
+  const [candleLoading, setCandleLoading] = useState(false);
+  const [candleErr, setCandleErr] = useState(null);
+
+  const [halachaModalOpen, setHalachaModalOpen] = useState(false);
+  const [halachaModalLoading, setHalachaModalLoading] = useState(false);
+  const [halachaModalConv, setHalachaModalConv] = useState(null);
+  const [halachaModalErr, setHalachaModalErr] = useState(null);
+  /** מפתח מאגר (למשל Iyyar-2) כשבוחרים מהרשימה */
+  const [halachaManualKey, setHalachaManualKey] = useState(null);
 
   // ── AI state ──────────────────────────────────────────
   const [faithAiAnswer, setFaithAiAnswer] = useState('');
@@ -167,6 +189,109 @@ export default function ReligionFaithPage() {
     if (activeTab !== 'rabbi') setRabbiSearchPlaceholder(false);
   }, [activeTab]);
 
+  const loadShabbatCandles = useCallback(async () => {
+    if (candleAbortRef.current) candleAbortRef.current.abort();
+    const ac = new AbortController();
+    candleAbortRef.current = ac;
+    setCandleLoading(true);
+    setCandleErr(null);
+    try {
+      const rows = await fetchIsraelShabbatCandles(ac.signal);
+      setCandleRows(rows);
+    } catch (e) {
+      if (e?.name === 'AbortError') return;
+      setCandleErr(typeof e?.message === 'string' ? e.message : 'שגיאה בטעינת זמנים');
+    } finally {
+      setCandleLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadShabbatCandles();
+    return () => candleAbortRef.current?.abort();
+  }, [loadShabbatCandles]);
+
+  const loadHalachaModalData = useCallback(async () => {
+    if (halachaAbortRef.current) halachaAbortRef.current.abort();
+    const ac = new AbortController();
+    halachaAbortRef.current = ac;
+    setHalachaModalLoading(true);
+    setHalachaModalErr(null);
+    setHalachaModalConv(null);
+    try {
+      const d = new Date();
+      const url = `https://www.hebcal.com/converter?cfg=json&gy=${d.getFullYear()}&gm=${d.getMonth() + 1}&gd=${d.getDate()}&g2h=1`;
+      const res = await fetch(url, { signal: ac.signal });
+      if (!res.ok) throw new Error('לא ניתן לקבל תאריך עברי');
+      const json = await res.json();
+      setHalachaModalConv(json);
+    } catch (e) {
+      if (e?.name === 'AbortError') return;
+      setHalachaModalErr(typeof e?.message === 'string' ? e.message : 'שגיאה בטעינה');
+    } finally {
+      setHalachaModalLoading(false);
+    }
+  }, []);
+
+  function openHalachaModal() {
+    setHalachaManualKey(null);
+    setHalachaModalOpen(true);
+    void loadHalachaModalData();
+  }
+
+  useEffect(() => {
+    if (!halachaModalOpen) return;
+    function onKey(e) {
+      if (e.key === 'Escape') setHalachaModalOpen(false);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [halachaModalOpen]);
+
+  const halachaArchiveList = useMemo(() => listShabbatHalachaArchive(), []);
+
+  const halachaDisplayEntry = useMemo(() => {
+    if (halachaManualKey) return SHABBAT_HALACHA_BY_HEBREW_MONTH_DAY[halachaManualKey] || null;
+    if (!halachaModalConv) return null;
+    return lookupShabbatHalacha(halachaModalConv);
+  }, [halachaManualKey, halachaModalConv]);
+
+  useEffect(() => {
+    if (!halachaModalOpen) {
+      halachaAbortRef.current?.abort();
+    }
+  }, [halachaModalOpen]);
+
+  useEffect(() => {
+    if (!halachaModalOpen) return;
+    function onDocPointerDown(e) {
+      if (halachaAnchorWrapRef.current?.contains(e.target)) return;
+      setHalachaModalOpen(false);
+    }
+    document.addEventListener('pointerdown', onDocPointerDown, true);
+    return () => document.removeEventListener('pointerdown', onDocPointerDown, true);
+  }, [halachaModalOpen]);
+
+  useEffect(() => {
+    if (!shabbatEnterPopoverOpen) return;
+    function onDocPointerDown(e) {
+      if (shabbatEnterWrapRef.current?.contains(e.target)) return;
+      setShabbatEnterPopoverOpen(false);
+    }
+    function onKey(e) {
+      if (e.key === 'Escape') setShabbatEnterPopoverOpen(false);
+    }
+    document.addEventListener('pointerdown', onDocPointerDown, true);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onDocPointerDown, true);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [shabbatEnterPopoverOpen]);
+
+  const candleParashaLine = candleRows?.find((r) => r.parashaHebrew)?.parashaHebrew || '';
+  const candleEveLabel = candleRows?.[0]?.eveLabel || '';
+
   const [openRabbiKeys, setOpenRabbiKeys] = useState(() => new Set());
 
   function toggleRabbiAnswer(key) {
@@ -203,6 +328,15 @@ export default function ReligionFaithPage() {
     void fetchFaithAiAnswer(q);
   }
 
+  function openShabbatTopic(label) {
+    setActiveTab('rabbi');
+    navigate('/faith#rabbi', { replace: true });
+    setRabbiSearchPlaceholder(false);
+    setFaithSearch(label);
+    clearFaithAi();
+    requestAnimationFrame(() => faithSearchInputRef.current?.focus());
+  }
+
   return (
     <>
       <style>{`
@@ -215,6 +349,7 @@ export default function ReligionFaithPage() {
         }
         .faith-header {
           position: relative;
+          overflow: visible;
           text-align: center;
           padding: 26px 16px 20px;
           border-bottom: 1px solid var(--border);
@@ -306,22 +441,384 @@ export default function ReligionFaithPage() {
           letter-spacing: 0.02em;
           font-weight: 700;
         }
-        .faith-back {
+        .faith-shabbat-actions {
           position: absolute;
-          top: 16px;
+          top: 14px;
           left: 12px;
-          background: rgba(255,255,255,0.06);
-          border: 1px solid var(--border);
-          color: var(--muted);
-          font-size: 0.82rem;
-          font-weight: 600;
-          padding: 8px 14px;
-          border-radius: 10px;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+          z-index: 2;
+          max-width: calc(100% - 24px);
+        }
+        .faith-shabbat-actions[data-halacha-open='true'] {
+          z-index: 100060;
+        }
+        .faith-halacha-anchor-wrap {
+          position: relative;
+          display: inline-flex;
+          flex-direction: column;
+          align-items: stretch;
+        }
+        .faith-shabbat-chip {
+          padding: 3px 9px;
+          font-size: 0.66rem;
+          font-weight: 700;
+          border-radius: 999px;
+          border: 1px solid rgba(255,255,255,0.12);
+          background: rgba(255,255,255,0.04);
+          color: rgba(203,213,225,0.85);
+          cursor: pointer;
+          line-height: 1.35;
+          white-space: nowrap;
+        }
+        .faith-shabbat-chip:hover {
+          background: rgba(255,255,255,0.08);
+          color: #e2e8f0;
+          border-color: rgba(255,255,255,0.18);
+        }
+        .faith-shabbat-chip:focus-visible {
+          outline: 2px solid rgba(251,191,36,0.45);
+          outline-offset: 2px;
+        }
+        .faith-shabbat-enter-wrap {
+          position: relative;
+          display: inline-flex;
+          flex-direction: column;
+          align-items: stretch;
+        }
+        .faith-shabbat-chip--enter {
+          white-space: nowrap;
+          max-width: none;
+          padding-block: 4px;
+        }
+        .faith-shabbat-popover {
+          display: none;
+          position: absolute;
+          top: calc(100% - 5px);
+          left: 0;
+          min-width: 248px;
+          max-width: min(304px, calc(100vw - 28px));
+          padding: 10px 11px 9px;
+          border-radius: 11px;
+          background: rgba(12,17,28,0.98);
+          border: 1px solid rgba(255,255,255,0.14);
+          box-shadow: 0 14px 42px rgba(0,0,0,0.5);
+          z-index: 60;
+          direction: rtl;
+          text-align: right;
+        }
+        .faith-shabbat-enter-wrap[data-open='true'] .faith-shabbat-popover {
+          display: block;
+        }
+        .faith-shabbat-pop-title {
+          font-size: 0.72rem;
+          font-weight: 900;
+          color: #fef9c3;
+          margin: 0 0 8px;
+          letter-spacing: 0.02em;
+        }
+        .faith-shabbat-pop-headrow {
+          display: grid;
+          grid-template-columns: 1fr auto auto;
+          gap: 10px;
+          align-items: baseline;
+          font-size: 0.61rem;
+          font-weight: 800;
+          color: rgba(148,163,184,0.92);
+          padding: 0 0 6px;
+          margin-bottom: 4px;
+          border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .faith-shabbat-pop-headrow span:nth-child(2),
+        .faith-shabbat-pop-headrow span:nth-child(3) {
+          font-variant-numeric: tabular-nums;
+          text-align: left;
+          justify-self: start;
+        }
+        .faith-shabbat-pop-row {
+          display: grid;
+          grid-template-columns: 1fr auto auto;
+          gap: 10px;
+          align-items: baseline;
+          font-size: 0.74rem;
+          padding: 5px 0;
+          border-bottom: 1px solid rgba(255,255,255,0.06);
+          color: rgba(226,232,240,0.94);
+        }
+        .faith-shabbat-pop-row:last-child {
+          border-bottom: none;
+          padding-bottom: 2px;
+        }
+        .faith-shabbat-pop-city {
+          font-weight: 750;
+          color: rgba(203,213,225,0.95);
+        }
+        .faith-shabbat-pop-time {
+          font-variant-numeric: tabular-nums;
+          font-weight: 900;
+          color: #a5f3fc;
+          white-space: nowrap;
+          text-align: left;
+          justify-self: start;
+        }
+        .faith-shabbat-pop-time--out {
+          color: #ddd6fe;
+        }
+        .faith-shabbat-pop-parsha {
+          margin-top: 8px;
+          font-size: 0.68rem;
+          color: rgba(253,224,71,0.88);
+          font-weight: 700;
+          line-height: 1.45;
+        }
+        .faith-shabbat-pop-foot {
+          margin-top: 10px;
+          font-size: 0.58rem;
+          color: rgba(148,163,184,0.82);
+          line-height: 1.45;
+        }
+        .faith-shabbat-pop-foot a {
+          color: rgba(147,197,253,0.92);
+          text-decoration: underline;
+          text-underline-offset: 2px;
+        }
+        .faith-shabbat-pop-err {
+          font-size: 0.72rem;
+          color: #fecaca;
+          margin: 0;
+          line-height: 1.45;
+        }
+        .faith-halacha-modal-backdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 100051;
+          margin: 0;
+          padding: 0;
+          border: none;
+          background: rgba(2, 6, 23, 0.62);
           cursor: pointer;
         }
-        .faith-back:hover {
-          color: var(--text);
-          background: rgba(255,255,255,0.1);
+        .faith-halacha-modal-dialog {
+          position: absolute;
+          top: calc(100% + 6px);
+          left: 0;
+          z-index: 100052;
+          width: min(440px, calc(100vw - 24px));
+          max-height: min(74vh, 600px);
+          display: flex;
+          flex-direction: column;
+          border-radius: 16px;
+          background: rgba(15, 23, 42, 0.98);
+          border: 1px solid rgba(255,255,255,0.12);
+          box-shadow: 0 28px 80px rgba(0,0,0,0.55);
+          direction: rtl;
+          text-align: right;
+          overflow: hidden;
+        }
+        .faith-halacha-modal-head {
+          flex-shrink: 0;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          padding: 12px 14px 10px;
+          border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .faith-halacha-modal-title {
+          margin: 0;
+          font-size: 1rem;
+          font-weight: 900;
+          color: #fef9c3;
+          letter-spacing: 0.02em;
+        }
+        .faith-halacha-modal-close {
+          flex-shrink: 0;
+          width: 34px;
+          height: 34px;
+          border-radius: 10px;
+          border: 1px solid rgba(255,255,255,0.14);
+          background: rgba(255,255,255,0.06);
+          color: rgba(226,232,240,0.95);
+          font-size: 1.05rem;
+          line-height: 1;
+          cursor: pointer;
+          font-weight: 700;
+        }
+        .faith-halacha-modal-close:hover {
+          background: rgba(255,255,255,0.12);
+        }
+        .faith-halacha-modal-body {
+          flex: 1;
+          overflow-y: auto;
+          padding: 14px 16px 18px;
+          -webkit-overflow-scrolling: touch;
+        }
+        .faith-halacha-muted {
+          font-size: 0.82rem;
+          color: rgba(148,163,184,0.95);
+          margin: 0 0 10px;
+          line-height: 1.5;
+        }
+        .faith-halacha-err {
+          font-size: 0.84rem;
+          color: #fecaca;
+          margin: 0 0 12px;
+          line-height: 1.45;
+        }
+        .faith-halacha-date-line {
+          font-size: 0.84rem;
+          color: rgba(226,232,240,0.94);
+          margin: 0 0 12px;
+          line-height: 1.55;
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 8px;
+        }
+        .faith-halacha-pill {
+          font-size: 0.62rem;
+          font-weight: 800;
+          padding: 3px 8px;
+          border-radius: 999px;
+          background: rgba(99,102,241,0.25);
+          border: 1px solid rgba(129,140,248,0.35);
+          color: #e0e7ff;
+        }
+        .faith-halacha-linkback {
+          margin: 0 0 14px;
+          padding: 5px 11px;
+          border-radius: 8px;
+          border: 1px solid rgba(251,191,36,0.35);
+          background: rgba(251,191,36,0.1);
+          color: #fde68a;
+          font-size: 0.74rem;
+          font-weight: 800;
+          cursor: pointer;
+        }
+        .faith-halacha-article {
+          margin-bottom: 18px;
+          padding: 12px 13px;
+          border-radius: 12px;
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.07);
+        }
+        .faith-halacha-entry-title {
+          margin: 0 0 6px;
+          font-size: 0.98rem;
+          font-weight: 900;
+          color: #fef08a;
+          line-height: 1.35;
+        }
+        .faith-halacha-entry-meta {
+          margin: 0 0 12px;
+          font-size: 0.74rem;
+          color: rgba(165,243,252,0.92);
+          font-weight: 700;
+        }
+        .faith-halacha-entry-body {
+          font-size: 0.86rem;
+          line-height: 1.65;
+          color: rgba(241,245,249,0.94);
+        }
+        .faith-halacha-entry-body p {
+          margin: 0 0 10px;
+        }
+        .faith-halacha-entry-body p:last-child {
+          margin-bottom: 0;
+        }
+        .faith-halacha-sources {
+          margin-top: 12px;
+          font-size: 0.74rem;
+          color: rgba(203,213,225,0.88);
+          line-height: 1.55;
+          font-weight: 600;
+        }
+        .faith-halacha-empty {
+          margin-bottom: 16px;
+          padding: 12px;
+          border-radius: 11px;
+          border: 1px dashed rgba(255,255,255,0.12);
+          background: rgba(0,0,0,0.15);
+        }
+        .faith-halacha-empty p {
+          margin: 0 0 8px;
+          font-size: 0.84rem;
+          line-height: 1.55;
+          color: rgba(226,232,240,0.92);
+        }
+        .faith-halacha-archive-block {
+          margin-top: 8px;
+          padding-top: 12px;
+          border-top: 1px solid rgba(255,255,255,0.08);
+        }
+        .faith-halacha-archive-heading {
+          margin: 0 0 10px;
+          font-size: 0.76rem;
+          font-weight: 900;
+          color: rgba(203,213,225,0.9);
+          letter-spacing: 0.03em;
+        }
+        .faith-halacha-archive-list {
+          list-style: none;
+          margin: 0;
+          padding: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 7px;
+        }
+        .faith-halacha-archive-btn {
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          align-items: stretch;
+          gap: 3px;
+          text-align: right;
+          padding: 9px 11px;
+          border-radius: 10px;
+          border: 1px solid rgba(255,255,255,0.1);
+          background: rgba(255,255,255,0.04);
+          color: inherit;
+          cursor: pointer;
+          transition: background 0.15s, border-color 0.15s;
+        }
+        .faith-halacha-archive-btn:hover {
+          background: rgba(255,255,255,0.07);
+          border-color: rgba(255,255,255,0.16);
+        }
+        .faith-halacha-archive-btn.active {
+          border-color: rgba(251,191,36,0.45);
+          background: rgba(251,191,36,0.1);
+        }
+        .faith-halacha-archive-date {
+          font-size: 0.68rem;
+          font-weight: 800;
+          color: rgba(253,224,71,0.9);
+        }
+        .faith-halacha-archive-topic {
+          font-size: 0.8rem;
+          font-weight: 750;
+          color: rgba(248,250,252,0.94);
+          line-height: 1.35;
+        }
+        .faith-halacha-actions-row {
+          margin-top: 16px;
+          padding-top: 14px;
+          border-top: 1px solid rgba(255,255,255,0.08);
+        }
+        .faith-halacha-rabbi-btn {
+          width: 100%;
+          padding: 10px 14px;
+          border-radius: 11px;
+          border: 1px solid rgba(34,197,94,0.4);
+          background: rgba(16,185,129,0.15);
+          color: #bbf7d0;
+          font-size: 0.82rem;
+          font-weight: 900;
+          cursor: pointer;
+        }
+        .faith-halacha-rabbi-btn:hover {
+          background: rgba(16,185,129,0.24);
         }
         .faith-cats-wrap {
           position: relative;
@@ -597,16 +1094,245 @@ export default function ReligionFaithPage() {
         .faith-rabbi-inline-wrap::-webkit-scrollbar-track { background: transparent; }
         .faith-rabbi-inline-wrap::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
         @media (max-width: 560px) {
-          .faith-back { position: static; display: block; margin: 0 auto 14px; }
+          .faith-shabbat-actions {
+            position: static;
+            justify-content: center;
+            margin: 0 auto 12px;
+            max-width: 100%;
+            left: auto;
+            top: auto;
+          }
           .faith-more-columns { grid-template-columns: 1fr; }
           .faith-more-col { border-left: none; border-bottom: 1px solid var(--border); }
           .faith-more-col:last-child { border-bottom: none; }
+          .faith-shabbat-chip--enter {
+            max-width: none;
+          }
+          .faith-shabbat-popover {
+            left: 50%;
+            right: auto;
+            transform: translateX(-50%);
+          }
+          .faith-halacha-modal-dialog {
+            left: 50%;
+            right: auto;
+            transform: translateX(-50%);
+          }
         }
       `}</style>
 
       <div className="faith-page">
         <header className="faith-header">
-          <button type="button" className="faith-back" onClick={() => navigate(-1)}>← חזרה</button>
+          <div
+            className="faith-shabbat-actions"
+            role="group"
+            aria-label="זמני שבת והלכות"
+            data-halacha-open={halachaModalOpen ? 'true' : 'false'}
+          >
+            <div
+              className="faith-shabbat-enter-wrap"
+              ref={shabbatEnterWrapRef}
+              data-open={shabbatEnterPopoverOpen ? 'true' : 'false'}
+              onMouseLeave={() => setShabbatEnterPopoverOpen(false)}
+            >
+              <button
+                type="button"
+                className="faith-shabbat-chip faith-shabbat-chip--enter"
+                aria-expanded={shabbatEnterPopoverOpen}
+                aria-haspopup="dialog"
+                aria-controls="faith-shabbat-times-popover"
+                onClick={() => {
+                  setShabbatEnterPopoverOpen(true);
+                  void loadShabbatCandles();
+                }}
+              >
+                כניסת שבת
+              </button>
+              <div
+                id="faith-shabbat-times-popover"
+                className="faith-shabbat-popover"
+                role="dialog"
+                aria-label="זמני כניסת שבת ויציאת שבת"
+              >
+                <p className="faith-shabbat-pop-title">כניסת שבת ויציאת שבת</p>
+                {candleLoading && !candleRows ? (
+                  <p className="faith-shabbat-pop-foot" style={{ marginTop: 0 }}>טוען נתונים מעודכנים…</p>
+                ) : null}
+                {candleErr && !candleRows ? (
+                  <p className="faith-shabbat-pop-err">{candleErr}</p>
+                ) : null}
+                {candleRows?.length ? (
+                  <>
+                    <div className="faith-shabbat-pop-headrow" aria-hidden="true">
+                      <span className="faith-shabbat-pop-city">עיר</span>
+                      <span>כניסה</span>
+                      <span>יציאה</span>
+                    </div>
+                    {candleRows.map((r) => (
+                      <div key={r.key} className="faith-shabbat-pop-row">
+                        <span className="faith-shabbat-pop-city">{r.label}</span>
+                        <span className="faith-shabbat-pop-time">{r.timeLabel || '—'}</span>
+                        <span className="faith-shabbat-pop-time faith-shabbat-pop-time--out">{r.havdalahTimeLabel || '—'}</span>
+                      </div>
+                    ))}
+                  </>
+                ) : null}
+                {candleParashaLine ? (
+                  <div className="faith-shabbat-pop-parsha">
+                    {candleParashaLine}
+                    {candleEveLabel ? ` · ערב שבת ${candleEveLabel}` : ''}
+                  </div>
+                ) : null}
+                <p className="faith-shabbat-pop-foot">
+                  כניסה: הדלקת נרות ~18 דק׳ לפני שקיעה מקומית. יציאה: זמן הבדלה כפי שמחושב ב־Hebcal לשבת הקרובה — המספרים משתנים מידי שבוע; מתעדכן בכל פתיחה.
+                  {' '}
+                  <a href="https://www.hebcal.com/" target="_blank" rel="noopener noreferrer">
+                    Hebcal
+                  </a>
+                </p>
+              </div>
+            </div>
+            <div
+              className="faith-halacha-anchor-wrap"
+              ref={halachaAnchorWrapRef}
+              data-halacha-open={halachaModalOpen ? 'true' : 'false'}
+            >
+              <button
+                type="button"
+                className="faith-shabbat-chip"
+                aria-expanded={halachaModalOpen}
+                aria-haspopup="dialog"
+                aria-controls="faith-halacha-panel"
+                onClick={() => {
+                  if (halachaModalOpen) {
+                    setHalachaModalOpen(false);
+                    return;
+                  }
+                  openHalachaModal();
+                }}
+              >
+                הלכות שבת
+              </button>
+              {halachaModalOpen ? (
+                <>
+                  <button
+                    type="button"
+                    className="faith-halacha-modal-backdrop"
+                    aria-label="סגירת חלון"
+                    onClick={() => setHalachaModalOpen(false)}
+                  />
+                  <div
+                    id="faith-halacha-panel"
+                    className="faith-halacha-modal-dialog"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="faith-halacha-title"
+                  >
+                    <div className="faith-halacha-modal-head">
+                      <h2 id="faith-halacha-title" className="faith-halacha-modal-title">
+                        הלכות שבת
+                      </h2>
+                      <button
+                        type="button"
+                        className="faith-halacha-modal-close"
+                        onClick={() => setHalachaModalOpen(false)}
+                        aria-label="סגור"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <div className="faith-halacha-modal-body">
+                      {halachaModalLoading && !halachaModalConv ? (
+                        <p className="faith-halacha-muted">טוען תאריך עברי וסינון ההלכה לפי היום…</p>
+                      ) : null}
+                      {halachaModalErr ? <p className="faith-halacha-err">{halachaModalErr}</p> : null}
+
+                      {halachaModalConv ? (
+                        <p className="faith-halacha-date-line">
+                          <span>
+                            <strong>תאריך היום:</strong> {halachaModalConv.hebrew}
+                          </span>
+                          {halachaManualKey ? <span className="faith-halacha-pill">מתוך המאגר</span> : null}
+                        </p>
+                      ) : null}
+
+                      {halachaManualKey ? (
+                        <button type="button" className="faith-halacha-linkback" onClick={() => setHalachaManualKey(null)}>
+                          הצגת ההלכה לפי תאריך היום
+                        </button>
+                      ) : null}
+
+                      {halachaDisplayEntry ? (
+                        <article className="faith-halacha-article">
+                          <h3 className="faith-halacha-entry-title">{halachaDisplayEntry.title}</h3>
+                          <p className="faith-halacha-entry-meta">{halachaDisplayEntry.labelHe}</p>
+                          <div className="faith-halacha-entry-body">
+                            {halachaDisplayEntry.body.split(/\n\n+/).map((para, idx) => (
+                              <p key={idx}>{para}</p>
+                            ))}
+                          </div>
+                          {halachaDisplayEntry.sources ? (
+                            <p className="faith-halacha-sources">{halachaDisplayEntry.sources}</p>
+                          ) : null}
+                        </article>
+                      ) : null}
+
+                      {!halachaModalLoading &&
+                      halachaModalConv &&
+                      !halachaManualKey &&
+                      !halachaDisplayEntry ? (
+                        <div className="faith-halacha-empty">
+                          <p>
+                            לא נמצאה כרגע הלכה במאגר המקומי שמותאמת בדיוק ליום העברי של היום ({halachaModalConv.hebrew}).
+                          </p>
+                          <p className="faith-halacha-muted">
+                            ניתן לבחור הלכה מהרשימה למטה, או לעבור לשאלת רב עם חיפוש כללי.
+                          </p>
+                        </div>
+                      ) : null}
+
+                      {!halachaModalLoading && !halachaModalConv && halachaModalErr ? (
+                        <p className="faith-halacha-muted">
+                          לא הצלחנו לקבע את התאריך העברי — עדיין ניתן לבחור מהרשימה או לפתוח את שאלת הרב.
+                        </p>
+                      ) : null}
+
+                      <div className="faith-halacha-archive-block">
+                        <p className="faith-halacha-archive-heading">הלכות במאגר (לפי יום עברי בלוח)</p>
+                        <ul className="faith-halacha-archive-list">
+                          {halachaArchiveList.map((item) => (
+                            <li key={item.key}>
+                              <button
+                                type="button"
+                                className={`faith-halacha-archive-btn${halachaManualKey === item.key ? ' active' : ''}`}
+                                onClick={() => setHalachaManualKey(item.key)}
+                              >
+                                <span className="faith-halacha-archive-date">{item.labelHe}</span>
+                                <span className="faith-halacha-archive-topic">{item.title}</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div className="faith-halacha-actions-row">
+                        <button
+                          type="button"
+                          className="faith-halacha-rabbi-btn"
+                          onClick={() => {
+                            openShabbatTopic('הלכות שבת');
+                            setHalachaModalOpen(false);
+                          }}
+                        >
+                          חיפוש בשאלת רב — הלכות שבת
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : null}
+            </div>
+          </div>
           <h1>דת ואמונה</h1>
           <p>המקום השייך לקהל המאמינים וכל מי שסקרן להכיר,</p>
           <div className="args-knowledge-composer-wrap">
@@ -766,6 +1492,7 @@ export default function ReligionFaithPage() {
         )}
 
       </div>
+
     </>
   );
 }

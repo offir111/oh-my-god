@@ -3,7 +3,6 @@ import { BrowserRouter, HashRouter, Routes, Route, Navigate } from 'react-router
 import { Capacitor } from '@capacitor/core';
 import { useAppStore, rehydrateUserIfNeeded } from './store/appStore.js';
 import { connectSocket, disconnectSocket } from './socket.js';
-import Navbar from './components/layout/Navbar.jsx';
 import AppHeader from './components/layout/AppHeader.jsx';
 import SiteQuickNav from './components/layout/SiteQuickNav.jsx';
 import LoginPage from './pages/LoginPage.jsx';
@@ -62,7 +61,6 @@ export default function App() {
     <AppRouter>
       <AppHeader />
       <SiteQuickNav />
-      {user && <Navbar />}
       <main id="main-content" className="app-main" tabIndex={-1}>
         <Routes>
           <Route path="/" element={user ? <Navigate to="/lobby" replace /> : <Navigate to="/login" replace />} />

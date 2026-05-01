@@ -83,3 +83,116 @@
   border: 1px solid rgba(255, 255, 255, 0.35);
   animation: slideUp 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
+
+/* LiveEventsPage — upcoming debate strip (global CSS so animations are not reset on React <style> updates) */
+@keyframes live-ad-yellow-wave-pass {
+  0% {
+    opacity: 1;
+    transform: translateX(-100%);
+  }
+  26% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  34% {
+    opacity: 0.14;
+    transform: translateX(0);
+  }
+  37% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  41% {
+    opacity: 0.14;
+    transform: translateX(0);
+  }
+  44% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  48% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  82% {
+    opacity: 1;
+    transform: translateX(100%);
+  }
+  94% {
+    opacity: 1;
+    transform: translateX(100%);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+.live-ad-strip-placeholder {
+  width: fit-content;
+  max-width: min(480px, calc(100vw - 32px));
+  margin-inline: auto;
+  height: auto;
+  min-height: 0;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px;
+  border: 1px dashed rgba(148, 163, 184, 0.38);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.42);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.live-ad-strip-placeholder::after {
+  content: '';
+  position: absolute;
+  top: -35%;
+  bottom: -35%;
+  left: 0;
+  width: 100%;
+  background: linear-gradient(
+    95deg,
+    rgba(253, 224, 71, 0.459) 0%,
+    rgba(254, 249, 195, 0.969) 42%,
+    rgba(253, 224, 71, 0.816) 58%,
+    rgba(253, 224, 71, 0.408) 100%
+  );
+  animation-name: live-ad-yellow-wave-pass;
+  animation-duration: calc(3s / 0.49);
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: 1;
+  animation-fill-mode: forwards;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 2;
+  mix-blend-mode: overlay;
+}
+
+.live-ad-strip-placeholder-text {
+  font-size: clamp(0.92rem, 3.9vw, 1.28rem);
+  font-weight: 800;
+  color: rgba(203, 213, 225, 0.94);
+  text-align: center;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: min(460px, calc(100vw - 48px));
+  position: relative;
+  z-index: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-ad-strip-placeholder::after {
+    animation: none !important;
+  }
+}

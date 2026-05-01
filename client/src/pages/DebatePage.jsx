@@ -192,7 +192,7 @@ export default function DebatePage() {
 const styles = {
   page: {
     display: 'flex', flexDirection: 'column',
-    height: 'calc(100vh - var(--total-h))', /* כותרת + ניווט צר + navbar */
+    height: 'calc(100vh - var(--shell-top))', /* כותרת קבועה + ניווט צר */
     padding: '0',
     overflow: 'hidden',
   },

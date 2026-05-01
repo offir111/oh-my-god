@@ -37,9 +37,6 @@
   --quick-nav-h: 34px;
   /* מתחת לכותרת הקבועה + שורת הניווט הצרה */
   --shell-top: calc(var(--appheader-h) + var(--quick-nav-h));
-  --navbar-h: 58px;
-  /* כותרת + ניווט צר + שורת navbar (כשמחוברים) */
-  --total-h: calc(var(--shell-top) + var(--navbar-h));
 
   /* Depth */
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.45);
@@ -251,88 +248,7 @@ input:focus, textarea:focus {
   background: rgba(255, 255, 255, 0.22);
 }
 
-/* —— Navbar —— */
-.navbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 22px;
-  row-gap: 10px;
-  background: rgba(14, 14, 20, 0.78);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: var(--shell-top);
-  z-index: 100;
-  height: var(--navbar-h);
-  box-sizing: border-box;
-  box-shadow: var(--shadow-xs);
-}
-
-.navbar-brand {
-  font-size: 1.15rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  color: var(--text);
-  transition: opacity 0.2s, transform 0.15s;
-}
-
-.navbar-brand:hover {
-  opacity: 0.92;
-  transform: scale(1.02);
-}
-
-.navbar-links {
-  display: flex;
-  flex: 1;
-  justify-content: center;
-  gap: 6px;
-  align-items: center;
-}
-
-.navbar-links--score-only {
-  justify-content: center;
-}
-
-.navbar-link {
-  color: var(--muted);
-  font-size: 0.88rem;
-  font-weight: 600;
-  padding: 8px 16px;
-  border-radius: var(--radius-pill);
-  transition: color 0.2s, background 0.2s, box-shadow 0.2s;
-  border: 1px solid transparent;
-}
-
-.navbar-link:hover {
-  color: var(--text);
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.navbar-link--active {
-  color: var(--text);
-  background: rgba(255, 255, 255, 0.1);
-  border-color: var(--border-strong);
-  box-shadow: 0 0 20px rgba(99, 102, 241, 0.12);
-}
-
-.navbar-score {
-  font-size: 0.82rem;
-  color: var(--muted);
-  padding: 6px 12px;
-  border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--border);
-}
-
-.navbar-score span {
-  color: var(--gold);
-  font-weight: 700;
-}
-
-/* Page layout — shell-top = כותרת + ניווט צר; navbar (אם יש) בתזרים לפני התוכן */
+/* Page layout — shell-top = כותרת קבועה + ניווט צר */
 .page {
   min-height: calc(100vh - var(--shell-top));
   display: flex;
@@ -651,8 +567,7 @@ input:focus, textarea:focus {
   }
   .phase-ind__step,
   .card,
-  .btn,
-  .navbar-link {
+  .btn {
     transition-duration: 0.01ms !important;
   }
 }
@@ -665,26 +580,6 @@ input:focus, textarea:focus {
     border-radius: 20px;
     margin-bottom: 18px;
   }
-  .navbar {
-    padding-inline: 10px;
-  }
-  .navbar-links {
-    order: 2;
-    width: 100%;
-    overflow-x: auto;
-    justify-content: flex-start;
-    padding-bottom: 2px;
-  }
-  .navbar-link {
-    white-space: nowrap;
-    padding-inline: 12px;
-  }
-  .navbar-score {
-    max-width: 45vw;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
 }
 
 /* העדפות משתמש: הפחתת תנועה (דף הגדרות) */
@@ -694,7 +589,6 @@ html[data-reduce-motion="on"] {
 html[data-reduce-motion="on"] .phase-ind__step,
 html[data-reduce-motion="on"] .card,
 html[data-reduce-motion="on"] .btn,
-html[data-reduce-motion="on"] .navbar-link,
 html[data-reduce-motion="on"] .msg-row,
 html[data-reduce-motion="on"] .gift-emoji,
 html[data-reduce-motion="on"] .recording-dots span,
