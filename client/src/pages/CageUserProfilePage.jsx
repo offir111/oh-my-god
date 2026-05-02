@@ -747,28 +747,6 @@ export default function CageUserProfilePage() {
             </span>
           </div>
 
-          {canEditProfile ? (
-            <button
-              type="button"
-              onClick={() => {
-                if (editOpen && dirty) persist(profile);
-                setEditOpen(o => !o);
-              }}
-              style={{
-                alignSelf: 'flex-start',
-                marginTop: 4,
-                fontSize: '0.78rem', fontWeight: 800,
-                padding: '6px 14px', borderRadius: 8,
-                border: '1px solid rgba(99,102,241,0.45)',
-                background: editOpen ? 'rgba(99,102,241,0.22)' : 'rgba(99,102,241,0.12)',
-                color: editOpen ? 'var(--accent)' : 'var(--text-secondary)',
-                cursor: 'pointer',
-              }}
-            >
-              {editOpen ? 'סגור עריכה ✕' : 'עריכת פרופיל ✎'}
-            </button>
-          ) : null}
-
           {/* Action buttons row */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
             <div style={{ display: 'flex', gap: 10 }}>
@@ -1303,15 +1281,15 @@ export default function CageUserProfilePage() {
                 setEditOpen(o => !o);
               }}
               style={{
-                fontSize: '0.74rem', fontWeight: 700,
-                padding: '3px 10px', borderRadius: 5,
-                border: '1px solid rgba(255,255,255,0.15)',
-                background: editOpen ? 'rgba(99,102,241,0.25)' : 'rgba(255,255,255,0.07)',
+                fontSize: '0.78rem', fontWeight: 800,
+                padding: '6px 14px', borderRadius: 8,
+                border: '1px solid rgba(99,102,241,0.45)',
+                background: editOpen ? 'rgba(99,102,241,0.22)' : 'rgba(99,102,241,0.12)',
                 color: editOpen ? 'var(--accent)' : 'var(--text-secondary)',
                 cursor: 'pointer',
               }}
             >
-              {editOpen ? 'סגור ✕' : 'עריכה ✎'}
+              {editOpen ? 'סגור עריכה ✕' : 'עריכת פרופיל ✎'}
             </button>
           )}
         </div>
@@ -1626,7 +1604,7 @@ export default function CageUserProfilePage() {
       ) : null}
 
 
-      {/* ── התנתק + עריכה/סגור (תמיד בתחתית כשאפשר לערוך; תיבת השדות למעלה מתחת ל״פרטים אישיים״) ── */}
+      {/* ── התנתק + עריכת פרופיל/סגור (תמיד בתחתית כשאפשר לערוך; תיבת השדות מתחת ל״פרטים אישיים״) ── */}
       {canEditProfile ? (
         <div style={{ padding: 14, background: 'var(--surface)', borderTop: '2px solid var(--border-strong)', marginTop: 2 }}>
           <button
@@ -1653,15 +1631,15 @@ export default function CageUserProfilePage() {
             }}
             style={{
               width: '100%', padding: '6px 10px',
-              borderRadius: 5, fontWeight: 700, fontSize: '0.74rem',
-              border: '1px solid rgba(255,255,255,0.15)',
-              background: editOpen ? 'rgba(99,102,241,0.25)' : 'rgba(255,255,255,0.07)',
+              borderRadius: 8, fontWeight: 800, fontSize: '0.78rem',
+              border: '1px solid rgba(99,102,241,0.45)',
+              background: editOpen ? 'rgba(99,102,241,0.22)' : 'rgba(99,102,241,0.12)',
               color: editOpen ? 'var(--accent)' : 'var(--text-secondary)',
               cursor: 'pointer',
               marginBottom: editOpen ? 14 : 0,
             }}
           >
-            {editOpen ? 'סגור ✕' : 'עריכה ✎'}
+            {editOpen ? 'סגור עריכה ✕' : 'עריכת פרופיל ✎'}
           </button>
         </div>
       ) : null}

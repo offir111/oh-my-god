@@ -1243,8 +1243,8 @@ export default function LoginPage() {
           unicode-bidi: isolate;
         }
         .login-enter-btn {
-          width: 60px; height: 60px;
-          border-radius: 50%;
+          width: 140px; height: 48px;
+          border-radius: 12px;
           border: 1px solid var(--border-strong, rgba(255,255,255,0.14));
           background: rgba(255,255,255,0.08);
           color: var(--text, #fff);
