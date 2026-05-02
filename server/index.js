@@ -58,6 +58,59 @@ app.use('/api/admin', adminRouter);
 app.get('/api/health', (_, res) =>
   res.json({ ok: true, provider: 'groq', version: 5 }));
 
+// Radio stream proxy — pipes audio from radio station to browser (solves CORS/ICY issues)
+app.get('/api/radio-proxy', async (req, res) => {
+  const raw = String(req.query.url || '').trim();
+  if (!raw.startsWith('http://') && !raw.startsWith('https://')) {
+    return res.status(400).json({ error: 'invalid url' });
+  }
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20_000);
+    req.on('close', () => { clearTimeout(timeout); controller.abort(); });
+
+    const upstream = await fetch(raw, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
+        'Icy-MetaData': '0',
+        'Accept': 'audio/mpeg, audio/aac, audio/ogg, audio/*;q=0.9, */*;q=0.1',
+        'Connection': 'keep-alive',
+      },
+    });
+
+    clearTimeout(timeout);
+
+    if (!upstream.ok && upstream.status !== 200) {
+      return res.status(502).json({ error: `upstream ${upstream.status}` });
+    }
+
+    const ct = upstream.headers.get('content-type') || 'audio/mpeg';
+    res.setHeader('Content-Type', ct);
+    res.setHeader('Cache-Control', 'no-cache, no-store');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Transfer-Encoding', 'chunked');
+    res.status(upstream.status);
+
+    const reader = upstream.body.getReader();
+    const pump = async () => {
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done || res.destroyed) break;
+          if (!res.write(Buffer.from(value))) {
+            await new Promise(r => res.once('drain', r));
+          }
+        }
+      } catch { /* client disconnected */ }
+      if (!res.destroyed) res.end();
+    };
+    pump();
+  } catch (e) {
+    if (!res.headersSent) res.status(502).json({ error: 'stream unavailable' });
+  }
+});
+
 app.get('/api/stats', (_, res) => {
   // Count unique usernames online (same user from multiple devices = 1)
   const onlineSet = new Set([...store.users.values()].map(u => u.username));
