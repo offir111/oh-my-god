@@ -52,10 +52,12 @@ export default function MiniBarRow() {
   const { audioEl, setRadioActive, stationId, setStationId, stations, volume, setVolume } = useRadioState() ?? {};
   const [radioPlaying, setRadioPlaying] = useState(false);
 
+  /* shared volume */
+  const [sharedVol, setSharedVol] = useState(0.85);
+
   /* youtube */
   const [ytStations,   setYtStationsState] = useState(readYtStations);
   const [ytSelectedId, setYtSelectedId]   = useState(1);
-  const [ytVolume,     setYtVolume]        = useState(0.85);
   const [configOpen,   setConfigOpen]      = useState(false);
   const [draft,        setDraft]           = useState(null);
 
@@ -100,9 +102,14 @@ export default function MiniBarRow() {
   const activeYt = ytStations.find(s => s.id === ytSelectedId) ?? ytStations[0];
   const embedUrl = activeYt ? ytEmbedUrl(activeYt.url) : null;
 
+  const handleVol = (val) => {
+    setSharedVol(val);
+    setVolume?.(val);
+  };
+
   const playYt = () => {
     if (!embedUrl) { openConfig(); return; }
-    const vol = Math.round(ytVolume * 100);
+    const vol = Math.round(sharedVol * 100);
     setYtTvUrl(embedUrl.replace('?autoplay=1', `?autoplay=1&volume=${vol}`));
     navigate('/video-live');
   };
@@ -162,13 +169,10 @@ export default function MiniBarRow() {
           </button>
           <span className={'mini-radio-bar__dot' + (radioPlaying ? ' mini-radio-bar__dot--live' : '')} aria-hidden />
 
-          {/* ── Volume faders — center ── */}
+          {/* ── Single shared volume fader — center ── */}
           <div className="mini-bar-vols">
-            <input type="range" className="mini-radio-bar__vol" min={0} max={1} step={0.01}
-              value={volume ?? 0.85} onChange={e => setVolume?.(Number(e.target.value))} aria-label="עוצמת שמע רדיו" />
-            <div className="mini-bar-sep" />
-            <input type="range" className="mini-radio-bar__vol" min={0} max={1} step={0.01}
-              value={ytVolume} onChange={e => setYtVolume(Number(e.target.value))} aria-label="עוצמת שמע יוטיוב" />
+            <input type="range" className="mini-radio-bar__vol mini-radio-bar__vol--shared" min={0} max={1} step={0.01}
+              value={sharedVol} onChange={e => handleVol(Number(e.target.value))} aria-label="עוצמת שמע" />
           </div>
 
           {/* ── YouTube: dot → play → select ── */}
