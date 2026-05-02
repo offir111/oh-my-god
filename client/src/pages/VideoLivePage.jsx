@@ -20,6 +20,10 @@ const IL_CHANNELS = [
     hlsUrl: 'https://mabatlive.media.kan.org.il/hls/live/2024516/kan_mabatlive/master.m3u8',
   },
   {
+    id: 'ch12', name: 'ערוץ 12', flag: '🇮🇱',
+    hlsUrl: 'https://linear-il.mako.co.il/hls/live/Mako12/master.m3u8',
+  },
+  {
     id: 'ch13', name: 'ערוץ 13', flag: '🇮🇱',
     hlsUrl: 'https://d2xg1g9o5vns8m.cloudfront.net/out/v1/0855d703f7d5436fae6a9c7ce8ca5075/index.m3u8',
   },
