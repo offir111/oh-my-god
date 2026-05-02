@@ -111,6 +111,73 @@ app.get('/api/radio-proxy', async (req, res) => {
   }
 });
 
+// HLS TV proxy — fetches M3U8 manifests and rewrites segment URLs through proxy, pipes TS segments
+app.get('/api/tv-proxy', async (req, res) => {
+  const raw = String(req.query.url || '').trim();
+  if (!raw.startsWith('http://') && !raw.startsWith('https://')) {
+    return res.status(400).json({ error: 'invalid url' });
+  }
+  const ctrl = new AbortController();
+  const timeout = setTimeout(() => ctrl.abort(), 20_000);
+  req.on('close', () => { clearTimeout(timeout); ctrl.abort(); });
+  try {
+    const upstream = await fetch(raw, {
+      signal: ctrl.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120 Safari/537.36',
+        'Accept': '*/*',
+        'Referer': new URL(raw).origin + '/',
+        'Origin': new URL(raw).origin,
+      },
+    });
+    clearTimeout(timeout);
+    if (!upstream.ok) return res.status(upstream.status).end();
+
+    const ct = upstream.headers.get('content-type') || '';
+    const isPlaylist = raw.includes('.m3u8') || ct.includes('mpegurl') || ct.includes('x-mpegURL');
+
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cache-Control', 'no-cache, no-store');
+
+    if (isPlaylist) {
+      const text = await upstream.text();
+      // base URL for resolving relative paths inside the manifest
+      const baseUrl = raw.substring(0, raw.lastIndexOf('/') + 1);
+      const selfProxyBase = `${req.protocol}://${req.get('host')}/api/tv-proxy?url=`;
+
+      const rewritten = text.split('\n').map(line => {
+        const t = line.trim();
+        if (!t || t.startsWith('#')) return line; // comment or empty
+        try {
+          const abs = t.startsWith('http') ? t : baseUrl + t;
+          return selfProxyBase + encodeURIComponent(abs);
+        } catch { return line; }
+      }).join('\n');
+
+      res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+      return res.send(rewritten);
+    }
+
+    // Binary segment (TS, AAC, fMP4, etc) — pipe through
+    res.setHeader('Content-Type', ct || 'video/MP2T');
+    const reader = upstream.body.getReader();
+    const pump = async () => {
+      try {
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done || res.destroyed) break;
+          if (!res.write(Buffer.from(value))) await new Promise(r => res.once('drain', r));
+        }
+      } catch { /* client disconnected */ }
+      if (!res.destroyed) res.end();
+    };
+    pump();
+  } catch (e) {
+    clearTimeout(timeout);
+    if (!res.headersSent) res.status(502).json({ error: 'stream unavailable' });
+  }
+});
+
 app.get('/api/stats', (_, res) => {
   // Count unique usernames online (same user from multiple devices = 1)
   const onlineSet = new Set([...store.users.values()].map(u => u.username));
