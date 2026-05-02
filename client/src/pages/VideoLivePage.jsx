@@ -233,10 +233,10 @@ export default function VideoLivePage() {
         .tvpage { max-width: var(--app-shell-content-max, 920px); margin: 0 auto; padding: 16px var(--app-shell-gutter, 18px) 48px; box-sizing: border-box; }
         .tvpage__title { font-size: clamp(1rem, 3.5vw, 1.25rem); font-weight: 900; color: var(--gold); margin: 0 0 14px; display: flex; align-items: center; gap: 8px; }
 
-        .tv-layout { display: grid; grid-template-columns: 1fr 190px; gap: 12px; margin-bottom: 28px; align-items: start; }
+        .tv-layout { display: grid; grid-template-columns: 1fr 190px; gap: 12px; margin-bottom: 28px; align-items: stretch; }
         @media (max-width: 620px) { .tv-layout { grid-template-columns: 1fr; } }
 
-        .tv-player-wrap { border-radius: 14px; overflow: hidden; border: 1.5px solid rgba(251,191,36,0.3); box-shadow: 0 8px 36px rgba(0,0,0,0.6); background: #000; }
+        .tv-player-wrap { border-radius: 14px; overflow: hidden; border: 1.5px solid rgba(251,191,36,0.3); box-shadow: 0 8px 36px rgba(0,0,0,0.6); background: #000; display: flex; flex-direction: column; }
         .tv-player-screen { position: relative; width: 100%; aspect-ratio: 16/9; }
         .tv-player-bar { display: flex; align-items: center; gap: 8px; padding: 7px 12px; background: rgba(10,10,16,0.97); border-top: 1px solid rgba(255,255,255,0.07); }
         .tv-player-dot { width: 7px; height: 7px; border-radius: 50%; background: #ef4444; flex-shrink: 0; animation: tvPulse 1.4s ease-in-out infinite; }
@@ -244,11 +244,14 @@ export default function VideoLivePage() {
         .tv-player-name { font-size: 0.82rem; font-weight: 800; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         @keyframes tvPulse { 0%,100%{opacity:.5;transform:scale(.85)} 50%{opacity:1;transform:scale(1.15)} }
 
-        .tv-sidebar { display: flex; flex-direction: column; gap: 14px; }
-        @media (max-width: 620px) { .tv-sidebar { flex-direction: row; flex-wrap: wrap; gap: 10px; } }
+        .tv-sidebar { display: flex; flex-direction: column; gap: 0; overflow-y: auto; height: 100%; border-radius: 12px; border: 1px solid rgba(255,255,255,0.07); background: rgba(255,255,255,0.03); padding: 6px 4px; box-sizing: border-box; scrollbar-width: thin; scrollbar-color: rgba(251,191,36,0.3) transparent; }
+        .tv-sidebar::-webkit-scrollbar { width: 4px; }
+        .tv-sidebar::-webkit-scrollbar-track { background: transparent; }
+        .tv-sidebar::-webkit-scrollbar-thumb { background: rgba(251,191,36,0.3); border-radius: 4px; }
+        @media (max-width: 620px) { .tv-sidebar { flex-direction: row; flex-wrap: wrap; gap: 10px; height: auto; overflow-y: visible; } }
 
-        .tv-sidebar-section { display: flex; flex-direction: column; gap: 3px; }
-        .tv-sidebar-label { font-size: 0.6rem; font-weight: 900; letter-spacing: .09em; color: var(--muted); padding: 0 4px 4px; text-transform: uppercase; }
+        .tv-sidebar-section { display: flex; flex-direction: column; gap: 2px; margin-bottom: 6px; }
+        .tv-sidebar-label { font-size: 0.58rem; font-weight: 900; letter-spacing: .09em; color: var(--muted); padding: 4px 6px 3px; text-transform: uppercase; position: sticky; top: 0; background: rgba(10,10,16,0.95); z-index: 1; border-radius: 4px; }
 
         .tv-ch-btn { display: flex; align-items: center; gap: 7px; width: 100%; padding: 7px 10px; border-radius: 9px; border: 1px solid transparent; background: rgba(255,255,255,0.04); color: var(--text-secondary); font-size: 0.78rem; font-weight: 700; font-family: inherit; cursor: pointer; text-align: right; transition: background .12s, color .12s, border-color .12s; }
         .tv-ch-btn:hover { background: rgba(251,191,36,0.1); color: var(--text); }
