@@ -77,13 +77,12 @@ const WORLD_CHANNELS = [
 ];
 
 /* ─── HLS Player component ─────────────────────────────── */
-function HLSPlayer({ src, channelName }) {
+function HLSPlayer({ src, channelName, muted, onUnmute }) {
   const videoRef     = useRef(null);
   const containerRef = useRef(null);
   const hlsRef       = useRef(null);
   const [status,  setStatus]  = useState('loading');
   const [isFs,    setIsFs]    = useState(false);
-  const [muted,   setMuted]   = useState(true); // start muted for autoplay; user unmutes
 
   useEffect(() => {
     const onFsChange = () => setIsFs(!!document.fullscreenElement);
@@ -119,12 +118,10 @@ function HLSPlayer({ src, channelName }) {
     }
   }, [src]);
 
-  // keep video.muted in sync with state
+  // keep video.muted in sync with prop
   useEffect(() => {
     if (videoRef.current) videoRef.current.muted = muted;
   }, [muted]);
-
-  const unmute = () => setMuted(false);
 
   const toggleFullscreen = () => {
     const el = containerRef.current;
@@ -152,7 +149,7 @@ function HLSPlayer({ src, channelName }) {
       {/* Unmute overlay — shown until user taps */}
       {status === 'playing' && muted && (
         <div
-          onClick={unmute}
+          onClick={onUnmute}
           style={{
             position: 'absolute', inset: 0, zIndex: 5, cursor: 'pointer',
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10,
@@ -282,6 +279,7 @@ export default function VideoLivePage() {
   const username    = user?.username || pendingUser?.username || '';
 
   const [activeCh, setActiveCh] = useState(() => IL_CHANNELS.find(c => c.id === 'hidabroot') ?? IL_CHANNELS[0]);
+  const [muted, setMuted] = useState(true);
   const proxySrc = tvProxyUrl(activeCh.hlsUrl);
 
   const playerWrapRef = useRef(null);
@@ -340,7 +338,7 @@ export default function VideoLivePage() {
         {/* ── Player ── */}
         <div className="tv-player-wrap" ref={playerWrapRef}>
           <div className="tv-player-screen">
-            <HLSPlayer key={activeCh.id} src={proxySrc} channelName={activeCh.name} />
+            <HLSPlayer key={activeCh.id} src={proxySrc} channelName={activeCh.name} muted={muted} onUnmute={() => setMuted(false)} />
           </div>
           <div className="tv-player-bar">
             <span className="tv-player-dot" aria-hidden />
