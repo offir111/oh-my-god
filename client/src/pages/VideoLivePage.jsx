@@ -74,16 +74,23 @@ const WORLD_CHANNELS = [
 
 /* ─── HLS Player component ─────────────────────────────── */
 function HLSPlayer({ src, channelName }) {
-  const videoRef  = useRef(null);
-  const hlsRef    = useRef(null);
-  const [status, setStatus] = useState('loading'); // loading | playing | error
+  const videoRef     = useRef(null);
+  const containerRef = useRef(null);
+  const hlsRef       = useRef(null);
+  const [status, setStatus]   = useState('loading');
+  const [isFs,   setIsFs]     = useState(false);
+
+  useEffect(() => {
+    const onFsChange = () => setIsFs(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onFsChange);
+    return () => document.removeEventListener('fullscreenchange', onFsChange);
+  }, []);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !src) return;
 
     setStatus('loading');
-
     if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
     video.src = '';
 
@@ -92,18 +99,10 @@ function HLSPlayer({ src, channelName }) {
       hlsRef.current = hls;
       hls.loadSource(src);
       hls.attachMedia(video);
-
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        setStatus('playing');
-        video.play().catch(() => {});
-      });
-      hls.on(Hls.Events.ERROR, (_, data) => {
-        if (data.fatal) setStatus('error');
-      });
+      hls.on(Hls.Events.MANIFEST_PARSED, () => { setStatus('playing'); video.play().catch(() => {}); });
+      hls.on(Hls.Events.ERROR, (_, data) => { if (data.fatal) setStatus('error'); });
       return () => { hls.destroy(); hlsRef.current = null; };
-
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      /* Safari — native HLS */
       video.src = src;
       const onMeta = () => { setStatus('playing'); video.play().catch(() => {}); };
       const onErr  = () => setStatus('error');
@@ -115,8 +114,15 @@ function HLSPlayer({ src, channelName }) {
     }
   }, [src]);
 
+  const toggleFullscreen = () => {
+    const el = containerRef.current;
+    if (!el) return;
+    if (document.fullscreenElement) document.exitFullscreen();
+    else el.requestFullscreen().catch(() => {});
+  };
+
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%', background: '#000', borderRadius: 'inherit' }}>
+    <div ref={containerRef} style={{ position: 'relative', width: '100%', height: '100%', background: '#000', borderRadius: 'inherit' }}>
       {status === 'loading' && (
         <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, zIndex: 2 }}>
           <span style={{ fontSize: '2rem' }}>📡</span>
@@ -138,6 +144,24 @@ function HLSPlayer({ src, channelName }) {
         muted
         style={{ width: '100%', height: '100%', objectFit: 'contain', display: status === 'error' ? 'none' : 'block' }}
       />
+      {/* Fullscreen button */}
+      <button
+        type="button"
+        onClick={toggleFullscreen}
+        title={isFs ? 'יציאה ממסך מלא' : 'מסך מלא'}
+        style={{
+          position: 'absolute', bottom: 10, left: 10, zIndex: 10,
+          background: 'rgba(0,0,0,0.65)', border: '1px solid rgba(255,255,255,0.25)',
+          borderRadius: 7, padding: '5px 9px', cursor: 'pointer',
+          color: '#fff', fontSize: '0.95rem', lineHeight: 1,
+          backdropFilter: 'blur(4px)',
+          display: status === 'error' ? 'none' : 'flex',
+          alignItems: 'center', gap: 5,
+        }}
+      >
+        {isFs ? '⛶' : '⛶'}
+        <span style={{ fontSize: '0.65rem', fontWeight: 700 }}>{isFs ? 'צמצם' : 'הגדל'}</span>
+      </button>
     </div>
   );
 }
@@ -227,16 +251,29 @@ export default function VideoLivePage() {
   const [activeCh, setActiveCh] = useState(IL_CHANNELS[0]);
   const proxySrc = tvProxyUrl(activeCh.hlsUrl);
 
+  const playerWrapRef = useRef(null);
+  const [sidebarMaxH, setSidebarMaxH] = useState(null);
+
+  useEffect(() => {
+    const el = playerWrapRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(entries => {
+      setSidebarMaxH(entries[0].contentRect.height);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   return (
     <div className="tvpage" dir="rtl">
       <style>{`
         .tvpage { max-width: var(--app-shell-content-max, 920px); margin: 0 auto; padding: 16px var(--app-shell-gutter, 18px) 48px; box-sizing: border-box; }
         .tvpage__title { font-size: clamp(1rem, 3.5vw, 1.25rem); font-weight: 900; color: var(--gold); margin: 0 0 14px; display: flex; align-items: center; gap: 8px; }
 
-        .tv-layout { display: grid; grid-template-columns: 1fr 190px; gap: 12px; margin-bottom: 28px; align-items: stretch; }
+        .tv-layout { display: grid; grid-template-columns: 1fr 190px; gap: 12px; margin-bottom: 28px; align-items: start; }
         @media (max-width: 620px) { .tv-layout { grid-template-columns: 1fr; } }
 
-        .tv-player-wrap { border-radius: 14px; overflow: hidden; border: 1.5px solid rgba(251,191,36,0.3); box-shadow: 0 8px 36px rgba(0,0,0,0.6); background: #000; display: flex; flex-direction: column; }
+        .tv-player-wrap { border-radius: 14px; overflow: hidden; border: 1.5px solid rgba(251,191,36,0.3); box-shadow: 0 8px 36px rgba(0,0,0,0.6); background: #000; }
         .tv-player-screen { position: relative; width: 100%; aspect-ratio: 16/9; }
         .tv-player-bar { display: flex; align-items: center; gap: 8px; padding: 7px 12px; background: rgba(10,10,16,0.97); border-top: 1px solid rgba(255,255,255,0.07); }
         .tv-player-dot { width: 7px; height: 7px; border-radius: 50%; background: #ef4444; flex-shrink: 0; animation: tvPulse 1.4s ease-in-out infinite; }
@@ -268,7 +305,7 @@ export default function VideoLivePage() {
       <div className="tv-layout">
 
         {/* ── Player ── */}
-        <div className="tv-player-wrap">
+        <div className="tv-player-wrap" ref={playerWrapRef}>
           <div className="tv-player-screen">
             <HLSPlayer key={activeCh.id} src={proxySrc} channelName={activeCh.name} />
           </div>
@@ -280,7 +317,7 @@ export default function VideoLivePage() {
         </div>
 
         {/* ── Channel sidebar ── */}
-        <div className="tv-sidebar">
+        <div className="tv-sidebar" style={sidebarMaxH ? { maxHeight: sidebarMaxH } : {}}>
           <div className="tv-sidebar-section">
             <div className="tv-sidebar-label">🇮🇱 ישראל</div>
             {IL_CHANNELS.map(ch => (
