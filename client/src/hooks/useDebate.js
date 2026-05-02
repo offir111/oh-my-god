@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { socket } from '../socket.js';
 import { useAppStore } from '../store/appStore.js';
 
@@ -11,33 +11,17 @@ export function useDebate(debateId) {
   const [finished, setFinished] = useState(false);
   const [finishData, setFinishData] = useState(null);
   const [disconnected, setDisconnected] = useState(false);
-  const fallbackStreamIntervalsRef = useRef(new Set());
-
   useEffect(() => {
     if (!debateId) return;
 
     function onTextMessageReceived(msg) {
       setOpponentTyping(false);
-      // Simulate streaming animation for AI messages (works even with old server)
-      if (msg.isAI && msg.content) {
-        const fullText = msg.content;
-        let i = 0;
-        setStreamingMessage({ side: msg.side, content: '', isAI: true, timestamp: msg.timestamp });
-        const interval = setInterval(() => {
-          i += 3;
-          if (i >= fullText.length) {
-            clearInterval(interval);
-            fallbackStreamIntervalsRef.current.delete(interval);
-            clearStreamingMessage();
-            addTextMessage(msg);
-          } else {
-            appendStreamingChunk(fullText.slice(i - 3, i));
-          }
-        }, 5062); // Twice as fast as the previous fallback typing pace
-        fallbackStreamIntervalsRef.current.add(interval);
-      } else {
-        addTextMessage(msg);
-      }
+      const debateNow = useAppStore.getState().debate;
+      const aiReply =
+        debateNow?.isAI &&
+        debateNow.aiSide &&
+        msg?.side === debateNow.aiSide;
+      addTextMessage(aiReply ? { ...msg, isAI: true } : msg);
     }
 
     function onVoiceMessageReceived(msg) {
@@ -64,15 +48,34 @@ export function useDebate(debateId) {
       appendStreamingChunk(chunk);
     }
 
-    function onAIStreamEnd({ msg }) {
-      console.log('[stream] END', msg.content.length, 'chars');
+    function onAIStreamEnd(payload) {
+      const msg = payload?.msg;
+      const { streamingMessage, debate } = useAppStore.getState();
+      const streamText = String(streamingMessage?.content || '').trim();
+      const serverText = typeof msg?.content === 'string' ? msg.content.trim() : '';
+      const content = serverText || streamText;
+      const side = msg?.side || debate?.aiSide;
+      const timestamp = typeof msg?.timestamp === 'number' ? msg.timestamp : Date.now();
+      console.log('[stream] END', content.length, 'chars (server:', serverText.length, 'local:', streamText.length, ')');
       clearStreamingMessage();
-      addTextMessage(msg);
+      if (!content || !side) return;
+      addTextMessage({ side, content, timestamp, isAI: true });
     }
 
     function onAIStreamError() {
       console.log('[stream] ERROR');
       clearStreamingMessage();
+      const { debate } = useAppStore.getState();
+      const side = debate?.aiSide;
+      if (side) {
+        addTextMessage({
+          side,
+          content: '⚠️ השרת לא הצליח לייצר תשובה כרגע. נסה שוב.',
+          timestamp: Date.now(),
+          isAI: true,
+          isError: true,
+        });
+      }
     }
 
     function onOpponentRecording() {
@@ -128,9 +131,6 @@ export function useDebate(debateId) {
     socket.on('OPPONENT_DISCONNECTED', onOpponentDisconnected);
 
     return () => {
-      for (const interval of fallbackStreamIntervalsRef.current) clearInterval(interval);
-      fallbackStreamIntervalsRef.current.clear();
-      clearStreamingMessage();
       socket.off('TEXT_MESSAGE_RECEIVED', onTextMessageReceived);
       socket.off('VOICE_MESSAGE_RECEIVED', onVoiceMessageReceived);
       socket.off('TURN_CHANGED', onTurnChanged);

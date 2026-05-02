@@ -111,7 +111,7 @@ export default function VoicePhase({ debateId, opponentRecording }) {
               <span className="toolbar-muted" style={{ fontSize: '0.9rem' }}>
                 הוקלטו {duration} שניות
               </span>
-              <button type="button" className={`btn btn-${user?.side}`} onClick={sendVoice}>
+              <button type="button" className={`btn btn-send btn-send--${user?.side || 'believer'}`} onClick={sendVoice}>
                 שלח הודעה קולית
               </button>
               <button type="button" className="btn btn-ghost" onClick={clearBlob}>

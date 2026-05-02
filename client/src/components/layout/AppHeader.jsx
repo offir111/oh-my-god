@@ -3,6 +3,8 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAppStore, rehydrateUserIfNeeded } from '../../store/appStore.js';
 import { disconnectSocket, connectSocket } from '../../socket.js';
 import BibleModal from '../ui/BibleModal.jsx';
+import UserAvatarSlot from '../ui/UserAvatarSlot.jsx';
+import { getCageAvatarDataUrlForDisplayName } from '../../lib/cageUserProfile.js';
 
 const STATS_CACHE_KEY = 'omg_stats_cache';
 function readCachedStats() {
@@ -61,6 +63,9 @@ export default function AppHeader() {
 
   // Show green avatar also when registered but not yet in debate
   const activeUser = user || pendingUser;
+  /** ניווט לפרופיל — כל מי שיש לו שם בסשן (מלא או pending). עריכה בדף הפרופיל נשארת למחובר מלא בלבד */
+  const profileNavUsername = String(user?.username || pendingUser?.username || '').trim();
+  const canOpenHeaderProfile = profileNavUsername.length >= 2;
 
   const loadStats = useCallback(() => {
     const BASE = import.meta.env.VITE_API_URL || '';
@@ -202,36 +207,18 @@ export default function AppHeader() {
     setOnlineModalOpen(false);
     setAvatarMenuOpen(false);
 
-    const ts = Date.now();
     const path = location.pathname;
     const fromDebate = path.startsWith('/debate');
     if (fromDebate) resetDebate();
 
-    /** WebView/Capacitor: זיכרון ה־store לפעמים לא עקבי — קוראים סשן מ-localStorage לפני החלטת ניווט */
     rehydrateUserIfNeeded();
     const sessionUser = useAppStore.getState().user;
     const hasFullSession =
       Boolean(sessionUser?.username) &&
       (sessionUser.side === 'believer' || sessionUser.side === 'atheist');
 
-    /** דף הבית = מסך הכניסה (/login), לא הלובי. פרמטר logo מונע הפניה אוטומטית חזרה ללובי */
-    if (path === '/login') {
-      if (hasFullSession) {
-        navigate(`/login?logo=${encodeURIComponent(String(ts))}`, { replace: true });
-      } else {
-        navigate(`/login?homeReset=${encodeURIComponent(String(ts))}`, { replace: true });
-      }
-    } else if (hasFullSession) {
-      navigate(`/login?logo=${encodeURIComponent(String(ts))}`, { replace: true });
-    } else {
-      navigate(`/login?homeReset=${encodeURIComponent(String(ts))}`, { replace: true });
-    }
-
-    rehydrateUserIfNeeded();
-    const u = useAppStore.getState().user;
-    if (u?.username && (u.side === 'believer' || u.side === 'atheist')) {
-      connectSocket(u.username, u.side);
-    }
+    /** כמו קישור «דף הבית» ב־SiteQuickNav — מסך כניסה; ?logo= מונע הפניה אוטומטית מהלוגין ללובי */
+    navigate(hasFullSession ? '/login?logo=nav' : '/login', { replace: false });
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
     document.getElementById('main-content')?.scrollTo?.({ top: 0, behavior: 'smooth' });
@@ -269,6 +256,15 @@ export default function AppHeader() {
           box-shadow: 0 4px 24px rgba(0,0,0,0.25);
         }
         .app-header > * { pointer-events: all; }
+        .app-header__inner {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          min-width: 0;
+          width: 100%;
+        }
         .header-zone {
           min-height: 52px;
           height: auto;
@@ -742,6 +738,12 @@ export default function AppHeader() {
           background: rgba(251, 191, 36, 0.1);
         }
         .header-avatar.logged-in:hover { transform: scale(1.04); }
+        .header-avatar.logged-in.header-avatar--nav-disabled {
+          cursor: default;
+        }
+        .header-avatar.logged-in.header-avatar--nav-disabled:hover {
+          transform: none;
+        }
         button.header-avatar {
           cursor: pointer;
         }
@@ -809,11 +811,18 @@ export default function AppHeader() {
           text-align: right;
         }
         .header-user-menu-name {
+          display: flex;
+          align-items: center;
+          gap: 8px;
           font-size: 0.95rem;
           font-weight: 700;
           color: var(--text, #fff);
           padding: 4px 8px 6px;
           word-break: break-word;
+        }
+        .header-user-menu-name__text {
+          flex: 1;
+          min-width: 0;
         }
         .header-user-menu-sub {
           color: var(--muted, #8a8a9a);
@@ -1092,28 +1101,48 @@ export default function AppHeader() {
       `}</style>
 
       <div className="app-header">
+        <div className="app-header__inner">
         {/* Right side: avatar */}
         <div className="header-zone header-zone--user">
           <div className="header-avatar-wrap" ref={avatarWrapRef}>
             {activeUser ? (
-              <button
-                type="button"
-                className={`header-avatar logged-in${pendingUser && !user ? ' header-avatar--pending' : ''}`}
-                onClick={() => setAvatarMenuOpen(o => !o)}
-                aria-haspopup="true"
-                aria-expanded={avatarMenuOpen}
-                aria-label="תפריט משתמש והתנתקות"
-              >
-                {avatarLabel ? (
-                  <span className="header-avatar-initial" dir="auto">{avatarLabel}</span>
-                ) : (
-                  <svg viewBox="0 0 24 24" fill="#5c5c6c">
-                    <circle cx="12" cy="8" r="4" />
-                    <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-                  </svg>
-                )}
-                <span className="header-online-dot" aria-hidden="true" />
-              </button>
+              canOpenHeaderProfile ? (
+                <button
+                  type="button"
+                  className={`header-avatar logged-in${pendingUser && !user ? ' header-avatar--pending' : ''}`}
+                  onClick={() => {
+                    if (profileNavUsername) navigate(`/profile/${encodeURIComponent(profileNavUsername)}`);
+                  }}
+                  aria-label="פרופיל משתמש"
+                  title={pendingUser && !user ? 'פרופיל (השלם הרשמה כדי לערוך)' : undefined}
+                >
+                  {avatarLabel ? (
+                    <span className="header-avatar-initial" dir="auto">{avatarLabel}</span>
+                  ) : (
+                    <svg viewBox="0 0 24 24" fill="#5c5c6c">
+                      <circle cx="12" cy="8" r="4" />
+                      <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+                    </svg>
+                  )}
+                  <span className="header-online-dot" aria-hidden="true" />
+                </button>
+              ) : (
+                <div
+                  className="header-avatar logged-in header-avatar--nav-disabled"
+                  aria-label="אין שם משתמש לניווט לפרופיל"
+                  title="התחבר או בחר שם משתמש"
+                >
+                  {avatarLabel ? (
+                    <span className="header-avatar-initial" dir="auto">{avatarLabel}</span>
+                  ) : (
+                    <svg viewBox="0 0 24 24" fill="#5c5c6c">
+                      <circle cx="12" cy="8" r="4" />
+                      <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+                    </svg>
+                  )}
+                  <span className="header-online-dot" aria-hidden="true" />
+                </div>
+              )
             ) : (
               <div className="header-avatar">
                 <svg viewBox="0 0 24 24" fill="#5c5c6c">
@@ -1124,7 +1153,14 @@ export default function AppHeader() {
             )}
             {avatarMenuOpen && activeUser && (
               <div className="header-user-menu" role="menu">
-                <div className="header-user-menu-name" dir="auto">👤 {activeUser.username}</div>
+                <div className="header-user-menu-name" dir="auto">
+                  <UserAvatarSlot
+                    size="sm"
+                    displayName={activeUser.username}
+                    avatarUrl={getCageAvatarDataUrlForDisplayName(activeUser.username) || undefined}
+                  />
+                  <span className="header-user-menu-name__text">{activeUser.username}</span>
+                </div>
                 <div className="header-user-menu-sub">
                   {user ? 'כרטיס משתמש ונתוני פעילות' : 'רישום בתהליך'}
                 </div>
@@ -1177,6 +1213,41 @@ export default function AppHeader() {
               </div>
             )}
           </div>
+          {activeUser && (
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm('להתנתק מהחשבון?')) {
+                  if (user) fullLogout();
+                  else abortPendingRegistration();
+                }
+              }}
+              title="התנתקות"
+              aria-label="התנתקות"
+              style={{
+                width: 30, height: 30, borderRadius: '50%',
+                border: '1px solid rgba(255,255,255,0.22)',
+                background: 'rgba(255,255,255,0.08)',
+                color: 'rgba(180,180,192,0.75)', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '0.72rem', lineHeight: 1, flexShrink: 0,
+                marginInlineStart: 6,
+                transition: 'background 0.15s, border-color 0.15s, color 0.15s',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'rgba(248,113,113,0.22)';
+                e.currentTarget.style.borderColor = 'rgba(248,113,113,0.6)';
+                e.currentTarget.style.color = '#fca5a5';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)';
+                e.currentTarget.style.color = 'rgba(180,180,192,0.75)';
+              }}
+            >
+              ✕
+            </button>
+          )}
         </div>
 
         {/* Stats — center */}
@@ -1196,11 +1267,7 @@ export default function AppHeader() {
               <span className="header-stat-label">רשומים</span>
             </button>
           ) : (
-            <div
-              className="header-stat header-stat--disabled"
-              title="רשימת נרשמים זמינה למנהל המערכת בלבד"
-              aria-label="רשומים — לא זמין"
-            >
+            <div className="header-stat" aria-label="רשומים">
               <span className="header-stat-num">{stats.registered}</span>
               <span className="header-stat-label">רשומים</span>
             </div>
@@ -1269,6 +1336,7 @@ export default function AppHeader() {
               </div>
             )}
           </div>
+        </div>
         </div>
       </div>
 

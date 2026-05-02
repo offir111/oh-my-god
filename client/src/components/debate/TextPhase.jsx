@@ -60,6 +60,11 @@ export default function TextPhase({ debateId, opponentTyping }) {
 
       <div className="debate-composer">
         <input
+          type="text"
+          lang="he"
+          dir="rtl"
+          autoComplete="off"
+          spellCheck
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
@@ -69,7 +74,7 @@ export default function TextPhase({ debateId, opponentTyping }) {
         />
         <button
           type="button"
-          className={`btn btn-${user?.side}`}
+          className={`btn btn-send btn-send--${user?.side || 'believer'}`}
           onClick={send}
           disabled={!input.trim() || !isMyTurn || remaining <= 0}
         >

@@ -14,36 +14,10 @@ import {
   vaultEditorMove,
   vaultEditorRemove,
 } from '../utils/faithScienceVaultEditor.js';
+import { youtubeEmbedIdFromClip } from '../lib/youtubeEmbedId.js';
 
 const LIVE_PAGE_INTRO_CLIP_ID = 'intro';
 const LIVE_PAGE_INTRO_VIDEO_ID = '_ePyoPwytX0';
-
-/** מזהה להטמעה מ-youtubeId או מ-watchUrl */
-function youtubeEmbedIdFromClip(clip) {
-  const direct = clip.youtubeId?.trim();
-  if (direct) return direct;
-  const raw = clip.watchUrl?.trim();
-  if (!raw) return '';
-  try {
-    const u = new URL(raw);
-    const host = u.hostname.replace(/^www\./, '');
-    if (host === 'youtu.be') {
-      const id = u.pathname.replace(/^\//, '').split('/')[0];
-      return id || '';
-    }
-    if (host.endsWith('youtube.com')) {
-      const v = u.searchParams.get('v');
-      if (v) return v.trim();
-      const m = u.pathname.match(/\/embed\/([^/?]+)/);
-      if (m) return m[1];
-      const s = u.pathname.match(/\/shorts\/([^/?]+)/);
-      if (s) return s[1];
-    }
-  } catch {
-    /* לא כתובת תקינה */
-  }
-  return '';
-}
 
 /** מדגיש את ה־VS אם יש בפורמט "א׳ VS ב׳" */
 function DebateTitleParts({ label, vsClassName }) {
@@ -60,18 +34,28 @@ function DebateTitleParts({ label, vsClassName }) {
   );
 }
 
-function LiveVideoLoadingPhrases() {
+function LiveVideoProfessorHeadline({ variant = 'overlay' }) {
+  const cls =
+    variant === 'header'
+      ? 'live-video-intro-professor'
+      : 'live-video-loading-phrase-line live-video-loading-phrase-line--sub';
+  return (
+    <p className={cls}>
+      פרופסור שחזר בתשובה
+      <span className="live-video-loading-inline-dots" aria-hidden="true">
+        <span>.</span>
+        <span>.</span>
+        <span>.</span>
+      </span>
+    </p>
+  );
+}
+
+function LiveVideoLoadingPhrases({ withProfessor = true }) {
   return (
     <div className="live-video-loading-phrases">
       <p className="live-video-loading-phrase-line">מיד:</p>
-      <p className="live-video-loading-phrase-line live-video-loading-phrase-line--sub">
-        פרופסור שחזר בתשובה
-        <span className="live-video-loading-inline-dots" aria-hidden="true">
-          <span>.</span>
-          <span>.</span>
-          <span>.</span>
-        </span>
-      </p>
+      {withProfessor ? <LiveVideoProfessorHeadline /> : null}
     </div>
   );
 }
@@ -81,8 +65,10 @@ export default function LiveEventsPage() {
   /** { clipId: string, youtubeId: string, label: string } | null */
   const [activeYoutubeClip, setActiveYoutubeClip] = useState(null);
   const [videoEmbedLoaded, setVideoEmbedLoaded] = useState(false);
-  /** נגן ברירת מחדל (בלי קליפ מהסרגל): להסיר כותרת מעל iframe אחרי טעינה */
-  const [mainDefaultEmbedLoaded, setMainDefaultEmbedLoaded] = useState(false);
+  /** iframe ברירת מחדל דיווח על טעינה (או גיבוי זמן) — לא מספיק להסתרת כותרת הפרופסור */
+  const [mainDefaultIframeReady, setMainDefaultIframeReady] = useState(false);
+  /** משתמש לחץ על תיבת הנגן (נגינה) — מסיר כותרת + שכבת המתנה */
+  const [mainDefaultOverlayDismissed, setMainDefaultOverlayDismissed] = useState(false);
   const [mainDefaultEmbedNonce, setMainDefaultEmbedNonce] = useState(0);
   const prevActiveClipRef = useRef(null);
   const [omgVaultEditorUi, setOmgVaultEditorUi] = useState(
@@ -139,7 +125,8 @@ export default function LiveEventsPage() {
     const prev = prevActiveClipRef.current;
     prevActiveClipRef.current = activeYoutubeClip;
     if (prev && !activeYoutubeClip) {
-      setMainDefaultEmbedLoaded(false);
+      setMainDefaultIframeReady(false);
+      setMainDefaultOverlayDismissed(false);
       setMainDefaultEmbedNonce((n) => n + 1);
     }
   }, [activeYoutubeClip]);
@@ -147,7 +134,7 @@ export default function LiveEventsPage() {
   /** גיבוי אם iframeno לא מפעיל onLoad (חוסם הרחבות / רשת) — לא להשאיר כיתוב ולא תיבה «מתה» ללא משוב */
   useEffect(() => {
     if (activeYoutubeClip) return undefined;
-    const t = window.setTimeout(() => setMainDefaultEmbedLoaded(true), 16000);
+    const t = window.setTimeout(() => setMainDefaultIframeReady(true), 16000);
     return () => window.clearTimeout(t);
   }, [activeYoutubeClip, mainDefaultEmbedNonce]);
 
@@ -373,6 +360,10 @@ export default function LiveEventsPage() {
           text-decoration: none;
           color: inherit;
           align-self: stretch;
+          display: flex;
+          flex-direction: column;
+          align-items: stretch;
+          gap: 5px;
         }
         .faith-science-vault-external-title-link:focus-visible .faith-science-vault-title {
           outline: 2px solid #fde047;
@@ -394,17 +385,22 @@ export default function LiveEventsPage() {
           outline-offset: 3px;
         }
         .faith-science-vault-title {
-          font-size: clamp(0.9rem, 3.6vw, 1.06rem);
+          font-size: clamp(0.95rem, 3.85vw, 1.14rem);
           font-weight: 800;
           line-height: 1.38;
           color: rgba(248, 250, 252, 0.98);
         }
         .faith-science-vault-source {
-          font-size: 0.74rem;
-          font-weight: 600;
-          color: #94a3b8;
+          font-size: 0.69rem;
+          font-weight: 650;
+          color: #7dd3fc;
           line-height: 1.35;
-          margin-top: 2px;
+          margin: 0;
+          letter-spacing: 0.01em;
+        }
+        .faith-science-vault-card:hover .faith-science-vault-source,
+        .faith-science-vault-card--video.faith-science-vault-card--vault-picker:hover .faith-science-vault-source {
+          color: #bae6fd;
         }
 
         .faith-science-vault-editor-banner {
@@ -585,18 +581,37 @@ export default function LiveEventsPage() {
           border-radius: 12px;
           border: 1px solid #444;
           background: rgba(255,255,255,0.05);
-          color: #e8e8e8;
-          font-size: 0.82rem;
-          font-weight: 700;
           font-family: var(--font-sans, Rubik, sans-serif);
           cursor: pointer;
-          transition: border-color 0.18s, background 0.18s, color 0.18s;
+          transition: border-color 0.18s, background 0.18s;
           text-align: center;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
+        }
+        .live-youtube-toolbar-btn-title {
+          font-size: clamp(0.88rem, 3.2vw, 1.05rem);
+          font-weight: 800;
+          line-height: 1.28;
+          color: rgba(248, 250, 252, 0.98);
+        }
+        .live-youtube-toolbar-btn-source {
+          font-size: 0.68rem;
+          font-weight: 650;
+          line-height: 1.25;
+          color: #7dd3fc;
         }
         .live-youtube-toolbar-btn:hover:not(:disabled) {
           border-color: #FFE566;
-          color: #FFE566;
           background: rgba(255, 229, 102, 0.06);
+        }
+        .live-youtube-toolbar-btn:hover:not(:disabled) .live-youtube-toolbar-btn-title {
+          color: #FFE566;
+        }
+        .live-youtube-toolbar-btn:hover:not(:disabled) .live-youtube-toolbar-btn-source {
+          color: #bae6fd;
         }
         .live-youtube-toolbar-btn:focus-visible {
           outline: 2px solid #FFE566;
@@ -609,7 +624,12 @@ export default function LiveEventsPage() {
         .live-youtube-toolbar-btn.is-active:not(:disabled) {
           border-color: #CC0000;
           background: rgba(204, 0, 0, 0.15);
+        }
+        .live-youtube-toolbar-btn.is-active:not(:disabled) .live-youtube-toolbar-btn-title {
           color: #fff;
+        }
+        .live-youtube-toolbar-btn.is-active:not(:disabled) .live-youtube-toolbar-btn-source {
+          color: #7dd3fc;
         }
 
         .live-video-slot {
@@ -664,6 +684,33 @@ export default function LiveEventsPage() {
           border: none;
           z-index: 1;
         }
+        .live-video-default-embed-await-click {
+          position: absolute;
+          inset: 0;
+          z-index: 4;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          padding: 16px;
+          background: linear-gradient(
+            180deg,
+            rgba(8, 8, 12, 0.55) 0%,
+            rgba(8, 8, 12, 0.28) 50%,
+            rgba(8, 8, 12, 0.5) 100%
+          );
+          cursor: pointer;
+          pointer-events: auto;
+          border: none;
+          font: inherit;
+          text-align: center;
+          direction: rtl;
+        }
+        .live-video-default-embed-await-click:focus-visible {
+          outline: 2px solid #fde047;
+          outline-offset: -4px;
+        }
         .live-video-default-embed-loading {
           position: absolute;
           inset: 0;
@@ -710,15 +757,15 @@ export default function LiveEventsPage() {
         }
         .live-video-loading-inline-dots span {
           display: inline-block;
-          animation: live-video-inline-dot 1.12s ease-in-out infinite;
-          opacity: 0.38;
+          animation: live-video-typing-dot 1.2s ease-in-out infinite;
+          opacity: 0.32;
         }
         .live-video-loading-inline-dots span:nth-child(1) { animation-delay: 0s; }
-        .live-video-loading-inline-dots span:nth-child(2) { animation-delay: 0.16s; }
-        .live-video-loading-inline-dots span:nth-child(3) { animation-delay: 0.32s; }
-        @keyframes live-video-inline-dot {
-          0%, 100% { opacity: 0.38; transform: translateY(0); }
-          50% { opacity: 1; transform: translateY(-2px); }
+        .live-video-loading-inline-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .live-video-loading-inline-dots span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes live-video-typing-dot {
+          0%, 70%, 100% { opacity: 0.28; }
+          35% { opacity: 1; }
         }
 
         .live-video-loading-overlay {
@@ -785,8 +832,7 @@ export default function LiveEventsPage() {
           }
           .live-video-loading-inline-dots span {
             animation: none !important;
-            opacity: 0.88;
-            transform: none;
+            opacity: 0.85;
           }
         }
         .live-video-slot-default-head {
@@ -820,6 +866,19 @@ export default function LiveEventsPage() {
           line-height: 1.55;
           max-width: 26em;
         }
+        .live-video-intro-professor {
+          margin: 10px 0 0;
+          padding: 0 12px;
+          font-family: var(--font-sans, Rubik, sans-serif);
+          font-size: clamp(0.82rem, 3.15vw, 0.96rem);
+          font-weight: 750;
+          color: rgba(253, 224, 71, 0.96);
+          line-height: 1.45;
+          letter-spacing: 0.03em;
+        }
+        .live-video-intro-professor .live-video-loading-inline-dots {
+          margin-inline-start: 5px;
+        }
       `}</style>
       <style>{`.back-btn-inline{background:none;border:none;color:#aaa;font-size:0.9rem;cursor:pointer;align-self:flex-start;padding:4px 0;}`}</style>
 
@@ -848,7 +907,10 @@ export default function LiveEventsPage() {
                   setActiveYoutubeClip({ clipId: clip.id, youtubeId: embedId, label: clip.label });
                 }}
               >
-                {clip.label}
+                <span className="live-youtube-toolbar-btn-title">{clip.label}</span>
+                {clip.channelLabel ? (
+                  <span className="live-youtube-toolbar-btn-source">{clip.channelLabel}</span>
+                ) : null}
               </button>
             );
           })}
@@ -905,18 +967,19 @@ export default function LiveEventsPage() {
             </>
           ) : (
             <>
-              {!mainDefaultEmbedLoaded ?
+              {!mainDefaultOverlayDismissed ? (
                 <div className="live-video-slot-default-head">
                   <h2 className="live-video-intro-title">
                     אמונה <span className="live-video-intro-title-vs">VS</span> מדע
                   </h2>
                   <p className="live-video-intro-tagline">חשיבה ביקורתית למציאת האמת</p>
+                  <LiveVideoProfessorHeadline variant="header" />
                 </div>
-              : null}
+              ) : null}
               <div className="live-video-embed-wrap">
-                {!mainDefaultEmbedLoaded ? (
+                {!mainDefaultIframeReady ? (
                   <div className="live-video-default-embed-loading" aria-busy aria-live="polite">
-                    <LiveVideoLoadingPhrases />
+                    <LiveVideoLoadingPhrases withProfessor={false} />
                     <div className="live-video-loading-shuttle" aria-hidden="true">
                       <span className="live-video-loading-dot" />
                       <span className="live-video-loading-dot" />
@@ -924,13 +987,27 @@ export default function LiveEventsPage() {
                     </div>
                   </div>
                 ) : null}
+                {mainDefaultIframeReady && !mainDefaultOverlayDismissed ? (
+                  <button
+                    type="button"
+                    className="live-video-default-embed-await-click"
+                    aria-label="לחץ לנגינה בנגן"
+                    onClick={() => setMainDefaultOverlayDismissed(true)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setMainDefaultOverlayDismissed(true);
+                      }
+                    }}
+                  />
+                ) : null}
                 <iframe
                   key={`live-page-default-intro-${mainDefaultEmbedNonce}`}
                   src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(LIVE_PAGE_INTRO_VIDEO_ID)}?rel=0&modestbranding=1&playsinline=1`}
                   title="אמונה VS מדע"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowFullScreen
-                  onLoad={() => setMainDefaultEmbedLoaded(true)}
+                  onLoad={() => setMainDefaultIframeReady(true)}
                 />
               </div>
             </>
@@ -1072,6 +1149,9 @@ export default function LiveEventsPage() {
                       aria-label={`הפעלה בנגן הראשי למעלה: ${item.title}`}
                     >
                       <span className="faith-science-vault-title">{item.title}</span>
+                      {item.channelLabel ? (
+                        <span className="faith-science-vault-source">{item.channelLabel}</span>
+                      ) : null}
                       {yid ? (
                         <div className="faith-science-vault-embed-wrap">
                           <img
@@ -1091,11 +1171,6 @@ export default function LiveEventsPage() {
                           {editorControls}
                         </div>
                       )}
-                      {item.channelLabel ? (
-                        <span className="faith-science-vault-source">
-                          נלקח מ־{item.channelLabel}
-                        </span>
-                      ) : null}
                     </div>
                   </div>
                 );
@@ -1110,6 +1185,9 @@ export default function LiveEventsPage() {
                       className="faith-science-vault-external-title-link"
                     >
                       <span className="faith-science-vault-title">{item.title}</span>
+                      {item.channelLabel ? (
+                        <span className="faith-science-vault-source">{item.channelLabel}</span>
+                      ) : null}
                     </a>
                     <div className="faith-science-vault-embed-placeholder">
                       <a
@@ -1122,11 +1200,6 @@ export default function LiveEventsPage() {
                       </a>
                       {editorControls}
                     </div>
-                    {item.channelLabel ? (
-                      <span className="faith-science-vault-source">
-                        נלקח מ־{item.channelLabel}
-                      </span>
-                    ) : null}
                   </div>
                 </div>
               );

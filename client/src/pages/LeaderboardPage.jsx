@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SideTag from '../components/ui/SideTag.jsx';
+import UserAvatarSlot from '../components/ui/UserAvatarSlot.jsx';
+import { getCageAvatarDataUrlForDisplayName } from '../lib/cageUserProfile.js';
 
 export default function LeaderboardPage() {
   const navigate = useNavigate();
@@ -139,6 +141,11 @@ export default function LeaderboardPage() {
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
+                    <UserAvatarSlot
+                      size="sm"
+                      displayName={u.username}
+                      avatarUrl={getCageAvatarDataUrlForDisplayName(u.username) || undefined}
+                    />
                     <span style={{ fontWeight: 700 }}>{u.username}</span>
                     <SideTag side={u.side} />
                   </div>

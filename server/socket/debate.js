@@ -164,6 +164,9 @@ async function handleAITextTurn(io, debate) {
 
     io.to(debate.id).emit('AI_STREAM_END', { msg });
     io.to(`spec:${debate.id}`).emit('AI_STREAM_END', { msg });
+    /** אותה הודעה כמו בהתאמה אנושית — מבטיח שהלקוח לא יפספס עדכון אם מאזין הוסר לרגע (Strict Mode וכו׳) */
+    io.to(debate.id).emit('TEXT_MESSAGE_RECEIVED', msg);
+    io.to(`spec:${debate.id}`).emit('TEXT_MESSAGE_RECEIVED', msg);
     io.to(debate.id).emit('TURN_CHANGED', { turn: debate.turn });
 
     // AI debates never transition to voice — infinite text only

@@ -8,7 +8,10 @@ import VoicePhase from '../components/debate/VoicePhase.jsx';
 import LivePhase from '../components/debate/LivePhase.jsx';
 import GiftOverlay from '../components/debate/GiftOverlay.jsx';
 import SideTag from '../components/ui/SideTag.jsx';
+import UserAvatarSlot from '../components/ui/UserAvatarSlot.jsx';
 import { socket } from '../socket.js';
+import { getShareOrigin } from '../lib/shareOrigin.js';
+import { getCageAvatarDataUrlForDisplayName } from '../lib/cageUserProfile.js';
 
 export default function DebatePage() {
   const { debateId } = useParams();
@@ -21,6 +24,11 @@ export default function DebatePage() {
   const [scoreToast, setScoreToast] = useState(null);
   const [shareToast, setShareToast] = useState('');
   const [loadingDebate, setLoadingDebate] = useState(() => !debate || debate.id !== debateId);
+
+  /** סטרימינג גלובלי בזוטסטנד — ננקה בכניסה לדיון; לא ב-unmount של ההוק (מפריע ל־Strict Mode ומזריק צ׳אנקים). */
+  useEffect(() => {
+    useAppStore.getState().clearStreamingMessage();
+  }, [debateId]);
 
   useEffect(() => {
     if (debate?.id === debateId) {
@@ -85,7 +93,7 @@ export default function DebatePage() {
   const oppSide = mySide === 'believer' ? 'atheist' : 'believer';
   const oppColor = oppSide === 'believer' ? 'var(--believer)' : 'var(--atheist)';
 
-  const spectateUrl = `${window.location.origin}/spectate/${debateId}`;
+  const spectateUrl = `${getShareOrigin()}/spectate/${debateId}`;
 
   async function copySpectateUrl() {
     try {
@@ -132,46 +140,118 @@ export default function DebatePage() {
     );
   }
 
+  const humanChatHeader = (
+    <header className="debate-chat-frame-header" aria-label="כותרת שיחת דיון">
+      <div style={styles.player}>
+        <SideTag side={mySide} />
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
+          <UserAvatarSlot
+            size="sm"
+            displayName={user?.username}
+            avatarUrl={getCageAvatarDataUrlForDisplayName(user?.username) || undefined}
+          />
+          {user?.username}
+        </span>
+        {debate.turn === mySide && <span style={styles.turnDot} />}
+      </div>
+      <div style={{ flex: 1, textAlign: 'center', minWidth: 0, paddingInline: 6 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+          <PhaseIndicator phase={debate.phase} />
+        </div>
+        {spectatorCount > 0 && (
+          <div style={{ color: 'var(--muted)', fontSize: '0.72rem', marginTop: 4 }}>
+            👁 {spectatorCount} צופים
+          </div>
+        )}
+      </div>
+      <div style={{ ...styles.player, flexDirection: 'row-reverse', minWidth: 100, justifyContent: 'flex-end' }}>
+        {debate.turn === oppSide && <span style={{ ...styles.turnDot, background: oppColor }} />}
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700, color: oppColor }}>
+          <UserAvatarSlot
+            size="sm"
+            displayName={opponent?.username}
+            avatarUrl={getCageAvatarDataUrlForDisplayName(opponent?.username) || undefined}
+          />
+          {opponent?.username}
+        </span>
+        <SideTag side={oppSide} />
+      </div>
+    </header>
+  );
+
   return (
     <div style={styles.page}>
-      <div style={styles.topBar}>
-        <div style={styles.player}>
-          <SideTag side={mySide} />
-          <span style={{ fontWeight: 700 }}>{user?.username}</span>
-          {debate.turn === mySide && <span style={styles.turnDot} />}
-        </div>
-        <div style={{ textAlign: 'center' }}>
-          {!debate.isAI && <PhaseIndicator phase={debate.phase} />}
-          {debate.isAI && <span style={{ color: 'var(--muted)', fontSize: '0.78rem' }}>🤖 AI • שיחה חופשית</span>}
-          {spectatorCount > 0 && (
-            <div style={{ color: 'var(--muted)', fontSize: '0.78rem' }}>
-              👁 {spectatorCount} צופים
-            </div>
-          )}
-        </div>
-        <div style={{ ...styles.player, flexDirection: 'row-reverse' }}>
-          {debate.turn === oppSide && <span style={{ ...styles.turnDot, background: oppColor }} />}
-          <span style={{ fontWeight: 700, color: oppColor }}>{opponent?.username}</span>
-          <SideTag side={oppSide} />
-        </div>
-      </div>
-
       <div style={styles.body}>
-        {/* AI debates: always text, no phase transitions */}
         {debate.isAI ? (
-          <TextPhase debateId={debateId} opponentTyping={opponentTyping} />
-        ) : (
-          <>
-            {debate.phase === 'text' && (
+          <div className="debate-chat-frame">
+            <header className="debate-chat-frame-header" aria-label="כותרת שיחת דיון עם AI">
+              <div style={styles.player}>
+                <SideTag side={mySide} />
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
+                  <UserAvatarSlot
+                    size="sm"
+                    displayName={user?.username}
+                    avatarUrl={getCageAvatarDataUrlForDisplayName(user?.username) || undefined}
+                  />
+                  {user?.username}
+                </span>
+                {debate.turn === mySide && <span style={styles.turnDot} />}
+              </div>
+              <div style={{ flex: 1, textAlign: 'center', minWidth: 0, paddingInline: 6 }}>
+                <p className="debate-chat-frame-title">
+                  <span dir="rtl">
+                    {mySide === 'believer' ? 'מאמין' : 'אתאיסט'} OMG{' '}
+                    <span className="pulse-anim" style={{ display: 'inline-block', marginInline: '2px 6px' }} aria-hidden>
+                      ●
+                    </span>
+                    : מול AI
+                  </span>
+                </p>
+                {spectatorCount > 0 && (
+                  <div style={{ color: 'var(--muted)', fontSize: '0.72rem', marginTop: 4 }}>
+                    👁 {spectatorCount} צופים
+                  </div>
+                )}
+              </div>
+              <div style={{ ...styles.player, minWidth: 100, justifyContent: 'flex-end' }}>
+                <span
+                  dir="ltr"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    fontWeight: 800,
+                    fontSize: '0.84rem',
+                  }}
+                >
+                  <span aria-hidden style={{ fontSize: '1.05rem', lineHeight: 1 }}>
+                    🤖
+                  </span>
+                  <span style={{ letterSpacing: '0.07em', color: oppColor }}>
+                    AI
+                  </span>
+                </span>
+              </div>
+            </header>
+            <div className="debate-chat-frame-body">
               <TextPhase debateId={debateId} opponentTyping={opponentTyping} />
-            )}
-            {debate.phase === 'voice' && (
-              <VoicePhase debateId={debateId} opponentRecording={opponentRecording} />
-            )}
-            {debate.phase === 'live' && (
-              <LivePhase debateId={debateId} />
-            )}
-          </>
+            </div>
+          </div>
+        ) : (
+          <div className="debate-chat-frame">
+            {humanChatHeader}
+            <div className="debate-chat-frame-body">
+              {debate.phase === 'text' && (
+                <TextPhase debateId={debateId} opponentTyping={opponentTyping} />
+              )}
+              {debate.phase === 'voice' && (
+                <VoicePhase debateId={debateId} opponentRecording={opponentRecording} />
+              )}
+              {debate.phase === 'live' && (
+                <LivePhase debateId={debateId} />
+              )}
+            </div>
+          </div>
         )}
       </div>
 
@@ -195,14 +275,6 @@ const styles = {
     height: 'calc(100vh - var(--shell-top))', /* כותרת קבועה + ניווט צר */
     padding: '0',
     overflow: 'hidden',
-  },
-  topBar: {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '12px 20px',
-    background: 'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 100%), var(--card)',
-    borderBottom: '1px solid var(--border)',
-    flexShrink: 0,
-    backdropFilter: 'blur(8px)',
   },
   player: { display: 'flex', alignItems: 'center', gap: 8, minWidth: 140 },
   turnDot: { width: 8, height: 8, borderRadius: '50%', background: 'var(--believer)', animation: 'pulse 1s infinite' },

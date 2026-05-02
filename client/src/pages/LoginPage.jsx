@@ -3,7 +3,27 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAppStore, rehydrateUserIfNeeded } from '../store/appStore.js';
 import { connectSocket, socket } from '../socket.js';
 import { getApiBaseUrl } from '../lib/apiBaseUrl.js';
+import { HOME_LIVE_BROADCAST_BY_KEY } from '../data/homeLiveBroadcastEditor.js';
+import { youtubeEmbedIdFromClip } from '../lib/youtubeEmbedId.js';
+import {
+  loadHomeLiveBroadcastOverrides,
+  mergeHomeLiveBroadcastWithOverrides,
+  saveHomeLiveBroadcastOverrides,
+} from '../utils/homeLiveBroadcastEditorStorage.js';
+import HomeLiveListenTransport from '../components/HomeLiveListenTransport.jsx';
 
+const HOME_LIVE_TAB_KEYS = ['faith-1', 'faith-2', 'faith-3', 'atheism-1', 'atheism-2', 'atheism-3'];
+
+function homeLiveEntryHasListenSource(entry) {
+  if (!entry) return false;
+  if (String(entry.listenAudioUrl || '').trim()) return true;
+  return Boolean(
+    youtubeEmbedIdFromClip({
+      youtubeId: entry.listenYoutubeId,
+      watchUrl: entry.listenYoutubeUrl,
+    }),
+  );
+}
 /**
  * ════════════════════════════════════════════════════════════════════════
  * ✅  דמויות דף הכניסה — PNG עם רקע שקוף (תוקן סופית!)
@@ -86,12 +106,13 @@ function readLoginResume() {
     if (!raw) return { registered: null, username: readStoredLoginUsername(), side: null };
     const p = JSON.parse(raw);
     if (!p?.username) return { registered: null, username: readStoredLoginUsername(), side: null };
-    return { registered: null, username: p.username, side: null };
+    return { registered: { username: p.username }, username: p.username, side: null };
   } catch {
     return { registered: null, username: readStoredLoginUsername(), side: null };
   }
 }
 
+/** ניצוצות נורת איינשטיין — התפזרות מלאה ממרכז הנורה לכל הכיוונים */
 const EINSTEIN_SPARKLES = [
   { x: -42, y: -54, s: 0.74 }, { x: -22, y: -66, s: 0.58 }, { x: 4, y: -62, s: 0.82 }, { x: 34, y: -52, s: 0.62 },
   { x: -58, y: -26, s: 0.68 }, { x: -30, y: -32, s: 0.52 }, { x: 25, y: -34, s: 0.72 }, { x: 54, y: -18, s: 0.56 },
@@ -101,6 +122,9 @@ const EINSTEIN_SPARKLES = [
 ];
 
 const TITLE_WAVE_CHARS = ['o', 'h', ' ', 'm', 'y', ' ', 'G', 'O', 'D'];
+/** שורת הסבר (ללא גל תווים) + שורת משנה מונפשת */
+const SUBTITLE_HINT =
+  'כשלוחצים איקס אחרי כיוון רדיו חוזרים לדף הבית, הרדיו לא עוצר במעבר בין הדפים';
 const SUBTITLE_WAVE_CHARS = Array.from('אמונה ודת VS אתאיזם ומדע');
 
 /** עוצמת כתום עד ~90% — 10% ערבוב עם לבן (דף כניסה + צור קשר) */
@@ -132,10 +156,28 @@ export default function LoginPage() {
   const [username, setUsername] = useState(loginInit.username);
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [selectedSide, setSelectedSide] = useState(loginInit.side);
   const [aiLoading, setAiLoading] = useState(false);
   const [registered, setRegistered] = useState(loginInit.registered);
   const [homeAnimationRun, setHomeAnimationRun] = useState(0);
+  /** כתום על הלוגו למשך שנייה — מסונכרן להבזק איינשטיין */
+  const [einsteinBurstLogoOrange, setEinsteinBurstLogoOrange] = useState(false);
+  /** טאב שידור חי — נגינה בלבד (לחיצה דלקת / לחיצה שוב כיבוי), בלי פתיחת פאנל */
+  const [homeLivePlayingKey, setHomeLivePlayingKey] = useState(null);
+  /** חסימת לחיצות „רפאים” רגעית אחרי הופעת שורת הפודקאסטים (בלי pointer-events — לא נתקעים) */
+  const podcastAccidentalPressBlockUntilRef = useRef(0);
+  const hadPodcastUiRef = useRef(false);
+  /** עורך OMG — overrides ללינקי שמע (localStorage) */
+  const [liveBroadcastOverrides, setLiveBroadcastOverrides] = useState(() => loadHomeLiveBroadcastOverrides());
+  const [omgLiveEditDraft, setOmgLiveEditDraft] = useState({ audio: '', yid: '', yurl: '', tabLabel: '' });
+  /** מעטפת עריכת OMG — נפרדת מלחיצת הטאב */
+  const [homeLiveOmgEditorShellOpen, setHomeLiveOmgEditorShellOpen] = useState(false);
+  const [homeLiveOmgEditorTabKey, setHomeLiveOmgEditorTabKey] = useState('faith-1');
+  /** קישור קצר ל־«רב VS מדען» אחרי כל לחיצה על טאב שידור */
+  const [homeLiveVsLinkVisible, setHomeLiveVsLinkVisible] = useState(false);
+  const [homeLiveVsFlashTick, setHomeLiveVsFlashTick] = useState(0);
+  const homeLiveVsLinkTimerRef = useRef(null);
   const currentUser = useAppStore(s => s.user);
   const setUser = useAppStore(s => s.setUser);
   const setPendingUser = useAppStore(s => s.setPendingUser);
@@ -154,11 +196,34 @@ export default function LoginPage() {
     registered?.username?.trim()
     || currentUser?.username?.trim()
     || (username.trim() ? username.trim() : undefined);
+  const hasPodcastUi = Boolean(registered || currentUser);
   const shouldPlayHomePanels = homeAnimationRun > 0;
+
+  useEffect(() => {
+    if (!hasPodcastUi) {
+      hadPodcastUiRef.current = false;
+      return;
+    }
+    if (!hadPodcastUiRef.current) {
+      hadPodcastUiRef.current = true;
+      setHomeLivePlayingKey(null);
+      podcastAccidentalPressBlockUntilRef.current = Date.now() + 480;
+    }
+  }, [hasPodcastUi]);
 
   function playHomeAnimationSequence() {
     setHomeAnimationRun(run => run + 1);
   }
+
+  useEffect(() => {
+    if (homeAnimationRun === 0) return undefined;
+    const tOn = setTimeout(() => setEinsteinBurstLogoOrange(true), 1000);
+    const tOff = setTimeout(() => setEinsteinBurstLogoOrange(false), 2000);
+    return () => {
+      clearTimeout(tOn);
+      clearTimeout(tOff);
+    };
+  }, [homeAnimationRun]);
 
   function resetHomePage() {
     rehydrateUserIfNeeded();
@@ -198,6 +263,13 @@ export default function LoginPage() {
 
   useEffect(() => {
     playHomeAnimationSequence();
+  }, []);
+
+  useEffect(() => () => {
+    if (homeLiveVsLinkTimerRef.current) {
+      clearTimeout(homeLiveVsLinkTimerRef.current);
+      homeLiveVsLinkTimerRef.current = null;
+    }
   }, []);
 
   useEffect(() => {
@@ -247,6 +319,15 @@ export default function LoginPage() {
     }
   }, [currentUser, pendingUser, registered]);
 
+  useEffect(() => {
+    if (!location.state?.autoAI) return;
+    const name = (registered?.username || pendingUser?.username || '').trim();
+    if (!name) return;
+    window.history.replaceState({}, '', location.pathname + location.search);
+    handleAI();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state?.autoAI]);
+
   useEffect(() => () => {
     if (matchFoundHandlerRef.current) socket.off('MATCH_FOUND', matchFoundHandlerRef.current);
     if (matchErrorHandlerRef.current) socket.off('MATCH_ERROR', matchErrorHandlerRef.current);
@@ -254,6 +335,7 @@ export default function LoginPage() {
   }, []);
 
   async function handleRegister() {
+    if (!ageConfirmed) { setError('יש לאשר שאתה/את מעל גיל 18 לפני הכניסה'); return; }
     const name = username.trim();
     const needPwLen = name.toLowerCase() === 'omg' ? 8 : 4;
     if (!name || name.length < 2) { setError('נא להזין שם משתמש (לפחות 2 תווים)'); return; }
@@ -271,30 +353,45 @@ export default function LoginPage() {
     const BASE = getApiBaseUrl();
     const isInitialPasswordSetup = !storedPassword;
     const shouldResetServerPassword = isInitialPasswordSetup || storedPassword === password;
-    try {
-      const res = await fetch(`${BASE}/api/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: name, password, resetPassword: shouldResetServerPassword }),
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) {
-        let message = 'לא ניתן להיכנס עם הסיסמה הזו';
-        if (data?.error) message = data.error;
-        if (!shouldResetServerPassword) {
+
+    let registeredOk = false;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const res = await fetch(`${BASE}/api/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: name, password, resetPassword: shouldResetServerPassword }),
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok) {
+          const message = data?.error || 'לא ניתן להיכנס עם הסיסמה הזו';
           setError(message);
           return;
         }
+        if (data?.registered != null) cacheRegisteredCount(data.registered);
+        registeredOk = true;
+        break;
+      } catch {
+        if (attempt < 2) await new Promise(r => setTimeout(r, 350 * (attempt + 1)));
       }
-      if (data?.registered) cacheRegisteredCount(data.registered);
-    } catch {
-      // Allow first setup locally if the registration server is temporarily unavailable.
+    }
+    if (!registeredOk) {
+      setError('אין תקשורת עם השרת — הרישום לא נשמר בשרת. בדוק חיבור ונסה שוב.');
+      return;
     }
 
     const pending = { username: name };
     persistLoginUsername(name);
     persistLoginPassword(name, password);
     setRegistered(pending);
+    podcastAccidentalPressBlockUntilRef.current = Date.now() + 500;
+    /** מונע מ־Enter (אחרי כניסה) „ליפול” על כפתור הטאב הראשון (זמיר כהן) שמופיע מעל */
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const ae = document.activeElement;
+        if (ae instanceof HTMLElement) ae.blur();
+      });
+    });
     playHomeAnimationSequence();
     rehydrateUserIfNeeded();
     if (!useAppStore.getState().user) setPendingUser(pending);
@@ -319,7 +416,7 @@ export default function LoginPage() {
     const name = sessionUsername;
     setUser({ username: name, side: selectedSide, score: 0, voiceDebates: 0, giftsReceived: 0, humanDebates: 0, aiDebates: 0 });
     connectSocket(name, selectedSide);
-    navigate('/lobby');
+    navigate('/lobby?human=1');
   }
 
   function startAIDebate(name, side) {
@@ -412,6 +509,117 @@ export default function LoginPage() {
     startAIDebate(name, 'believer');
   }
 
+  const mergedLiveBroadcastByKey = useMemo(
+    () => mergeHomeLiveBroadcastWithOverrides(HOME_LIVE_BROADCAST_BY_KEY, liveBroadcastOverrides),
+    [liveBroadcastOverrides],
+  );
+  const mergedLiveBroadcastRef = useRef(mergedLiveBroadcastByKey);
+  mergedLiveBroadcastRef.current = mergedLiveBroadcastByKey;
+  const statsLiveEditorNorm = (import.meta.env.VITE_STATS_ADMIN_USERNAME || '').trim().toLowerCase();
+  const sessionLiveEditorNorm =
+    currentUser?.username?.trim().toLowerCase()
+    || registered?.username?.trim().toLowerCase()
+    || '';
+  const isOmgLiveEditor =
+    sessionLiveEditorNorm === 'omg'
+    || Boolean(statsLiveEditorNorm && sessionLiveEditorNorm === statsLiveEditorNorm);
+
+  useEffect(() => {
+    const e = mergedLiveBroadcastByKey[homeLiveOmgEditorTabKey];
+    if (!e) return;
+    setOmgLiveEditDraft({
+      audio: String(e.listenAudioUrl ?? ''),
+      yid: String(e.listenYoutubeId ?? ''),
+      yurl: String(e.listenYoutubeUrl ?? ''),
+      tabLabel: String(e.tabLabel ?? ''),
+    });
+  }, [homeLiveOmgEditorTabKey, mergedLiveBroadcastByKey]);
+
+  useLayoutEffect(() => {
+    if (!homeLivePlayingKey) return;
+    const ent = mergedLiveBroadcastByKey[homeLivePlayingKey];
+    if (!homeLiveEntryHasListenSource(ent)) setHomeLivePlayingKey(null);
+  }, [homeLivePlayingKey, mergedLiveBroadcastByKey]);
+
+  const homeLiveTransport = useMemo(() => {
+    if (!homeLivePlayingKey) return { direct: '', youtubeVideoId: '' };
+    const ent = mergedLiveBroadcastByKey[homeLivePlayingKey];
+    if (!ent) return { direct: '', youtubeVideoId: '' };
+    const direct = String(ent.listenAudioUrl || '').trim();
+    if (direct) return { direct, youtubeVideoId: '' };
+    const id = youtubeEmbedIdFromClip({
+      youtubeId: ent.listenYoutubeId,
+      watchUrl: ent.listenYoutubeUrl,
+    });
+    if (!id) return { direct: '', youtubeVideoId: '' };
+    return { direct: '', youtubeVideoId: id };
+  }, [homeLivePlayingKey, mergedLiveBroadcastByKey]);
+
+  function flashLiveVsLink() {
+    if (homeLiveVsLinkTimerRef.current) {
+      clearTimeout(homeLiveVsLinkTimerRef.current);
+      homeLiveVsLinkTimerRef.current = null;
+    }
+    setHomeLiveVsLinkVisible(true);
+    setHomeLiveVsFlashTick(t => t + 1);
+    homeLiveVsLinkTimerRef.current = setTimeout(() => {
+      setHomeLiveVsLinkVisible(false);
+      homeLiveVsLinkTimerRef.current = null;
+    }, 10000);
+  }
+
+  useLayoutEffect(() => {
+    if (!homeLiveVsLinkVisible || homeLiveVsFlashTick === 0) return;
+    document.getElementById('login-live-events-flash-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [homeLiveVsLinkVisible, homeLiveVsFlashTick]);
+
+  function toggleHomeLiveTabListen(tabKey) {
+    setHomeLivePlayingKey(prev => {
+      if (prev === tabKey) return null;
+      const ent = mergedLiveBroadcastRef.current[tabKey];
+      if (!homeLiveEntryHasListenSource(ent)) return prev;
+      return tabKey;
+    });
+  }
+
+  function handleLiveTabPress(tabKey) {
+    if (Date.now() < podcastAccidentalPressBlockUntilRef.current) return;
+    flashLiveVsLink();
+    toggleHomeLiveTabListen(tabKey);
+  }
+
+  function persistOmgLiveListenFields() {
+    const tabKey = homeLiveOmgEditorTabKey;
+    const next = { ...liveBroadcastOverrides };
+    const audio = omgLiveEditDraft.audio.trim();
+    const yid = omgLiveEditDraft.yid.trim();
+    const yurl = omgLiveEditDraft.yurl.trim();
+    const tabLabel = omgLiveEditDraft.tabLabel.trim();
+    if (!audio && !yid && !yurl) delete next[tabKey];
+    else {
+      next[tabKey] = {
+        listenAudioUrl: audio,
+        listenYoutubeId: yid,
+        listenYoutubeUrl: yurl,
+        ...(tabLabel ? { tabLabel } : {}),
+      };
+    }
+    saveHomeLiveBroadcastOverrides(next);
+    setLiveBroadcastOverrides(next);
+    if (homeLivePlayingKey === tabKey) setHomeLivePlayingKey(null);
+    setHomeLiveOmgEditorShellOpen(false);
+  }
+
+  function clearOmgLiveTabOverrides() {
+    const tabKey = homeLiveOmgEditorTabKey;
+    const next = { ...liveBroadcastOverrides };
+    delete next[tabKey];
+    saveHomeLiveBroadcastOverrides(next);
+    setLiveBroadcastOverrides(next);
+    setOmgLiveEditDraft({ audio: '', yid: '', yurl: '', tabLabel: '' });
+    if (homeLivePlayingKey === tabKey) setHomeLivePlayingKey(null);
+  }
+
   return (
     <>
       <style>{`
@@ -473,6 +681,42 @@ export default function LoginPage() {
           font-size: 0.78rem;
           font-weight: 700;
         }
+        .login-hero-live-events-link-row {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 2.1em;
+          padding: 4px 0;
+          box-sizing: border-box;
+        }
+        .login-hero-live-events-link {
+          font-size: clamp(0.62rem, 2.2vw, 0.82rem);
+          font-weight: 800;
+          color: #4ade80;
+          text-decoration: underline;
+          text-underline-offset: 2px;
+        }
+        .login-hero-live-events-link:hover {
+          color: #86efac;
+        }
+        .login-hero-live-events-link:focus-visible {
+          outline: 2px solid var(--accent, #6366f1);
+          outline-offset: 2px;
+          border-radius: 4px;
+        }
+        .login-ticker-podcast-stack {
+          display: flex;
+          flex-direction: column;
+          align-items: stretch;
+          gap: 0;
+          width: 100%;
+          max-width: 540px;
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+          flex-shrink: 0;
+          align-self: center;
+        }
         .ticker-wrap {
           width: 100%;
           max-width: 540px;
@@ -484,8 +728,7 @@ export default function LoginPage() {
           backdrop-filter: blur(10px);
           -webkit-backdrop-filter: blur(10px);
           direction: ltr;
-          margin-bottom: 8px;
-          margin-top: 0;
+          margin: 0;
           flex-shrink: 0;
           box-shadow: var(--shadow-sm, 0 4px 14px rgba(0,0,0,0.35));
         }
@@ -516,6 +759,350 @@ export default function LoginPage() {
           font-size: 0.55rem;
           opacity: 0.7;
         }
+        /* פודקאסטים — שישה טאבים ברוחב שווה עד התווית */
+        .home-live-broadcast-row {
+          position: relative;
+          z-index: 4;
+          width: 100%;
+          max-width: 540px;
+          display: flex;
+          flex-direction: row;
+          align-items: stretch;
+          justify-content: flex-start;
+          flex-wrap: nowrap;
+          gap: 8px;
+          padding: 2px 4px 6px;
+          box-sizing: border-box;
+          margin: 0;
+          min-width: 0;
+        }
+        .home-live-broadcast-label-col {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          justify-content: flex-start;
+          flex-shrink: 0;
+          gap: 1px;
+          padding-top: 1px;
+        }
+        .home-live-broadcast-label {
+          font-size: clamp(0.58rem, 2.2vw, 0.72rem);
+          font-weight: 800;
+          color: var(--text-secondary, #b4b4c0);
+          white-space: nowrap;
+          letter-spacing: 0.02em;
+          line-height: 1.2;
+        }
+        .home-live-omg-edit-link {
+          border: none;
+          background: none;
+          padding: 0;
+          margin: 0;
+          cursor: pointer;
+          font: inherit;
+          font-size: clamp(0.42rem, 1.55vw, 0.52rem);
+          font-weight: 700;
+          color: rgba(180, 180, 192, 0.72);
+          letter-spacing: 0.03em;
+          text-decoration: underline;
+          text-underline-offset: 2px;
+          line-height: 1.25;
+          -webkit-appearance: none;
+          appearance: none;
+          text-align: end;
+        }
+        .home-live-omg-edit-link:hover {
+          color: var(--gold, #fbbf24);
+        }
+        .home-live-omg-edit-link:focus-visible {
+          outline: 1px solid var(--accent, #6366f1);
+          outline-offset: 2px;
+          border-radius: 2px;
+        }
+        .home-live-broadcast-tabs {
+          display: flex;
+          flex-direction: row;
+          flex-wrap: nowrap;
+          align-items: stretch;
+          gap: 5px;
+          flex: 1 1 0;
+          min-width: 0;
+          justify-content: flex-start;
+        }
+        .home-live-tab {
+          display: flex;
+          flex: 1 1 0;
+          min-width: 0;
+          align-items: center;
+          justify-content: center;
+          padding: 3px 4px;
+          border-radius: 6px;
+          font-size: clamp(0.48rem, 1.85vw, 0.62rem);
+          font-weight: 800;
+          text-decoration: none;
+          border: 1px solid transparent;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          transition: filter 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+          font-family: var(--font-sans, Rubik, system-ui, sans-serif);
+          box-sizing: border-box;
+          /* שם הטאב תמיד קדמי בלבן — האדום/ירוק רק רקע ומסגרת */
+          color: #ffffff;
+          -webkit-font-smoothing: antialiased;
+          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55), 0 0 1px rgba(0, 0, 0, 0.4);
+        }
+        .home-live-tab:hover {
+          filter: brightness(1.1);
+        }
+        .home-live-tab:focus-visible {
+          outline: 2px solid var(--accent, #6366f1);
+          outline-offset: 1px;
+        }
+        .home-live-tab--faith {
+          background: rgba(239, 68, 68, 0.22);
+          border-color: rgba(248, 113, 113, 0.52);
+        }
+        .home-live-tab--atheism {
+          background: rgba(16, 185, 129, 0.2);
+          border-color: rgba(52, 211, 153, 0.45);
+        }
+        button.home-live-tab {
+          cursor: pointer;
+          -webkit-appearance: none;
+          appearance: none;
+          text-align: center;
+        }
+        .home-live-tab--selected {
+          box-shadow: inset 0 0 0 1px rgba(255,255,255,0.38);
+          filter: brightness(1.12);
+        }
+        .home-live-broadcast-block {
+          position: relative;
+          width: 100%;
+          max-width: 540px;
+          margin-bottom: 8px;
+          box-sizing: border-box;
+        }
+        .home-live-transport {
+          position: relative;
+          z-index: 1;
+          width: 100%;
+          max-width: 540px;
+          margin: 4px auto 0;
+          padding: 4px 8px;
+          box-sizing: border-box;
+          border-radius: 8px;
+          border: 1px solid rgba(255,255,255,0.1);
+          background: rgba(0,0,0,0.22);
+        }
+        .home-live-transport--slim {
+          position: relative;
+        }
+        .home-live-transport-slim-row {
+          display: flex;
+          flex-direction: row;
+          align-items: center;
+          gap: 8px;
+          min-height: 22px;
+          direction: ltr;
+          unicode-bidi: isolate;
+        }
+        .home-live-transport-slim-play {
+          flex: 0 0 auto;
+          cursor: pointer;
+          padding: 2px 6px;
+          line-height: 1;
+          border-radius: 6px;
+          border: 1px solid rgba(255,255,255,0.16);
+          background: rgba(255,255,255,0.07);
+          color: var(--text, #f4f4f8);
+          font-size: 0.65rem;
+          font-family: var(--font-sans, Rubik, system-ui, sans-serif);
+        }
+        .home-live-transport-slim-play:hover {
+          filter: brightness(1.08);
+        }
+        .home-live-transport-rail {
+          flex: 1 1 0;
+          min-width: 0;
+          display: flex;
+          align-items: center;
+        }
+        .home-live-transport-audio-el {
+          display: none;
+        }
+        .home-live-transport-times-slim {
+          flex: 0 0 auto;
+          font-variant-numeric: tabular-nums;
+          font-size: 0.58rem;
+          font-weight: 700;
+          color: rgba(255,255,255,0.78);
+          white-space: nowrap;
+        }
+        .home-live-transport-times-sep {
+          opacity: 0.5;
+          padding: 0 1px;
+        }
+        /* מסילה דקה (~4px) + עיגול אדום — התקדמות משמאל לימין (LTR) */
+        .home-live-transport-range.home-live-transport-range--red {
+          width: 100%;
+          height: 18px;
+          margin: 0;
+          padding: 0;
+          cursor: pointer;
+          direction: ltr;
+          -webkit-appearance: none;
+          appearance: none;
+          background: transparent;
+          accent-color: #ef4444;
+        }
+        .home-live-transport-range--red::-webkit-slider-runnable-track {
+          height: 4px;
+          border-radius: 2px;
+          background: rgba(255,255,255,0.22);
+        }
+        .home-live-transport-range--red::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          width: 11px;
+          height: 11px;
+          margin-top: -3.5px;
+          border-radius: 50%;
+          background: #ef4444;
+          border: 1px solid rgba(0,0,0,0.35);
+          box-shadow: 0 0 0 1px rgba(255,255,255,0.15);
+        }
+        .home-live-transport-range--red::-moz-range-track {
+          height: 4px;
+          border-radius: 2px;
+          background: rgba(255,255,255,0.22);
+        }
+        .home-live-transport-range--red::-moz-range-thumb {
+          width: 11px;
+          height: 11px;
+          border-radius: 50%;
+          background: #ef4444;
+          border: 1px solid rgba(0,0,0,0.35);
+          box-shadow: 0 0 0 1px rgba(255,255,255,0.15);
+        }
+        /* מיכל הנגן מוטמע ב-portal ל־body — לא כאן */
+        .home-live-transport-yt-player-mount {
+          width: 320px;
+          height: 180px;
+        }
+        .home-live-transport-yt-err {
+          margin: 4px 0 0;
+          font-size: 0.58rem;
+          color: #fca5a5;
+          text-align: center;
+        }
+        .home-live-omg-editor-shell {
+          width: 100%;
+          max-width: 540px;
+          margin: 0 auto;
+          padding: 0 6px 8px;
+          box-sizing: border-box;
+        }
+        .home-live-omg-editor-tab-row {
+          margin-bottom: 8px;
+        }
+        .home-live-omg-editor-tab-row label {
+          display: block;
+          font-size: 0.62rem;
+          font-weight: 800;
+          color: var(--text-secondary, #b4b4c0);
+          margin-bottom: 4px;
+        }
+        .home-live-omg-editor-tab-select {
+          width: 100%;
+          box-sizing: border-box;
+          padding: 7px 9px;
+          font-size: 0.72rem;
+          font-weight: 700;
+          border-radius: 8px;
+          border: 1px solid rgba(255,255,255,0.16);
+          background: rgba(8,8,14,0.75);
+          color: var(--text, #f4f4f8);
+        }
+        .home-live-omg-editor {
+          margin: 0 0 14px;
+          padding: 10px 10px 12px;
+          border-radius: 10px;
+          border: 1px dashed rgba(251, 191, 36, 0.45);
+          background: rgba(251, 191, 36, 0.06);
+          text-align: right;
+        }
+        .home-live-omg-editor-title {
+          margin: 0 0 8px;
+          font-size: 0.72rem;
+          font-weight: 900;
+          color: var(--gold, #fbbf24);
+          letter-spacing: 0.03em;
+        }
+        .home-live-omg-editor-note {
+          margin: 0 0 10px;
+          font-size: 0.62rem;
+          font-weight: 600;
+          color: var(--muted, #8a8a9a);
+          line-height: 1.45;
+        }
+        .home-live-omg-editor-field {
+          margin-bottom: 8px;
+        }
+        .home-live-omg-editor-field label {
+          display: block;
+          font-size: 0.62rem;
+          font-weight: 800;
+          color: var(--text-secondary, #b4b4c0);
+          margin-bottom: 3px;
+        }
+        .home-live-omg-editor-field input {
+          width: 100%;
+          box-sizing: border-box;
+          padding: 7px 9px;
+          font-size: 0.68rem;
+          border-radius: 8px;
+          border: 1px solid rgba(255,255,255,0.16);
+          background: rgba(8,8,14,0.75);
+          color: var(--text, #f4f4f8);
+          direction: ltr;
+          text-align: left;
+        }
+        .home-live-omg-editor-field input:focus {
+          outline: none;
+          border-color: var(--accent, #6366f1);
+          box-shadow: 0 0 0 2px rgba(99,102,241,0.2);
+        }
+        .home-live-omg-editor-actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+          justify-content: flex-start;
+          margin-top: 10px;
+        }
+        .home-live-omg-editor-actions button {
+          cursor: pointer;
+          font-size: 0.65rem;
+          font-weight: 800;
+          padding: 6px 10px;
+          border-radius: 8px;
+          border: 1px solid rgba(255,255,255,0.18);
+          background: rgba(255,255,255,0.08);
+          color: var(--text, #f4f4f8);
+        }
+        .home-live-omg-editor-actions button:hover {
+          filter: brightness(1.08);
+        }
+        .home-live-omg-editor-actions .home-live-omg-save {
+          border-color: rgba(52, 211, 153, 0.45);
+          background: rgba(16, 185, 129, 0.18);
+          color: #a7f3d0;
+        }
+        .home-live-omg-editor-actions .home-live-omg-danger {
+          border-color: rgba(248, 113, 113, 0.45);
+          background: rgba(239, 68, 68, 0.12);
+          color: #fecaca;
+        }
         .login-title {
           font-size: clamp(2.35rem, 10vw, 4.8rem);
           font-weight: 500;
@@ -539,6 +1126,14 @@ export default function LoginPage() {
           outline: 2px solid var(--accent, #6366f1);
           outline-offset: 6px;
           border-radius: 12px;
+        }
+        .login-title-homelink--einstein-burst-hit .login-title-ch,
+        .login-title-homelink--einstein-burst-hit .login-title-sp {
+          color: #fdba74 !important;
+          text-shadow:
+            0 0 22px rgba(251, 146, 60, 0.58),
+            0 0 46px rgba(251, 146, 60, 0.34);
+          animation-play-state: paused !important;
         }
         /* גל כתום–לבן בתנועה איטית (כותרת + כותרת משנה) */
         .login-title-phrase {
@@ -590,11 +1185,31 @@ export default function LoginPage() {
         .login-subtitle-ch--strong {
           font-weight: 800;
         }
+        .login-subtitle-stack {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 10px;
+          margin: 8px 0 0;
+        }
+        .login-subtitle-hint {
+          margin: 0;
+          font-size: clamp(0.7rem, 3.1vw, 0.86rem);
+          font-weight: 600;
+          color: var(--text-secondary, #b4b4c0);
+          line-height: 1.55;
+          max-width: min(36rem, 100%);
+          text-align: center;
+          direction: rtl;
+        }
+        .login-subtitle-stack .login-subtitle-wave {
+          margin: 0;
+        }
         .login-input-row {
           display: flex;
-          flex-direction: row;
+          flex-direction: column;
           align-items: center;
-          gap: 12px;
+          gap: 14px;
           width: 100%;
           max-width: 390px;
           direction: rtl;
@@ -603,7 +1218,7 @@ export default function LoginPage() {
           display: flex;
           flex-direction: column;
           gap: 8px;
-          flex: 1;
+          width: 100%;
         }
         .login-input {
           width: 100%;
@@ -840,7 +1455,7 @@ export default function LoginPage() {
           opacity: 0;
           transform: translate(-50%, -50%) scale(0);
           animation: einsteinSparkleBurst 1.2s cubic-bezier(0.2, 0.8, 0.25, 1) 1 both;
-          animation-delay: calc(2s + var(--sparkle-index) * 18ms);
+          animation-delay: calc(1s + var(--sparkle-index) * 18ms);
           filter: drop-shadow(0 0 5px rgba(255,255,255,0.9));
         }
         .einstein-sparkle::before,
@@ -974,6 +1589,7 @@ export default function LoginPage() {
 
       <div className="login-page">
 
+        {(registered || currentUser) && <div className="login-ticker-podcast-stack">
         <div className="ticker-wrap">
           <div className="ticker-inner">
             {[...Array(2)].map((_, rep) =>
@@ -1000,15 +1616,191 @@ export default function LoginPage() {
           </div>
         </div>
 
+        <div className="home-live-broadcast-block">
+          {isOmgLiveEditor && homeLiveOmgEditorShellOpen ? (
+            <div className="home-live-omg-editor-shell">
+              <div className="home-live-omg-editor-tab-row">
+                <label htmlFor="omg-live-tab-select">טאב לעריכה</label>
+                <select
+                  id="omg-live-tab-select"
+                  className="home-live-omg-editor-tab-select"
+                  value={homeLiveOmgEditorTabKey}
+                  onChange={e => setHomeLiveOmgEditorTabKey(e.target.value)}
+                >
+                  {HOME_LIVE_TAB_KEYS.map(k => {
+                    const m = mergedLiveBroadcastByKey[k];
+                    const opt =
+                      (m?.tabLabel && String(m.tabLabel).trim()) || HOME_LIVE_BROADCAST_BY_KEY[k]?.title || k;
+                    return (
+                      <option key={k} value={k}>
+                        {opt}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+              <div className="home-live-omg-editor">
+                <p className="home-live-omg-editor-title">לינקי שמע / יוטיוב לטאב הנבחר</p>
+                <p className="home-live-omg-editor-note">
+                  שמירה מקומית בלבד (localStorage). לחיצה על טאב בדף מפעילה או עוצרת נגינה בלי לפתוח חלונות.
+                </p>
+                <div className="home-live-omg-editor-field">
+                  <label htmlFor="omg-live-audio-url">קישור שמע ישיר (mp3, m4a…)</label>
+                  <input
+                    id="omg-live-audio-url"
+                    type="url"
+                    autoComplete="off"
+                    placeholder="https://…/הרצאה.mp3"
+                    value={omgLiveEditDraft.audio}
+                    onChange={e => setOmgLiveEditDraft(d => ({ ...d, audio: e.target.value }))}
+                  />
+                </div>
+                <div className="home-live-omg-editor-field">
+                  <label htmlFor="omg-live-yt-id">מזהה YouTube (אופציונלי)</label>
+                  <input
+                    id="omg-live-yt-id"
+                    type="text"
+                    autoComplete="off"
+                    placeholder="למשל dQw4w9WgXcQ"
+                    value={omgLiveEditDraft.yid}
+                    onChange={e => setOmgLiveEditDraft(d => ({ ...d, yid: e.target.value }))}
+                  />
+                </div>
+                <div className="home-live-omg-editor-field">
+                  <label htmlFor="omg-live-yt-url">או קישור YouTube מלא</label>
+                  <input
+                    id="omg-live-yt-url"
+                    type="url"
+                    autoComplete="off"
+                    placeholder="https://www.youtube.com/watch?v=…"
+                    value={omgLiveEditDraft.yurl}
+                    onChange={e => setOmgLiveEditDraft(d => ({ ...d, yurl: e.target.value }))}
+                  />
+                </div>
+                {homeLiveEntryHasListenSource({
+                  listenAudioUrl: omgLiveEditDraft.audio,
+                  listenYoutubeId: omgLiveEditDraft.yid,
+                  listenYoutubeUrl: omgLiveEditDraft.yurl,
+                }) ? (
+                  <div className="home-live-omg-editor-field">
+                    <label htmlFor="omg-live-tab-label">שם על הטאב (במקום ברירת המחדל)</label>
+                    <input
+                      id="omg-live-tab-label"
+                      type="text"
+                      autoComplete="off"
+                      placeholder="למשל שם ההרצאה או האורח"
+                      maxLength={48}
+                      value={omgLiveEditDraft.tabLabel}
+                      onChange={e => setOmgLiveEditDraft(d => ({ ...d, tabLabel: e.target.value }))}
+                    />
+                  </div>
+                ) : null}
+                <div className="home-live-omg-editor-actions">
+                  <button type="button" className="home-live-omg-save" onClick={() => persistOmgLiveListenFields()}>
+                    שמירה
+                  </button>
+                  <button type="button" className="home-live-omg-danger" onClick={() => clearOmgLiveTabOverrides()}>
+                    ניקוי שמירה לטאב
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+          <div className="home-live-broadcast-row" dir="rtl" aria-label="פודקאסטים — הקשבה">
+            <div className="home-live-broadcast-label-col">
+              <span className="home-live-broadcast-label">פודקאסטים:</span>
+              {isOmgLiveEditor ? (
+                <button
+                  type="button"
+                  className="home-live-omg-edit-link"
+                  onClick={() => setHomeLiveOmgEditorShellOpen(v => !v)}
+                  aria-expanded={homeLiveOmgEditorShellOpen}
+                >
+                  {homeLiveOmgEditorShellOpen ? 'סגירה' : 'עריכה'}
+                </button>
+              ) : null}
+            </div>
+            <div className="home-live-broadcast-tabs" role="list">
+              {[1, 2, 3].map(slot => {
+                const tabKey = `faith-${slot}`;
+                const ent = mergedLiveBroadcastByKey[tabKey];
+                const custom = String(ent?.tabLabel || '').trim();
+                const btnLabel = custom || (slot === 1 ? 'הרב זמיר כהן' : 'LIVE');
+                const ariaDefault =
+                  slot === 1
+                    ? 'שידור חי אמונה: הרב זמיר כהן — לחיצה נגן או עוצר'
+                    : `שידור חי אמונה מס׳ ${slot} — לחיצה נגן או עוצר`;
+                return (
+                  <button
+                    key={tabKey}
+                    type="button"
+                    role="listitem"
+                    className={`home-live-tab home-live-tab--faith${homeLivePlayingKey === tabKey ? ' home-live-tab--selected' : ''}`}
+                    aria-pressed={homeLivePlayingKey === tabKey}
+                    aria-label={custom ? `שידור חי אמונה: ${custom} — לחיצה נגן או עוצר` : ariaDefault}
+                    onClick={() => handleLiveTabPress(tabKey)}
+                  >
+                    {btnLabel}
+                  </button>
+                );
+              })}
+              {[1, 2, 3].map(slot => {
+                const tabKey = `atheism-${slot}`;
+                const ent = mergedLiveBroadcastByKey[tabKey];
+                const custom = String(ent?.tabLabel || '').trim();
+                const btnLabel = custom || (slot === 1 ? 'הקו האתאיסטי' : 'LIVE');
+                const ariaDefault =
+                  slot === 1
+                    ? 'שידור חי אתאיזם: הקו האתאיסטי — לחיצה נגן או עוצר'
+                    : `שידור חי אתאיזם מס׳ ${slot} — לחיצה נגן או עוצר`;
+                return (
+                  <button
+                    key={tabKey}
+                    type="button"
+                    role="listitem"
+                    className={`home-live-tab home-live-tab--atheism${homeLivePlayingKey === tabKey ? ' home-live-tab--selected' : ''}`}
+                    aria-pressed={homeLivePlayingKey === tabKey}
+                    aria-label={custom ? `שידור חי אתאיזם: ${custom} — לחיצה נגן או עוצר` : ariaDefault}
+                    onClick={() => handleLiveTabPress(tabKey)}
+                  >
+                    {btnLabel}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          {homeLivePlayingKey && (homeLiveTransport.direct || homeLiveTransport.youtubeVideoId) ? (
+            <HomeLiveListenTransport
+              key={homeLivePlayingKey}
+              tabKey={homeLivePlayingKey}
+              directUrl={homeLiveTransport.direct}
+              youtubeVideoId={homeLiveTransport.youtubeVideoId}
+            />
+          ) : null}
+        </div>
+        </div>}
+
         <section className="login-hero-card" aria-label="דף הבית והרשמה">
           <div className="login-brand-block">
-            <span className="login-status-pill">
-              {currentUser ? `מחובר כ-${currentUser.username}` : registered ? `שלום ${registered.username}` : 'כניסה מהירה לדיון'}
-            </span>
+            {homeLiveVsLinkVisible ? (
+              <div
+                className="login-hero-live-events-link-row"
+                id="login-live-events-flash-anchor"
+                aria-live="polite"
+              >
+                <Link className="login-hero-live-events-link" to="/live-events">
+                  למעבר לסרטונים לחץ כאן
+                </Link>
+              </div>
+            ) : (registered || currentUser) ? (
+              <span className="login-status-pill">
+                {currentUser ? `מחובר כ-${currentUser.username}` : `שלום ${registered.username}`}
+              </span>
+            ) : null}
             <h1 className="login-title" dir="ltr">
               <Link
                 to={{ pathname: '/login', search: location.search }}
-                className="login-title-homelink login-title-phrase"
+                className={`login-title-homelink login-title-phrase${einsteinBurstLogoOrange ? ' login-title-homelink--einstein-burst-hit' : ''}`}
                 aria-label="דף הכניסה"
                 onClick={(e) => {
                   /** אל תנווט ל־/login בלי query — זה מוחק ?logo= ואז הפניה אוטומטית ללובי מרפרטת את הסוקט */
@@ -1041,25 +1833,28 @@ export default function LoginPage() {
                 })}
               </Link>
             </h1>
-            <p className="login-subtitle login-subtitle-wave">
-              {SUBTITLE_WAVE_CHARS.map((ch, index) => {
-                const intensity = 0.9 + (index / (SUBTITLE_WAVE_CHARS.length - 1)) * 0.1;
-                return (
-                  <span
-                    key={`${ch}-${index}`}
-                    className={`login-subtitle-ch${ch === 'V' || ch === 'S' ? ' login-subtitle-ch--strong' : ''}`}
-                    style={{
-                      '--wave-delay': `${(TITLE_WAVE_CHARS.length + index) * 0.16}s`,
-                      '--wave-color': orangeWaveRgb(intensity),
-                      '--wave-glow': `${8 + 8 * intensity}px`,
-                      '--wave-glow-alpha': orangeGlowAlpha(0.3 + 0.18 * intensity),
-                    }}
-                  >
-                    {ch === ' ' ? '\u00A0' : ch}
-                  </span>
-                );
-              })}
-            </p>
+            <div className="login-subtitle login-subtitle-stack">
+              <p className="login-subtitle-hint">{SUBTITLE_HINT}</p>
+              <p className="login-subtitle-wave">
+                {SUBTITLE_WAVE_CHARS.map((ch, index) => {
+                  const intensity = 0.9 + (index / (SUBTITLE_WAVE_CHARS.length - 1)) * 0.1;
+                  return (
+                    <span
+                      key={`${ch}-${index}`}
+                      className={`login-subtitle-ch${ch === 'V' || ch === 'S' ? ' login-subtitle-ch--strong' : ''}`}
+                      style={{
+                        '--wave-delay': `${(TITLE_WAVE_CHARS.length + index) * 0.16}s`,
+                        '--wave-color': orangeWaveRgb(intensity),
+                        '--wave-glow': `${8 + 8 * intensity}px`,
+                        '--wave-glow-alpha': orangeGlowAlpha(0.3 + 0.18 * intensity),
+                      }}
+                    >
+                      {ch === ' ' ? '\u00A0' : ch}
+                    </span>
+                  );
+                })}
+              </p>
+            </div>
           </div>
 
           {!registered && !currentUser ? (
@@ -1071,7 +1866,11 @@ export default function LoginPage() {
                   placeholder="שם משתמש..."
                   value={username}
                   onChange={handleUsernameChange}
-                  onKeyDown={e => e.key === 'Enter' && handleRegister()}
+                  onKeyDown={e => {
+                    if (e.key !== 'Enter') return;
+                    e.preventDefault();
+                    void handleRegister();
+                  }}
                   maxLength={20}
                   autoComplete="off"
                   autoFocus
@@ -1089,24 +1888,42 @@ export default function LoginPage() {
                   onChange={e => setPassword(username.trim().toLowerCase() === 'omg'
                     ? e.target.value.slice(0, 8)
                     : e.target.value.slice(0, 4))}
-                  onKeyDown={e => e.key === 'Enter' && handleRegister()}
+                  onKeyDown={e => {
+                    if (e.key !== 'Enter') return;
+                    e.preventDefault();
+                    void handleRegister();
+                  }}
                   maxLength={username.trim().toLowerCase() === 'omg' ? 8 : 4}
                   autoComplete="new-password"
                 />
                 {error && <p className="login-error">{error}</p>}
+                <label style={{
+                  display: 'flex', alignItems: 'center', gap: 8, marginTop: 10,
+                  fontSize: '0.82rem', color: 'rgba(255,255,255,0.72)', cursor: 'pointer', userSelect: 'none',
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={ageConfirmed}
+                    onChange={e => setAgeConfirmed(e.target.checked)}
+                    style={{ width: 17, height: 17, accentColor: '#f97316', cursor: 'pointer', flexShrink: 0 }}
+                  />
+                  אני מאשר/ת שאני בן/בת 18 ומעלה ומסכים/ה לתנאי Oh My God
+                </label>
               </div>
               <button
                 className={`login-enter-btn${
-                  password.length === (username.trim().toLowerCase() === 'omg' ? 8 : 4) ? ' ready' : ''
+                  password.length === (username.trim().toLowerCase() === 'omg' ? 8 : 4) && ageConfirmed ? ' ready' : ''
                 }`}
                 onClick={handleRegister}
+                disabled={!ageConfirmed}
+                style={!ageConfirmed ? { opacity: 0.45, cursor: 'not-allowed' } : {}}
               >
                 כניסה
               </button>
             </div>
           ) : null}
 
-          <>
+          {(registered || currentUser) && <>
           {aiLoading ? (
             <div style={{ textAlign: 'center', padding: '40px 0' }}>
               <div className="spinner" style={{ margin: '0 auto 20px' }} />
@@ -1208,51 +2025,90 @@ export default function LoginPage() {
               </button>
             </>
           ) : (
-            /* Side chosen — pick mode: human or AI */
-            <div className="login-mode-card">
+            /* Side chosen — full site menu */
+            <div className="login-mode-card" style={{ gap: 14 }}>
               <p className="login-choose" style={{ marginBottom: 0 }}>
-                בחרת: <span style={{ color: selectedSide === 'believer' ? 'var(--believer)' : 'var(--atheist)', fontWeight: 900 }}>
+                ברוך הבא! בחרת: <span style={{ color: selectedSide === 'believer' ? 'var(--believer)' : 'var(--atheist)', fontWeight: 900 }}>
                   {selectedSide === 'believer' ? 'מאמין' : 'אתאיסט'}
                 </span>
               </p>
-              <p className="login-secondary-copy">בחר חוויה: התאמה חיה מול משתמש אחר או דיון מיידי מול AI.</p>
+              <p className="login-secondary-copy" style={{ marginBottom: 4 }}>לאן תרצה להמשך?</p>
+
+              {/* Debate buttons */}
               <button
                 className={`login-panel ${selectedSide === 'believer' ? 'panel-atheist' : 'panel-believer'}`}
-                style={{ width: '100%', maxWidth: '100%', padding: '18px 24px', borderRadius: 16, fontSize: '1.1rem', fontWeight: 800 }}
+                style={{ width: '100%', maxWidth: '100%', padding: '16px 24px', borderRadius: 16, fontSize: '1rem', fontWeight: 800 }}
                 onClick={handleHuman}
               >
-                {selectedSide === 'believer'
-                  ? 'נגד יריב אנושי (אתאיסט)'
-                  : 'נגד יריב אנושי (מאמין)'}
+                ⚔️ {selectedSide === 'believer' ? 'דיון מול אתאיסט' : 'דיון מול מאמין'}
               </button>
               <button
                 className="login-panel"
-                style={{ width: '100%', maxWidth: '100%', padding: '18px 24px', borderRadius: 16, fontSize: '1.1rem', fontWeight: 800,
+                style={{ width: '100%', maxWidth: '100%', padding: '16px 24px', borderRadius: 16, fontSize: '1rem', fontWeight: 800,
                   background: 'linear-gradient(135deg, #f2f2f2 0%, #c6c6c6 100%)', color: '#000',
                   boxShadow: '0 6px 0 #a8a8a8, 0 10px 20px rgba(0,0,0,0.35)' }}
                 onClick={handleAIMode}
               >
-                נגד AI
+                🤖 דיון מול AI
               </button>
+
+              {/* Site features grid */}
+              <div style={{
+                display: 'grid', gridTemplateColumns: '1fr 1fr',
+                gap: 10, width: '100%', marginTop: 6,
+              }}>
+                {[
+                  { icon: '💬', label: 'צ׳אט אמונה', to: '/faith#chat' },
+                  { icon: '📖', label: 'שאל את הרב', to: '/faith#rabbi' },
+                  { icon: '📝', label: 'בלוג', to: '/blog' },
+                  { icon: '📚', label: 'מאגר ידע', to: '/knowledge' },
+                  { icon: '🏆', label: 'רב VS מדען', to: '/live-events' },
+                  { icon: '📻', label: 'רדיו', to: '/radio' },
+                ].map(({ icon, label, to }) => (
+                  <Link
+                    key={to}
+                    to={to}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '13px 14px', borderRadius: 12,
+                      background: 'rgba(255,255,255,0.06)',
+                      border: '1px solid rgba(255,255,255,0.12)',
+                      color: 'var(--text, #fff)', textDecoration: 'none',
+                      fontWeight: 700, fontSize: '0.88rem',
+                      transition: 'background 0.15s',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
+                  >
+                    <span style={{ fontSize: '1.2rem' }}>{icon}</span>
+                    {label}
+                  </Link>
+                ))}
+              </div>
+
               <button
-                style={{ background: 'none', border: 'none', color: '#aaa', fontSize: '0.9rem', cursor: 'pointer', marginTop: 4, fontWeight: 700 }}
+                style={{ background: 'none', border: 'none', color: '#aaa', fontSize: '0.85rem', cursor: 'pointer', marginTop: 2, fontWeight: 700 }}
                 onClick={() => setSelectedSide(null)}
               >
                 ← חזרה לבחירת צד
               </button>
             </div>
           )}
-            </>
+            </>}
         </section>
 
-        <div className="login-links">
+        {(registered || currentUser) && <div className="login-links">
+          <Link to="/radio" className="login-link" aria-label="רדיו — שידורים מישראל">
+            <span className="login-link-icon" aria-hidden>📻</span>
+            רדיו
+          </Link>
           <Link to="/faith" className="login-link" aria-label="דת ואמונה">
             <span className="login-link-icon" aria-hidden>📖</span>
             דת
           </Link>
-          <Link to="/knowledge" className="login-link">📚 בעד ונגד</Link>
+          <Link to="/knowledge" className="login-link">📚 מאגר ידע</Link>
           <Link to="/live-events" className="login-link">🏆 רב VS מדען</Link>
-        </div>
+        </div>}
       </div>
     </>
   );

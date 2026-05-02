@@ -19,7 +19,37 @@
   </style>
 </head>
 <body>
+  <noscript>
+    <div style="padding:28px;text-align:center;font-family:Rubik,Segoe UI,sans-serif;background:#111;color:#eee;min-height:100vh;">
+      <p style="margin-bottom:14px;">יש להפעיל JavaScript בדפדפן כדי להפעיל את האפליקציה.</p>
+      <p><a href="https://www.google.com/" style="color:#93c5fd;">פתיחת Google</a></p>
+    </div>
+  </noscript>
+  <div id="boot-fallback" hidden style="padding:28px;text-align:center;font-family:Rubik,Segoe UI,sans-serif;background:#07070c;color:#e8e8ef;min-height:100vh;line-height:1.65;">
+    <p style="margin-bottom:12px;font-weight:800;font-size:1.05rem;">האפליקציה לא נטענה (מסך כהה).</p>
+    <p style="margin-bottom:18px;color:#94a3b8;font-size:0.92rem;">נסה רענון, פורט אחר (<code style="background:#1e293b;padding:2px 6px;border-radius:6px;">5173</code> / <code style="background:#1e293b;padding:2px 6px;border-radius:6px;">5174</code>), או פתיחת חיפוש:</p>
+    <p style="margin-bottom:14px;"><a href="https://www.google.com/" target="_blank" rel="noopener noreferrer" style="color:#7dd3fc;font-weight:700;">Google — חיפוש</a></p>
+    <p><button type="button" onclick="location.reload()" style="cursor:pointer;padding:10px 18px;border-radius:10px;border:1px solid #475569;background:#1e293b;color:#fff;font-weight:700;font-family:inherit;">רענון דף</button></p>
+  </div>
   <div id="root"></div>
+  <script>
+    (function () {
+      var root = document.getElementById('root');
+      var fb = document.getElementById('boot-fallback');
+      if (!root || !fb) return;
+      var t = setTimeout(function () {
+        if (root.childElementCount === 0) fb.hidden = false;
+      }, 8000);
+      var mo = new MutationObserver(function () {
+        if (root.childElementCount > 0) {
+          clearTimeout(t);
+          fb.hidden = true;
+          mo.disconnect();
+        }
+      });
+      mo.observe(root, { childList: true });
+    })();
+  </script>
   <script type="module" src="/src/main.jsx"></script>
 </body>
 </html>

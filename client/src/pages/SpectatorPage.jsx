@@ -2,7 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { socket } from '../socket.js';
 import MessageBubble from '../components/debate/MessageBubble.jsx';
+import UserAvatarSlot from '../components/ui/UserAvatarSlot.jsx';
 import { useAppStore } from '../store/appStore.js';
+import { getCageAvatarDataUrlForDisplayName } from '../lib/cageUserProfile.js';
 
 const GIFTS = ['🔥', '💡', '👏', '🎯', '⚡', '🌟', '💪', '🤔', '😤', '🎤'];
 
@@ -116,9 +118,23 @@ export default function SpectatorPage() {
       </button>
       <header className="spectator-top">
         <div className="spectator-top__names">
-          <span style={{ color: 'var(--believer)', fontWeight: 800 }}>{debate.believer.username}</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--believer)', fontWeight: 800 }}>
+            <UserAvatarSlot
+              size="sm"
+              displayName={debate.believer.username}
+              avatarUrl={getCageAvatarDataUrlForDisplayName(debate.believer.username) || undefined}
+            />
+            {debate.believer.username}
+          </span>
           <span style={{ color: 'var(--muted)', fontWeight: 700 }}>VS</span>
-          <span style={{ color: 'var(--atheist)', fontWeight: 800 }}>{debate.atheist.username}</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--atheist)', fontWeight: 800 }}>
+            <UserAvatarSlot
+              size="sm"
+              displayName={debate.atheist.username}
+              avatarUrl={getCageAvatarDataUrlForDisplayName(debate.atheist.username) || undefined}
+            />
+            {debate.atheist.username}
+          </span>
         </div>
         <div className="spectator-top__meta">
           {count} צופים · שלב {phaseLabel}

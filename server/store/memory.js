@@ -110,8 +110,8 @@ export function setAdminNote(username, note) {
 }
 
 /**
- * כל מי שהוגדר כרשום: סט השמות המצטבר + כל מפתח ב־registeredPasswords (מי שנרשם בטופס).
- * לא מסירים שמות בעת ניתוק / יציאה — רק איחוד ושמירה לצמיחת רשימה.
+ * רישום נרשמים הוא צובר קבוע (append-only): מי שנוסף ל־registeredUsernames או ל־registeredPasswords
+ * לא נמחק מהרישום בשום זרימה תקינה — רק חסימת משתמש שונה מסירה מהמערכת הפעילה, לא מהצובר כאן.
  */
 function allRegisteredNorms() {
   const out = new Set();
@@ -237,6 +237,7 @@ export function getRegisteredStats() {
 export function saveSnapshot() {
   try {
     mergePasswordsIntoRegisteredSet();
+    store.registeredCount = Math.max(store.registeredCount, allRegisteredNorms().size);
     const data = {
       archivedDebates: store.archivedDebates,
       userScores: Object.fromEntries(store.userScores),

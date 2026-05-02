@@ -39,11 +39,19 @@ export default function QuickNavInlineLinks({ style }) {
           צ׳אט
         </NavLink>
         <NavLink
+          to="/radio"
+          aria-label="רדיו — שידורים מישראל"
+          className={({ isActive }) =>
+            cn('quick-nav-footer__pill', isActive && 'quick-nav-footer__pill--active')}
+        >
+          רדיו
+        </NavLink>
+        <NavLink
           to="/knowledge"
           className={({ isActive }) =>
             cn('quick-nav-footer__pill', isActive && 'quick-nav-footer__pill--active')}
         >
-          מאגר מידע
+          מאגר ידע
         </NavLink>
         <NavLink
           to="/faith#rabbi"

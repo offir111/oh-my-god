@@ -397,7 +397,7 @@ export default function ReligionFaithPage() {
           border: 1px solid rgba(255, 255, 255, 0.16);
           text-align: right;
         }
-        .faith-header .args-knowledge-debate-composer .btn-believer {
+        .faith-header .args-knowledge-debate-composer .btn-send {
           border-radius: 999px;
           min-width: 96px;
           padding-inline: 22px;
@@ -1369,7 +1369,7 @@ export default function ReligionFaithPage() {
               </div>
               <button
                 type="button"
-                className="btn btn-believer"
+                className="btn btn-send btn-send--believer"
                 onClick={submitFaithSearch}
                 disabled={!faithSearch.trim()}
                 aria-label="שלח חיפוש; מעבר לטאב שאלת רב עם סינון"

@@ -1,7 +1,7 @@
 /**
  * מאגר תכנים סביב אמונה / מדע / אבולוציה מערוצים שונים.
  * title — כותרת ראשית (מופיעה למעלה בכרטיס).
- * channelLabel — שם הערוץ/יוזר ביוטיוב (מוצג כהשמה: נלקח מ־…).
+ * channelLabel — שם המקור/ערוץ ביוטיוב (מוצג מתחת לכותרת, קטן ובצבע תכלת).
  */
 
 export const ROSH_BEROSH_CHANNEL_URL = 'https://www.youtube.com/@roshberosh';
@@ -34,6 +34,65 @@ export const FAITH_SCIENCE_VIDEO_VAULT = [
     title: 'ויכוח משעשע מול אתאיסט חכמולוג — הרב אמנון יצחק',
     href: 'https://www.youtube.com/watch?v=WSRoYKFzX1Y',
     youtubeId: 'WSRoYKFzX1Y',
+  },
+  {
+    id: 'vault-daatemet-yaron-rosh-kollel',
+    kind: 'video',
+    channelLabel: 'daatemet',
+    title: 'ירון ידען — סיפור אישי מרתק של ראש כולל שחזר בשאלה',
+    href: 'https://www.youtube.com/watch?v=flbshhdxqdw',
+    youtubeId: 'flbshhdxqdw',
+  },
+  {
+    id: 'vault-daatemet-yaron-chair-story',
+    kind: 'video',
+    channelLabel: 'daatemet',
+    title: 'ירון ידען יו"ר דעת אמת עם סיפור אישי מרתק',
+    href: 'https://www.youtube.com/watch?v=pfBUCu_a7Bw',
+    youtubeId: 'pfBUCu_a7Bw',
+  },
+  {
+    id: 'vault-hidabroot-zamir-science-judaism-ep1',
+    kind: 'video',
+    channelLabel: 'הידברות',
+    title:
+      'הרב זמיר כהן — מדעים ויהדות, פרק 1: התהוות היקום וגיל העולם (כולל כתוביות בעברית)',
+    href: 'https://www.youtube.com/watch?v=3pSAfw3dlWg',
+    youtubeId: '3pSAfw3dlWg',
+  },
+  {
+    id: 'vault-mizrachi-torah-science-full',
+    kind: 'video',
+    channelLabel: 'הרב יוסף מזרחי',
+    title: 'הסרט שישנה לך את החיים! — הרב יוסף מזרחי — תורה ומדע — הסרט השלם!',
+    href: 'https://www.youtube.com/watch?v=j9WiLZlJoPw',
+    youtubeId: 'j9WiLZlJoPw',
+  },
+  {
+    id: 'vault-huji-harari-world-history-lesson4',
+    kind: 'video',
+    channelLabel: 'האוניברסיטה העברית בירושלים',
+    title: 'ד"ר יובל הררי — מבוא להיסטוריה עולמית תשע"ג — שיעור מס\' 4',
+    href: 'https://www.youtube.com/watch?v=xMaQTjhmvf4',
+    youtubeId: 'xMaQTjhmvf4',
+  },
+  {
+    id: 'vault-fabrikant-atheist-vs-rav-yadan-aluloff',
+    kind: 'video',
+    channelLabel: 'Moshe Fabrikant',
+    title:
+      'אתאיסט נגד רב — דיבייט הענק בין ירון ידען לרב גיא אלולוף — האם אלוהים קיים? וההשלכות של הדבר.',
+    href: 'https://www.youtube.com/watch?v=LUqS6u3tpzI',
+    youtubeId: 'LUqS6u3tpzI',
+  },
+  {
+    id: 'vault-hamashmaot-philosophy-mysticism-tsadik-vs-aluloff',
+    kind: 'video',
+    channelLabel: 'פודקאסט על המשמעות — תמיר דורטל',
+    title:
+      'פילוסופיה ומיסטיקה — עימות חזיתי על האמת היהודית — פרופ׳ שלום צדיק VS הרב גיא אלולוף',
+    href: 'https://www.youtube.com/watch?v=VXIPrpD8MzE',
+    youtubeId: 'VXIPrpD8MzE',
   },
   {
     id: 'rb-01',

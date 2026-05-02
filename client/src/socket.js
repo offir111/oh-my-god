@@ -1,8 +1,14 @@
 import { io } from 'socket.io-client';
+import { getApiBaseUrl } from './lib/apiBaseUrl.js';
 
-const SERVER_URL = import.meta.env.VITE_API_URL || 'https://oh-my-god-production.up.railway.app';
+/** כמו REST: ב־dev כתובת ריקה → מחבר לאותו מקור דף (proxy של Vite לשרת המקומי); בלי זה הסוקט יצא לייצור והרישום התפצל */
+function getSocketServerUrl() {
+  return getApiBaseUrl() || null;
+}
 
-export const socket = io(SERVER_URL, { autoConnect: false, transports: ['polling', 'websocket'] });
+const socketOpts = { autoConnect: false, transports: ['polling', 'websocket'] };
+const explicitUrl = getSocketServerUrl();
+export const socket = explicitUrl ? io(explicitUrl, socketOpts) : io(socketOpts);
 
 let connectedIdentity = null;
 

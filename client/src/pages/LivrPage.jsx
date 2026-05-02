@@ -203,7 +203,7 @@ export default function LivrPage() {
                 onKeyDown={e => e.key === 'Enter' && sendAudienceMessage()}
                 placeholder="כתוב תגובה או שאלה..."
               />
-              <button type="button" className="btn btn-ghost" onClick={sendAudienceMessage}>
+              <button type="button" className="btn btn-send" onClick={sendAudienceMessage}>
                 שלח
               </button>
             </div>
