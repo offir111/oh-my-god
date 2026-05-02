@@ -27,6 +27,10 @@ const IL_CHANNELS = [
     id: 'i24heb', name: 'i24 NEWS עברית', flag: '🇮🇱',
     hlsUrl: 'https://bcovlive-a.akamaihd.net/5e31f38eb2c14ceaa31e2fea6e082bd9/eu-central-1/NA/playlist.m3u8',
   },
+  {
+    id: 'ch14', name: 'ערוץ 14', flag: '🇮🇱',
+    hlsUrl: 'https://channel14-live-consume.immergo.tv/output/master.m3u8',
+  },
 ];
 
 const WORLD_CHANNELS = [
