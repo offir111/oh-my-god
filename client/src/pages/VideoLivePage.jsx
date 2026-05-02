@@ -13,19 +13,15 @@ function tvProxyUrl(m3u8) {
 const IL_CHANNELS = [
   {
     id: 'kan11', name: 'כאן 11', flag: '🇮🇱',
-    hlsUrl: 'https://kan11.media.kan.org.il/hls/live/2024514/kan11/master.m3u8',
+    hlsUrl: 'https://kancdn.medonecdn.net/livehls/oil/kancdn-live/live/kan11/live.livx/playlist.m3u8',
   },
   {
     id: 'kannews', name: 'כאן NEWS', flag: '🇮🇱',
     hlsUrl: 'https://mabatlive.media.kan.org.il/hls/live/2024516/kan_mabatlive/master.m3u8',
   },
   {
-    id: 'ch12', name: 'ערוץ 12', flag: '🇮🇱',
-    hlsUrl: 'https://live.xtra.co.il/hls/live/channel-12/stream/playlist.m3u8',
-  },
-  {
     id: 'i24heb', name: 'i24 NEWS עברית', flag: '🇮🇱',
-    hlsUrl: 'https://bcovlive-a.akamaihd.net/5e31f38eb2c14ceaa31e2fea6e082bd9/eu-central-1/NA/playlist.m3u8',
+    hlsUrl: 'https://bcovlive-a.akamaihd.net/d89ede8094c741b7924120b27764153c/eu-central-1/5377161796001/profile_0/chunklist.m3u8',
   },
   {
     id: 'ch13', name: 'ערוץ 13', flag: '🇮🇱',
@@ -33,34 +29,34 @@ const IL_CHANNELS = [
   },
   {
     id: 'ch14', name: 'ערוץ 14', flag: '🇮🇱',
-    hlsUrl: 'https://channel14-live-consume.immergo.tv/output/master.m3u8',
+    hlsUrl: 'https://r.il.cdn-redge.media/livehls/oil/ch14/live/ch14/live.livx/playlist.m3u8',
+  },
+  {
+    id: 'hidabroot', name: 'הידברות', flag: '🇮🇱',
+    hlsUrl: 'https://cdn.cybercdn.live/HidabrootIL/Live97/playlist.m3u8',
+  },
+  {
+    id: 'knesset', name: 'ערוץ הכנסת', flag: '🇮🇱',
+    hlsUrl: 'https://contact.gostreaming.tv/Knesset/myStream/playlist.m3u8',
   },
 ];
 
 const WORLD_CHANNELS = [
   {
     id: 'france24', name: 'France 24', flag: '🇫🇷',
-    hlsUrl: 'https://static.france24.com/live/F24_EN_HI_HLS/live_web.m3u8',
+    hlsUrl: 'https://live.france24.com/hls/live/2037218/F24_EN_HI_HLS/master_5000.m3u8',
   },
   {
     id: 'alj', name: 'Al Jazeera', flag: '🌍',
-    hlsUrl: 'https://live-hls-web-aje.getaj.net/AJE/index.m3u8',
+    hlsUrl: 'https://live-hls-apps-aje-fa.getaj.net/AJE/index.m3u8',
   },
   {
     id: 'dw', name: 'DW News', flag: '🇩🇪',
-    hlsUrl: 'https://dwamdstream102.akamaized.net/hls/live/2015526/dwstream102/stream01/chunklist_b1628000.m3u8',
+    hlsUrl: 'https://dwamdstream102.akamaized.net/hls/live/2015525/dwstream102/master.m3u8',
   },
   {
-    id: 'bloomberg', name: 'Bloomberg TV', flag: '🇺🇸',
-    hlsUrl: 'https://bloomberg1.akamaized.net/hls/live/571308/bloomberg_west/master.m3u8',
-  },
-  {
-    id: 'bbc', name: 'BBC News', flag: '🇬🇧',
-    hlsUrl: 'https://vs-cmaf-push-uk.live.cf.md.bbci.co.uk/x=4/i=urn:bbc:pips:service:bbc_news_channel_hd/t=3840/v=pv14/b=5070016/sa=1/u=1/vid.m3u8',
-  },
-  {
-    id: 'skynews', name: 'Sky News', flag: '🇬🇧',
-    hlsUrl: 'https://linear-aka.sky.com/sky-news/master.m3u8',
+    id: 'bloomberg', name: 'Bloomberg', flag: '🇺🇸',
+    hlsUrl: 'https://bloomberg.com/media-manifest/streams/us.m3u8',
   },
   {
     id: 'euronews', name: 'Euronews', flag: '🇪🇺',
@@ -69,6 +65,14 @@ const WORLD_CHANNELS = [
   {
     id: 'nasa', name: 'NASA TV', flag: '🚀',
     hlsUrl: 'https://nasa-i.akamaihd.net/hls/live/253565/NASA-NTV1-HLS/master.m3u8',
+  },
+  {
+    id: 'bloomorig', name: 'Bloomberg Originals', flag: '🇺🇸',
+    hlsUrl: 'https://86fdc85a.wurl.com/master/f36d25e7e52f1ba8d7e56eb859c636563214f541/TEctZ2JfQmxvb21iZXJnT3JpZ2luYWxzX0hMUw/playlist.m3u8',
+  },
+  {
+    id: 'ajbalkan', name: 'Al Jazeera Balkans', flag: '🌍',
+    hlsUrl: 'https://live-hls-web-ajb.getaj.net/AJB/index.m3u8',
   },
 ];
 
