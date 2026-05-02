@@ -377,8 +377,8 @@ export default function VideoLivePage() {
             <div className="tv-sidebar-label">🇮🇱 ישראל</div>
             {IL_CHANNELS.map(ch => (
               <button key={ch.id} type="button"
-                className={'tv-ch-btn' + (activeCh.id === ch.id ? ' tv-ch-btn--active' : '')}
-                onClick={() => setActiveCh(ch)}>
+                className={'tv-ch-btn' + (!ytTvUrl && activeCh.id === ch.id ? ' tv-ch-btn--active' : '')}
+                onClick={() => { setActiveCh(ch); setYtTvUrl(null); }}>
                 {ch.flag} {ch.name}
               </button>
             ))}
@@ -387,8 +387,8 @@ export default function VideoLivePage() {
             <div className="tv-sidebar-label">🌍 עולם</div>
             {WORLD_CHANNELS.map(ch => (
               <button key={ch.id} type="button"
-                className={'tv-ch-btn' + (activeCh.id === ch.id ? ' tv-ch-btn--active' : '')}
-                onClick={() => setActiveCh(ch)}>
+                className={'tv-ch-btn' + (!ytTvUrl && activeCh.id === ch.id ? ' tv-ch-btn--active' : '')}
+                onClick={() => { setActiveCh(ch); setYtTvUrl(null); }}>
                 {ch.flag} {ch.name}
               </button>
             ))}
