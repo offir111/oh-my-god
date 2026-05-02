@@ -230,21 +230,21 @@ function StreamCard({ stream, username }) {
   };
 
   return (
-    <div style={{ borderRadius: 12, border: `1.5px solid ${border}`, background: bg, display: 'flex', flexDirection: 'column', overflow: 'hidden', direction: 'rtl' }}>
-      <div style={{ width: '100%', aspectRatio: '16/9', background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-        <span style={{ fontSize: '2.8rem', opacity: 0.35 }}>🎥</span>
-        <div style={{ position: 'absolute', top: 8, right: 8, background: tagBg, borderRadius: 6, padding: '3px 10px', fontSize: '0.65rem', fontWeight: 800, color: isSoon ? '#1a1a0a' : '#fff' }}>{stream.tag}</div>
+    <div style={{ borderRadius: 10, border: `1.5px solid ${border}`, background: bg, display: 'flex', flexDirection: 'column', overflow: 'hidden', direction: 'rtl' }}>
+      <div style={{ width: '100%', aspectRatio: '16/6.3', background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+        <span style={{ fontSize: '1.8rem', opacity: 0.35 }}>🎥</span>
+        <div style={{ position: 'absolute', top: 5, right: 6, background: tagBg, borderRadius: 5, padding: '2px 7px', fontSize: '0.55rem', fontWeight: 800, color: isSoon ? '#1a1a0a' : '#fff' }}>{stream.tag}</div>
       </div>
-      <div style={{ padding: '10px 12px 0', display: 'flex', flexDirection: 'column', gap: 5 }}>
-        <div style={{ fontSize: '0.88rem', fontWeight: 900, color: 'var(--text)', lineHeight: 1.3 }}>{stream.title}</div>
-        <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>{stream.host}</div>
-        <button type="button" style={{ marginTop: 4, padding: '8px 0', borderRadius: 8, border: 'none', fontWeight: 800, fontSize: '0.78rem', cursor: isSoon ? 'pointer' : 'not-allowed', background: isSoon ? 'rgba(251,191,36,0.22)' : 'rgba(255,255,255,0.07)', color: isSoon ? '#fbbf24' : 'var(--muted)' }}>
+      <div style={{ padding: '6px 10px 0', display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <div style={{ fontSize: '0.72rem', fontWeight: 900, color: 'var(--text)', lineHeight: 1.3 }}>{stream.title}</div>
+        <div style={{ fontSize: '0.6rem', color: 'var(--text-secondary)' }}>{stream.host}</div>
+        <button type="button" style={{ marginTop: 2, padding: '5px 0', borderRadius: 6, border: 'none', fontWeight: 800, fontSize: '0.62rem', cursor: isSoon ? 'pointer' : 'not-allowed', background: isSoon ? 'rgba(251,191,36,0.22)' : 'rgba(255,255,255,0.07)', color: isSoon ? '#fbbf24' : 'var(--muted)' }}>
           {isSoon ? '🔔 תזכורת לשידור' : 'הסתיים'}
         </button>
       </div>
-      <div style={{ display: 'flex', gap: 4, padding: '8px 12px 6px', borderTop: '1px solid var(--border)', marginTop: 8 }}>
-        <button type="button" onClick={handleLike} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 6, border: 'none', cursor: username ? 'pointer' : 'default', background: iLiked ? 'rgba(244,63,94,0.12)' : 'transparent', color: iLiked ? '#f43f5e' : 'var(--text-secondary)', fontSize: '0.78rem', fontWeight: 700 }}>{iLiked ? '❤️' : '🤍'} {likes.length}</button>
-        <button type="button" onClick={() => setCommentsOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', background: commentsOpen ? 'rgba(99,102,241,0.1)' : 'transparent', color: commentsOpen ? 'var(--accent)' : 'var(--text-secondary)', fontSize: '0.78rem', fontWeight: 700 }}>💬 {comments.length}</button>
+      <div style={{ display: 'flex', gap: 3, padding: '5px 10px 4px', borderTop: '1px solid var(--border)', marginTop: 5 }}>
+        <button type="button" onClick={handleLike} style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '3px 8px', borderRadius: 5, border: 'none', cursor: username ? 'pointer' : 'default', background: iLiked ? 'rgba(244,63,94,0.12)' : 'transparent', color: iLiked ? '#f43f5e' : 'var(--text-secondary)', fontSize: '0.65rem', fontWeight: 700 }}>{iLiked ? '❤️' : '🤍'} {likes.length}</button>
+        <button type="button" onClick={() => setCommentsOpen(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '3px 8px', borderRadius: 5, border: 'none', cursor: 'pointer', background: commentsOpen ? 'rgba(99,102,241,0.1)' : 'transparent', color: commentsOpen ? 'var(--accent)' : 'var(--text-secondary)', fontSize: '0.65rem', fontWeight: 700 }}>💬 {comments.length}</button>
       </div>
       {commentsOpen && (
         <div style={{ padding: '4px 12px 12px' }}>
