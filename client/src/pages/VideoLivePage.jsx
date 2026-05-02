@@ -145,7 +145,6 @@ function HLSPlayer({ src, channelName }) {
         ref={videoRef}
         controls
         playsInline
-        muted
         style={{ width: '100%', height: '100%', objectFit: 'contain', display: status === 'error' ? 'none' : 'block' }}
       />
       {/* Fullscreen button */}
@@ -252,7 +251,7 @@ export default function VideoLivePage() {
   const pendingUser = useAppStore(s => s.pendingUser);
   const username    = user?.username || pendingUser?.username || '';
 
-  const [activeCh, setActiveCh] = useState(IL_CHANNELS[0]);
+  const [activeCh, setActiveCh] = useState(() => IL_CHANNELS.find(c => c.id === 'hidabroot') ?? IL_CHANNELS[0]);
   const proxySrc = tvProxyUrl(activeCh.hlsUrl);
 
   const playerWrapRef = useRef(null);
