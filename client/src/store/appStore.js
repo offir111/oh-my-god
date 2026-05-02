@@ -54,8 +54,10 @@ export const useAppStore = create((set) => ({
   gifts: [],
   spectatorCount: 0,
   streamingMessage: null,
+  ytTvUrl: null,
 
   setStreamingMessage: (msg) => set({ streamingMessage: msg }),
+  setYtTvUrl: (url) => set({ ytTvUrl: url }),
   appendStreamingChunk: (chunk) => set(s => ({
     streamingMessage: s.streamingMessage
       ? { ...s.streamingMessage, content: (s.streamingMessage.content || '') + chunk }
@@ -90,16 +92,32 @@ export const useAppStore = create((set) => ({
 
   setDebateId: (debateId) => set({ debateId }),
 
-  addTextMessage: (msg) => set(s => ({
-    debate: s.debate ? {
-      ...s.debate,
-      textMessages: [...(s.debate.textMessages || []), msg],
-      textCount: {
-        ...s.debate.textCount,
-        [msg.side]: (s.debate.textCount?.[msg.side] || 0) + 1,
+  addTextMessage: (msg) => set(s => {
+    if (!s.debate) return {};
+    const list = s.debate.textMessages || [];
+    /** כפילות מ־AI_STREAM_END + TEXT_MESSAGE_RECEIVED (חותמות זמן שונות לפעמים) */
+    if (
+      msg.isAI &&
+      list.some(
+        m =>
+          m.isAI &&
+          m.side === msg.side &&
+          m.content === msg.content,
+      )
+    ) {
+      return {};
+    }
+    return {
+      debate: {
+        ...s.debate,
+        textMessages: [...list, msg],
+        textCount: {
+          ...s.debate.textCount,
+          [msg.side]: (s.debate.textCount?.[msg.side] || 0) + 1,
+        },
       },
-    } : s.debate,
-  })),
+    };
+  }),
 
   addVoiceMessage: (msg) => set(s => ({
     debate: s.debate ? {
@@ -131,7 +149,13 @@ export const useAppStore = create((set) => ({
   addGift: (gift) => set(s => ({ gifts: [...s.gifts, { ...gift, uid: Math.random() }] })),
   removeGift: (uid) => set(s => ({ gifts: s.gifts.filter(g => g.uid !== uid) })),
 
-  resetDebate: () => set({ debate: null, debateId: null, gifts: [], spectatorCount: 0 }),
+  resetDebate: () => set({
+    debate: null,
+    debateId: null,
+    gifts: [],
+    spectatorCount: 0,
+    streamingMessage: null,
+  }),
 }));
 
 /** משחזר user מהדפדפן אם ה־store ריק — חובה לפני setPendingUser שמוחק את omg_user */

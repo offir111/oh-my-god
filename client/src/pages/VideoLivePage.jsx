@@ -276,6 +276,8 @@ function StreamCard({ stream, username }) {
 export default function VideoLivePage() {
   const user        = useAppStore(s => s.user);
   const pendingUser = useAppStore(s => s.pendingUser);
+  const ytTvUrl     = useAppStore(s => s.ytTvUrl);
+  const setYtTvUrl  = useAppStore(s => s.setYtTvUrl);
   const username    = user?.username || pendingUser?.username || '';
 
   const [activeCh, setActiveCh] = useState(() => IL_CHANNELS.find(c => c.id === 'hidabroot') ?? IL_CHANNELS[0]);
@@ -338,12 +340,30 @@ export default function VideoLivePage() {
         {/* ── Player ── */}
         <div className="tv-player-wrap" ref={playerWrapRef}>
           <div className="tv-player-screen">
-            <HLSPlayer key={activeCh.id} src={proxySrc} channelName={activeCh.name} muted={muted} onUnmute={() => setMuted(false)} />
+            {ytTvUrl ? (
+              <iframe
+                src={ytTvUrl}
+                style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
+                allow="autoplay; encrypted-media; picture-in-picture"
+                allowFullScreen
+                title="YouTube"
+              />
+            ) : (
+              <HLSPlayer key={activeCh.id} src={proxySrc} channelName={activeCh.name} muted={muted} onUnmute={() => setMuted(false)} />
+            )}
           </div>
           <div className="tv-player-bar">
             <span className="tv-player-dot" aria-hidden />
             <span className="tv-player-live">LIVE</span>
-            <span className="tv-player-name">{activeCh.flag} {activeCh.name}</span>
+            <span className="tv-player-name">
+              {ytTvUrl ? '📺 YouTube' : `${activeCh.flag} ${activeCh.name}`}
+            </span>
+            {ytTvUrl && (
+              <button type="button" onClick={() => setYtTvUrl(null)}
+                style={{ marginRight: 'auto', padding: '2px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.07)', color: 'var(--text-secondary)', fontSize: '0.68rem', fontWeight: 700, cursor: 'pointer' }}>
+                ← חזור לטלוויזיה
+              </button>
+            )}
           </div>
         </div>
 
