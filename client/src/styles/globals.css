@@ -112,7 +112,7 @@ html, body {
   padding: 0 var(--app-shell-gutter, 18px);
   box-sizing: border-box;
   height: 100%;
-  gap: 4px;
+  gap: 3px;
 }
 
 /* left cluster: dot + play + close */
@@ -158,9 +158,9 @@ html, body {
   border-radius: 7px;
   padding: 2px 5px;
   cursor: pointer;
-  flex: 1;
-  width: 0;
+  width: clamp(60px, 9vw, 130px);
   min-width: 0;
+  flex-shrink: 1;
   direction: rtl;
   height: 26px;
   -webkit-appearance: none;
@@ -173,7 +173,7 @@ html, body {
 .mini-radio-bar__select:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
 
 .mini-radio-bar__vol {
-  width: clamp(60px, 12vw, 110px);
+  width: clamp(30px, 5vw, 65px);
   accent-color: var(--gold);
   cursor: pointer;
   flex-shrink: 0;
