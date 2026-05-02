@@ -28,6 +28,10 @@ const IL_CHANNELS = [
     hlsUrl: 'https://bcovlive-a.akamaihd.net/5e31f38eb2c14ceaa31e2fea6e082bd9/eu-central-1/NA/playlist.m3u8',
   },
   {
+    id: 'ch13', name: 'ערוץ 13', flag: '🇮🇱',
+    hlsUrl: 'https://d2xg1g9o5vns8m.cloudfront.net/out/v1/0855d703f7d5436fae6a9c7ce8ca5075/index.m3u8',
+  },
+  {
     id: 'ch14', name: 'ערוץ 14', flag: '🇮🇱',
     hlsUrl: 'https://channel14-live-consume.immergo.tv/output/master.m3u8',
   },
