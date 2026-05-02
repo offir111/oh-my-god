@@ -81,8 +81,9 @@ function HLSPlayer({ src, channelName }) {
   const videoRef     = useRef(null);
   const containerRef = useRef(null);
   const hlsRef       = useRef(null);
-  const [status, setStatus]   = useState('loading');
-  const [isFs,   setIsFs]     = useState(false);
+  const [status,  setStatus]  = useState('loading');
+  const [isFs,    setIsFs]    = useState(false);
+  const [muted,   setMuted]   = useState(true); // start muted for autoplay; user unmutes
 
   useEffect(() => {
     const onFsChange = () => setIsFs(!!document.fullscreenElement);
@@ -118,6 +119,13 @@ function HLSPlayer({ src, channelName }) {
     }
   }, [src]);
 
+  // keep video.muted in sync with state
+  useEffect(() => {
+    if (videoRef.current) videoRef.current.muted = muted;
+  }, [muted]);
+
+  const unmute = () => setMuted(false);
+
   const toggleFullscreen = () => {
     const el = containerRef.current;
     if (!el) return;
@@ -141,10 +149,32 @@ function HLSPlayer({ src, channelName }) {
           <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>נסה ערוץ אחר</span>
         </div>
       )}
+      {/* Unmute overlay — shown until user taps */}
+      {status === 'playing' && muted && (
+        <div
+          onClick={unmute}
+          style={{
+            position: 'absolute', inset: 0, zIndex: 5, cursor: 'pointer',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10,
+            background: 'rgba(0,0,0,0.45)',
+          }}
+        >
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+            background: 'rgba(0,0,0,0.72)', border: '1.5px solid rgba(251,191,36,0.55)',
+            borderRadius: 14, padding: '18px 28px', backdropFilter: 'blur(6px)',
+          }}>
+            <span style={{ fontSize: '2.2rem' }}>🔇</span>
+            <span style={{ fontSize: '0.95rem', fontWeight: 900, color: '#fbbf24' }}>לחץ להפעלת סאונד</span>
+            <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>הדפדפן דורש אישור ראשוני</span>
+          </div>
+        </div>
+      )}
       <video
         ref={videoRef}
         controls
         playsInline
+        muted
         style={{ width: '100%', height: '100%', objectFit: 'contain', display: status === 'error' ? 'none' : 'block' }}
       />
       {/* Fullscreen button */}
