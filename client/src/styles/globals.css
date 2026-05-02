@@ -112,7 +112,7 @@ html, body {
   padding: 0 var(--app-shell-gutter, 18px);
   box-sizing: border-box;
   height: 100%;
-  gap: 6px;
+  gap: 4px;
 }
 
 /* left cluster: dot + play + close */
@@ -198,31 +198,22 @@ html, body {
 .mini-radio-bar__btn:hover { background: rgba(255,255,255,0.12); color: var(--text); }
 .mini-radio-bar__close:hover { background: rgba(239,68,68,0.15); color: #fca5a5; border-color: rgba(239,68,68,0.35); }
 
-/* left side of mini bar — equal half width */
-.mini-bar-left-side {
+/* center volume faders area */
+.mini-bar-vols {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   flex: 1;
+  justify-content: center;
   min-width: 0;
 }
 
-/* separator between radio and YouTube sections */
+/* separator between the two volume sliders */
 .mini-bar-sep {
   width: 1px;
   height: 22px;
   background: rgba(255,255,255,0.12);
   flex-shrink: 0;
-  margin: 0 4px;
-}
-
-/* YouTube section inside the mini bar — equal half width */
-.mini-yt {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  flex: 1;
-  min-width: 0;
 }
 .mini-yt__label {
   font-size: 0.82rem;

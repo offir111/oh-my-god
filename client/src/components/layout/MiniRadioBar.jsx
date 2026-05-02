@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../store/appStore.js';
 import { useRadioState } from '../../context/RadioAudioContext.jsx';
@@ -92,12 +92,8 @@ export default function MiniBarRow() {
   /* ── radio actions ── */
   const toggleRadio = () => {
     if (!audioEl) return;
-    if (audioEl.paused) {
-      audioEl.play().catch(() => {});
-      setRadioActive?.(true);
-    } else {
-      audioEl.pause();
-    }
+    if (audioEl.paused) { audioEl.play().catch(() => {}); setRadioActive?.(true); }
+    else { audioEl.pause(); }
   };
 
   /* ── youtube actions ── */
@@ -106,10 +102,8 @@ export default function MiniBarRow() {
 
   const playYt = () => {
     if (!embedUrl) { openConfig(); return; }
-    // embed volume param (0–100)
     const vol = Math.round(ytVolume * 100);
-    const urlWithVol = embedUrl.replace('?autoplay=1', `?autoplay=1&volume=${vol}`);
-    setYtTvUrl(urlWithVol);
+    setYtTvUrl(embedUrl.replace('?autoplay=1', `?autoplay=1&volume=${vol}`));
     navigate('/video-live');
   };
 
@@ -134,16 +128,10 @@ export default function MiniBarRow() {
             {draft.map((s, i) => (
               <div key={s.id} className="yt-config__row">
                 <span className="yt-config__num">{s.id}</span>
-                <input
-                  className="yt-config__name"
-                  type="text" value={s.name} placeholder="שם תחנה"
-                  onChange={e => { const n=[...draft]; n[i]={...n[i],name:e.target.value}; setDraft(n); }}
-                />
-                <input
-                  className="yt-config__url"
-                  type="url" value={s.url} placeholder="קישור YouTube (וידאו לייב)" dir="ltr"
-                  onChange={e => { const n=[...draft]; n[i]={...n[i],url:e.target.value}; setDraft(n); }}
-                />
+                <input className="yt-config__name" type="text" value={s.name} placeholder="שם תחנה"
+                  onChange={e => { const n=[...draft]; n[i]={...n[i],name:e.target.value}; setDraft(n); }} />
+                <input className="yt-config__url" type="url" value={s.url} placeholder="קישור YouTube" dir="ltr"
+                  onChange={e => { const n=[...draft]; n[i]={...n[i],url:e.target.value}; setDraft(n); }} />
               </div>
             ))}
           </div>
@@ -152,47 +140,51 @@ export default function MiniBarRow() {
       )}
 
       {/* ── The mini bar ─────────────────────────────────── */}
+      {/*
+        Layout (LTR, left→right):
+        [⚙radio] [select radio] [▶radio] [●radio]   [vol-radio] | [vol-yt]   [●yt] [▶yt] [select-yt] [⚙yt]
+      */}
       <div className="mini-radio-bar" role="region" aria-label="שורת שידורים">
         <div className="mini-radio-bar__inner">
 
-          {/* LEFT — Israeli radio */}
-          <div className="mini-bar-left-side">
-            <div className="mini-radio-bar__left">
-              <span className={'mini-radio-bar__dot' + (radioPlaying ? ' mini-radio-bar__dot--live' : '')} aria-hidden />
-              <button type="button" className="mini-radio-bar__btn" onClick={toggleRadio}
-                aria-label={radioPlaying ? 'השהה' : 'נגן'}>
-                {radioPlaying ? '⏸' : '▶'}
-              </button>
-            </div>
-            <div className="mini-radio-bar__controls">
-              <input type="range" className="mini-radio-bar__vol" min={0} max={1} step={0.01}
-                value={volume ?? 0.85} onChange={e => setVolume?.(Number(e.target.value))} aria-label="עוצמת שמע רדיו" />
-              <select className="mini-radio-bar__select" value={stationId ?? ''}
-                onChange={e => setStationId?.(e.target.value)} aria-label="תחנת רדיו">
-                {(stations ?? []).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </div>
+          {/* ── Radio gear (far left) ── */}
+          <button type="button" className="mini-radio-bar__btn mini-yt__gear"
+            title="הגדרות רדיו" aria-label="הגדרות רדיו" style={{ opacity: 0.45, cursor: 'default' }}>⚙</button>
+
+          {/* ── Radio: select → play → dot ── */}
+          <select className="mini-radio-bar__select" value={stationId ?? ''}
+            onChange={e => setStationId?.(e.target.value)} aria-label="תחנת רדיו">
+            {(stations ?? []).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+          <button type="button" className="mini-radio-bar__btn" onClick={toggleRadio}
+            aria-label={radioPlaying ? 'השהה' : 'נגן'}>
+            {radioPlaying ? '⏸' : '▶'}
+          </button>
+          <span className={'mini-radio-bar__dot' + (radioPlaying ? ' mini-radio-bar__dot--live' : '')} aria-hidden />
+
+          {/* ── Volume faders — center ── */}
+          <div className="mini-bar-vols">
+            <input type="range" className="mini-radio-bar__vol" min={0} max={1} step={0.01}
+              value={volume ?? 0.85} onChange={e => setVolume?.(Number(e.target.value))} aria-label="עוצמת שמע רדיו" />
             <div className="mini-bar-sep" />
+            <input type="range" className="mini-radio-bar__vol" min={0} max={1} step={0.01}
+              value={ytVolume} onChange={e => setYtVolume(Number(e.target.value))} aria-label="עוצמת שמע יוטיוב" />
           </div>
 
-          {/* RIGHT — YouTube stations */}
-          <div className="mini-yt">
-            <span className={'mini-radio-bar__dot' + (embedUrl ? ' mini-radio-bar__dot--live' : '')} aria-hidden />
-            <button type="button" className="mini-radio-bar__btn" onClick={playYt}
-              aria-label="פתח ביוטיוב" title={embedUrl ? 'פתח בנגן' : 'הזן קישור YouTube'}>
-              ▶
-            </button>
-            <div className="mini-radio-bar__controls">
-              <input type="range" className="mini-radio-bar__vol" min={0} max={1} step={0.01}
-                value={ytVolume} onChange={e => setYtVolume(Number(e.target.value))} aria-label="עוצמת שמע יוטיוב" />
-              <select className="mini-radio-bar__select" value={ytSelectedId}
-                onChange={e => { setYtSelectedId(Number(e.target.value)); }}
-                aria-label="תחנת יוטיוב">
-                {ytStations.map(s => <option key={s.id} value={s.id}>{s.id}. {s.name}</option>)}
-              </select>
-            </div>
-            <button type="button" className="mini-radio-bar__btn mini-yt__gear" onClick={openConfig} title="ערוך תחנות" aria-label="ערוך תחנות יוטיוב">⚙</button>
-          </div>
+          {/* ── YouTube: dot → play → select ── */}
+          <span className={'mini-radio-bar__dot' + (embedUrl ? ' mini-radio-bar__dot--live' : '')} aria-hidden />
+          <button type="button" className="mini-radio-bar__btn" onClick={playYt}
+            aria-label="פתח ביוטיוב" title={embedUrl ? 'פתח בנגן' : 'הזן קישור YouTube'}>
+            ▶
+          </button>
+          <select className="mini-radio-bar__select" value={ytSelectedId}
+            onChange={e => setYtSelectedId(Number(e.target.value))} aria-label="תחנת יוטיוב">
+            {ytStations.map(s => <option key={s.id} value={s.id}>{s.id}. {s.name}</option>)}
+          </select>
+
+          {/* ── YouTube gear (far right) ── */}
+          <button type="button" className="mini-radio-bar__btn mini-yt__gear"
+            onClick={openConfig} title="ערוך תחנות יוטיוב" aria-label="ערוך תחנות יוטיוב">⚙</button>
 
         </div>
       </div>
