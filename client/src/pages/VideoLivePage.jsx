@@ -160,13 +160,13 @@ function HLSPlayer({ src, channelName }) {
           }}
         >
           <div style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
             background: 'rgba(0,0,0,0.72)', border: '1.5px solid rgba(251,191,36,0.55)',
-            borderRadius: 14, padding: '18px 28px', backdropFilter: 'blur(6px)',
+            borderRadius: 9, padding: '9px 14px', backdropFilter: 'blur(6px)',
           }}>
-            <span style={{ fontSize: '2.2rem' }}>🔇</span>
-            <span style={{ fontSize: '0.95rem', fontWeight: 900, color: '#fbbf24' }}>לחץ להפעלת סאונד</span>
-            <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>הדפדפן דורש אישור ראשוני</span>
+            <span style={{ fontSize: '1.1rem' }}>🔇</span>
+            <span style={{ fontSize: '0.48rem', fontWeight: 900, color: '#fbbf24' }}>לחץ להפעלת סאונד</span>
+            <span style={{ fontSize: '0.35rem', color: '#94a3b8' }}>הדפדפן דורש אישור ראשוני</span>
           </div>
         </div>
       )}
