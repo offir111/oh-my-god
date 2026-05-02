@@ -177,7 +177,6 @@ export default function MiniBarRow() {
 
           {/* RIGHT — YouTube stations */}
           <div className="mini-yt">
-            <span className="mini-yt__label">📺</span>
             <span className={'mini-radio-bar__dot' + (embedUrl ? ' mini-radio-bar__dot--live' : '')} aria-hidden />
             <button type="button" className="mini-radio-bar__btn" onClick={playYt}
               aria-label="פתח ביוטיוב" title={embedUrl ? 'פתח בנגן' : 'הזן קישור YouTube'}>
