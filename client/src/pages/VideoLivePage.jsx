@@ -20,16 +20,16 @@ const IL_CHANNELS = [
     hlsUrl: 'https://mabatlive.media.kan.org.il/hls/live/2024516/kan_mabatlive/master.m3u8',
   },
   {
-    id: 'i24heb', name: 'i24 NEWS עברית', flag: '🇮🇱',
-    hlsUrl: 'https://bcovlive-a.akamaihd.net/d89ede8094c741b7924120b27764153c/eu-central-1/5377161796001/profile_0/chunklist.m3u8',
-  },
-  {
     id: 'ch13', name: 'ערוץ 13', flag: '🇮🇱',
     hlsUrl: 'https://d2xg1g9o5vns8m.cloudfront.net/out/v1/0855d703f7d5436fae6a9c7ce8ca5075/index.m3u8',
   },
   {
     id: 'ch14', name: 'ערוץ 14', flag: '🇮🇱',
     hlsUrl: 'https://r.il.cdn-redge.media/livehls/oil/ch14/live/ch14/live.livx/playlist.m3u8',
+  },
+  {
+    id: 'i24heb', name: 'i24 NEWS עברית', flag: '🇮🇱',
+    hlsUrl: 'https://bcovlive-a.akamaihd.net/d89ede8094c741b7924120b27764153c/eu-central-1/5377161796001/profile_0/chunklist.m3u8',
   },
   {
     id: 'hidabroot', name: 'הידברות', flag: '🇮🇱',
