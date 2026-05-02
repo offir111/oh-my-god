@@ -143,7 +143,9 @@ app.get('/api/tv-proxy', async (req, res) => {
       const text = await upstream.text();
       // base URL for resolving relative paths inside the manifest
       const baseUrl = raw.substring(0, raw.lastIndexOf('/') + 1);
-      const selfProxyBase = `${req.protocol}://${req.get('host')}/api/tv-proxy?url=`;
+      // x-forwarded-proto is set to 'https' by Railway's edge; req.protocol is 'http' internally
+      const proto = (req.get('x-forwarded-proto') || '').split(',')[0].trim() || req.protocol;
+      const selfProxyBase = `${proto}://${req.get('host')}/api/tv-proxy?url=`;
 
       const rewritten = text.split('\n').map(line => {
         const t = line.trim();
