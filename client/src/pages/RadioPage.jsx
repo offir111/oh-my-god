@@ -4,9 +4,9 @@ import { useAppStore } from '../store/appStore.js';
 import { useRadioAudioElement, useRadioState, proxyUrl } from '../context/RadioAudioContext.jsx';
 
 export default function RadioPage() {
-  const navigate    = useNavigate();
+  const navigate = useNavigate();
   const audioEl     = useRadioAudioElement();
-  const { stationId, setStationId, stations, volume, setVolume, apiLoading } = useRadioState() ?? {};
+  const { stationId, setStationId, stations, volume, setVolume, apiLoading, setRadioActive } = useRadioState() ?? {};
   const playGenRef  = useRef(0);
   const [playing,        setPlaying]        = useState(false);
   const [streamError,    setStreamError]    = useState('');
@@ -86,6 +86,10 @@ export default function RadioPage() {
 
   function closeRadioPanel() {
     setRadioPanelOpen(false);
+    if (audioEl) {
+      audioEl.pause();
+      setRadioActive?.(false);
+    }
     const sessionUser = useAppStore.getState().user;
     const hasFullSession =
       Boolean(sessionUser?.username) &&
@@ -140,7 +144,7 @@ export default function RadioPage() {
                   <select
                     id="radio-station-select"
                     value={stationId ?? ''}
-                    onChange={e => { setStreamError(''); setStationId(e.target.value); }}
+                    onChange={e => { setStreamError(''); setStationId(e.target.value, { fromUserPick: true }); }}
                   >
                     {(stations ?? []).map(s => (
                       <option key={s.id} value={s.id}>{s.name}</option>

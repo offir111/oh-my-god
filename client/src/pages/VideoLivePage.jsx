@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Hls from 'hls.js';
 import { useAppStore } from '../store/appStore.js';
 import { getApiBaseUrl } from '../lib/apiBaseUrl.js';
@@ -283,6 +284,7 @@ export default function VideoLivePage() {
   const ytTvUrl     = useAppStore(s => s.ytTvUrl);
   const setYtTvUrl  = useAppStore(s => s.setYtTvUrl);
   const username    = user?.username || pendingUser?.username || '';
+  const [searchParams] = useSearchParams();
 
   const [activeCh, setActiveCh] = useState(() => IL_CHANNELS.find(c => c.id === 'hidabroot') ?? IL_CHANNELS[0]);
   const [muted, setMuted] = useState(true);
@@ -290,6 +292,17 @@ export default function VideoLivePage() {
 
   const playerWrapRef = useRef(null);
   const [sidebarMaxH, setSidebarMaxH] = useState(null);
+
+  const focusYoutube = searchParams.get('focus') === 'youtube';
+  useLayoutEffect(() => {
+    if (!focusYoutube && !ytTvUrl) return;
+    const el = document.getElementById('video-live-youtube-anchor');
+    if (!el) return;
+    const t = window.setTimeout(() => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 60);
+    return () => clearTimeout(t);
+  }, [focusYoutube, ytTvUrl]);
 
   useEffect(() => {
     const el = playerWrapRef.current;
@@ -342,7 +355,7 @@ export default function VideoLivePage() {
       <div className="tv-layout">
 
         {/* ── Player ── */}
-        <div className="tv-player-wrap" ref={playerWrapRef}>
+        <div className="tv-player-wrap" id="video-live-youtube-anchor" ref={playerWrapRef}>
           <div className="tv-player-screen">
             {ytTvUrl ? (
               <iframe

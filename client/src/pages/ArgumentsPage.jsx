@@ -2,6 +2,7 @@ import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/appStore.js';
 import { BiblePanel } from '../components/ui/BibleModal.jsx';
+import PageOverviewLink from '../components/ui/PageOverviewLink.jsx';
 
 /** כפתור ניווט במאגר ידע — לא קטגוריית טענות; לפני קטגוריית «דעת אמת» (שמאל ב־RTL) */
 const LEADERBOARD_NAV_LABEL = 'נושאים מובילים';
@@ -577,6 +578,7 @@ function EvolutionTreePanel() {
           />
         </button>
         <div className="evolution-image-caption">
+          <PageOverviewLink className="evolution-caption-overview" title="סקירת העמוד — מאגר ידע" />
           עץ החיים האבולוציוני — לחץ לתצוגה מלאה וגלילה (איכות מקורית)
           <span className="evolution-image-credit">מקור: UsefulCharts.com</span>
         </div>
@@ -1643,6 +1645,20 @@ export default function ArgumentsPage({
           line-height: 1.42;
           letter-spacing: 0.01em;
         }
+        .evolution-caption-overview {
+          position: absolute;
+          inset-inline-end: 12px;
+          top: 50%;
+          transform: translateY(-50%);
+        }
+        @media (max-width: 520px) {
+          .evolution-caption-overview {
+            position: static;
+            transform: none;
+            display: flex;
+            margin: 0 auto 10px;
+          }
+        }
         .evolution-image-credit {
           position: absolute;
           left: 16px;
@@ -1886,6 +1902,17 @@ export default function ArgumentsPage({
         .editors-top-center h1 {
           margin-bottom: 5px;
         }
+        .editors-toggle-row {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          flex-wrap: wrap;
+          margin-bottom: 8px;
+        }
+        .editors-toggle-row .editors-toggle {
+          margin: 0;
+        }
         .editors-toggle {
           display: inline-flex;
           align-items: center;
@@ -2037,16 +2064,19 @@ export default function ArgumentsPage({
                 </div>
               )}
               <div className="editors-top-center">
-                <h1>{title}</h1>
-                <button
-                  type="button"
-                  className="editors-toggle"
-                  onClick={() => setEditorsOpen(open => !open)}
-                  aria-expanded={editorsOpen}
-                >
-                  עורכים מורשים
-                  <span className="editors-toggle-arrow">{editorsOpen ? '▲' : '▼'}</span>
-                </button>
+                <h1 id="page-overview">{title}</h1>
+                <div className="editors-toggle-row">
+                  <button
+                    type="button"
+                    className="editors-toggle"
+                    onClick={() => setEditorsOpen(open => !open)}
+                    aria-expanded={editorsOpen}
+                  >
+                    עורכים מורשים
+                    <span className="editors-toggle-arrow">{editorsOpen ? '▲' : '▼'}</span>
+                  </button>
+                  <PageOverviewLink title="סקירת העמוד — מאגר ידע" />
+                </div>
                 <p>{subtitle}</p>
                 {renderSearchRow()}
                 {showKnowledgeAiAssistant && renderKnowledgeAiSlot()}
@@ -2066,7 +2096,7 @@ export default function ArgumentsPage({
           )}
           {editorsPlacement !== 'top' && (
             <>
-              <h1>{title}</h1>
+              <h1 id="page-overview">{title}</h1>
               <p>{subtitle}</p>
               {renderSearchRow()}
               {showKnowledgeAiAssistant && renderKnowledgeAiSlot()}

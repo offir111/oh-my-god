@@ -1,65 +1,52 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useAppStore } from '../../store/appStore.js';
 import { useRadioState } from '../../context/RadioAudioContext.jsx';
+import {
+  readYtStations,
+  saveYtStations,
+  ytEmbedUrl,
+  readYtSelectedStationId,
+  writeYtSelectedStationId,
+} from '../../lib/ytStationsLocal.js';
 
-/* ─── YouTube helpers ─────────────────────────────── */
-const LS_YT = 'omg_yt_stations_v1';
-const DEFAULT_YT = [
-  { id: 1,  name: 'הקו האתאיסטי',  url: '' },
-  { id: 2,  name: 'אמנון יצחק',    url: '' },
-  { id: 3,  name: 'הרב זמיר כהן',  url: '' },
-  { id: 4,  name: 'שידור 4',        url: '' },
-  { id: 5,  name: 'שידור 5',        url: '' },
-  { id: 6,  name: 'שידור 6',        url: '' },
-  { id: 7,  name: 'שידור 7',        url: '' },
-  { id: 8,  name: 'שידור 8',        url: '' },
-  { id: 9,  name: 'שידור 9',        url: '' },
-  { id: 10, name: 'שידור 10',       url: '' },
-];
-
-function readYtStations() {
-  try { const r = localStorage.getItem(LS_YT); if (r) return JSON.parse(r); } catch {}
-  return DEFAULT_YT;
-}
-function saveYtStations(list) {
-  try { localStorage.setItem(LS_YT, JSON.stringify(list)); } catch {}
-}
-function ytEmbedUrl(raw) {
-  if (!raw?.trim()) return null;
-  try {
-    const u = new URL(raw.trim());
-    if (u.hostname === 'youtu.be') return `https://www.youtube.com/embed${u.pathname}?autoplay=1&enablejsapi=1`;
-    const v = u.searchParams.get('v');
-    if (v) return `https://www.youtube.com/embed/${v}?autoplay=1&enablejsapi=1`;
-    const parts = u.pathname.split('/').filter(Boolean);
-    if (parts[0] === 'live' && parts[1]) return `https://www.youtube.com/embed/${parts[1]}?autoplay=1&enablejsapi=1`;
-    if (parts[0] === 'channel' && parts[1]?.startsWith('UC'))
-      return `https://www.youtube.com/embed/live_stream?channel=${parts[1]}&autoplay=1&enablejsapi=1`;
-  } catch {}
-  return null;
-}
-
-/* ─── Component ───────────────────────────────────── */
+/* ─── Component — שורת נגן אחת; רדיו או YouTube לפי miniMediaBarFocus (מהתפריט) —─ */
 export default function MiniBarRow() {
-  const user        = useAppStore(s => s.user);
-  const pendingUser = useAppStore(s => s.pendingUser);
-  const setYtTvUrl  = useAppStore(s => s.setYtTvUrl);
-  const isLoggedIn  = Boolean(user || pendingUser);
-  const navigate    = useNavigate();
+  const user               = useAppStore(s => s.user);
+  const pendingUser        = useAppStore(s => s.pendingUser);
+  const ytTvUrl            = useAppStore(s => s.ytTvUrl);
+  const setYtTvUrl         = useAppStore(s => s.setYtTvUrl);
+  const miniMediaBarOpen   = useAppStore(s => s.miniMediaBarOpen);
+  const miniMediaBarFocus  = useAppStore(s => s.miniMediaBarFocus);
+  const miniMediaBarPlayOnOpen = useAppStore(s => s.miniMediaBarPlayOnOpen);
+  const closeMiniMediaBar  = useAppStore(s => s.closeMiniMediaBar);
+  const isLoggedIn         = Boolean(user || pendingUser);
 
   /* radio */
-  const { audioEl, setRadioActive, stationId, setStationId, stations, volume, setVolume } = useRadioState() ?? {};
+  const {
+    audioEl,
+    setRadioActive,
+    stationId,
+    setStationId,
+    stations,
+    volume,
+    setVolume,
+    pauseRadioPlayback,
+    resetRadioPlayback,
+  } = useRadioState() ?? {};
   const [radioPlaying, setRadioPlaying] = useState(false);
 
-  /* shared volume */
-  const [sharedVol, setSharedVol] = useState(0.85);
+  /* משותף לרדיו וליוטיוב — מסונכרן עם volume מהקונטקסט */
+  const [sharedVol, setSharedVol] = useState(() => volume ?? 0.85);
 
   /* youtube */
-  const [ytStations,   setYtStationsState] = useState(readYtStations);
-  const [ytSelectedId, setYtSelectedId]   = useState(1);
-  const [configOpen,   setConfigOpen]      = useState(false);
-  const [draft,        setDraft]           = useState(null);
+  const [ytStations, setYtStationsState] = useState(readYtStations);
+  const [ytSelectedId, setYtSelectedId] = useState(() => {
+    const id = readYtSelectedStationId();
+    const list = readYtStations();
+    return list.some(s => s.id === id) ? id : 1;
+  });
+  const [configOpen, setConfigOpen] = useState(false);
+  const [draft, setDraft] = useState(null);
 
   /* ── sync radio playing state ── */
   useEffect(() => {
@@ -72,33 +59,90 @@ export default function MiniBarRow() {
     return () => { audioEl.removeEventListener('play', on); audioEl.removeEventListener('pause', off); };
   }, [audioEl]);
 
-  /* ── stop everything on logout ── */
   useEffect(() => {
-    if (!isLoggedIn) {
-      if (audioEl) { audioEl.pause(); audioEl.src = ''; audioEl.removeAttribute('data-radio-src'); }
-      setRadioActive?.(false);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoggedIn]);
+    if (volume != null && Number.isFinite(volume)) setSharedVol(volume);
+  }, [volume]);
 
-  /* ── #root padding ── */
+  /* ── עצירה + ניקוי זרם רק בהתנתקות — לא בסגירת שורת המיני (✕) ── */
+  useEffect(() => {
+    if (!isLoggedIn) resetRadioPlayback?.();
+  }, [isLoggedIn, resetRadioPlayback]);
+
+  /* ── #root padding (רק כשהבר גלוי) ── */
   useEffect(() => {
     const root = document.getElementById('root');
     if (!root) return;
-    root.classList.toggle('radio-bar-shown', isLoggedIn);
+    root.classList.toggle('radio-bar-shown', isLoggedIn && miniMediaBarOpen);
     return () => root.classList.remove('radio-bar-shown');
-  }, [isLoggedIn]);
+  }, [isLoggedIn, miniMediaBarOpen]);
+
+  /* ── גלילה למקטע הרלוונטי אחרי פתיחה מהתפריט (רדיו / יוטיוב) ── */
+  useEffect(() => {
+    if (!miniMediaBarOpen || !miniMediaBarFocus) return;
+    const id = miniMediaBarFocus === 'radio' ? 'mini-media-bar-radio' : 'mini-media-bar-youtube';
+    const el = document.getElementById(id);
+    if (!el) return;
+    const t = requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      const focusable =
+        el.querySelector('select')
+        ?? el.querySelector('button.mini-radio-bar__btn:not(.mini-radio-bar__close)');
+      focusable?.focus?.({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(t);
+  }, [miniMediaBarOpen, miniMediaBarFocus]);
+
+  const openConfig = useCallback(() => {
+    setDraft(ytStations.map(s => ({ ...s })));
+    setConfigOpen(true);
+  }, [ytStations]);
+
+  /* פתיחת הרדיו/יוטיוב מהתפריט עם { play: true } — מפעיל את התחנה הנבחרת באותו נגן */
+  useEffect(() => {
+    if (!miniMediaBarOpen || !miniMediaBarPlayOnOpen) return;
+    const kind = miniMediaBarPlayOnOpen;
+    if (kind === 'radio') {
+      if (!audioEl) return;
+      useAppStore.setState({ miniMediaBarPlayOnOpen: null });
+      setYtTvUrl(null);
+      audioEl.play().catch(() => {});
+      setRadioActive?.(true);
+      return;
+    }
+    if (kind === 'youtube') {
+      useAppStore.setState({ miniMediaBarPlayOnOpen: null });
+      pauseRadioPlayback?.();
+      const y = ytStations.find(s => s.id === ytSelectedId) ?? ytStations[0];
+      const url = y ? ytEmbedUrl(y.url) : null;
+      if (!url) {
+        openConfig();
+        return;
+      }
+      const vol = Math.round(sharedVol * 100);
+      setYtTvUrl(url.replace('?autoplay=1', `?autoplay=1&volume=${vol}`));
+    }
+  }, [
+    miniMediaBarOpen,
+    miniMediaBarPlayOnOpen,
+    audioEl,
+    pauseRadioPlayback,
+    ytStations,
+    ytSelectedId,
+    sharedVol,
+    setYtTvUrl,
+    setRadioActive,
+    openConfig,
+  ]);
 
   if (!isLoggedIn) return null;
+  if (!miniMediaBarOpen) return null;
 
-  /* ── radio actions ── */
   const toggleRadio = () => {
     if (!audioEl) return;
     if (audioEl.paused) { audioEl.play().catch(() => {}); setRadioActive?.(true); }
     else { audioEl.pause(); }
   };
 
-  /* ── youtube actions ── */
   const activeYt = ytStations.find(s => s.id === ytSelectedId) ?? ytStations[0];
   const embedUrl = activeYt ? ytEmbedUrl(activeYt.url) : null;
 
@@ -108,13 +152,20 @@ export default function MiniBarRow() {
   };
 
   const playYt = () => {
+    pauseRadioPlayback?.();
     if (!embedUrl) { openConfig(); return; }
     const vol = Math.round(sharedVol * 100);
     setYtTvUrl(embedUrl.replace('?autoplay=1', `?autoplay=1&volume=${vol}`));
-    navigate('/video-live');
   };
 
-  const openConfig = () => { setDraft(ytStations.map(s => ({ ...s }))); setConfigOpen(true); };
+  const toggleYoutubePlayback = () => {
+    if (ytTvUrl) {
+      setYtTvUrl(null);
+      return;
+    }
+    playYt();
+  };
+
   const saveConfig = () => {
     saveYtStations(draft);
     setYtStationsState(draft);
@@ -122,9 +173,19 @@ export default function MiniBarRow() {
     setDraft(null);
   };
 
+  const closeBar = () => {
+    setConfigOpen(false);
+    setDraft(null);
+    pauseRadioPlayback?.();
+    setYtTvUrl(null);
+    closeMiniMediaBar();
+  };
+
+  const ytPlaying = Boolean(ytTvUrl);
+  const playerMode = miniMediaBarFocus === 'youtube' ? 'youtube' : 'radio';
+
   return (
     <>
-      {/* ── Config panel ─────────────────────────────────── */}
       {configOpen && draft && (
         <div className="yt-config">
           <div className="yt-config__head">
@@ -146,50 +207,95 @@ export default function MiniBarRow() {
         </div>
       )}
 
-      {/* ── The mini bar ─────────────────────────────────── */}
-      {/*
-        Layout (LTR, left→right):
-        [⚙radio] [select radio] [▶radio] [●radio]   [vol-radio] | [vol-yt]   [●yt] [▶yt] [select-yt] [⚙yt]
-      */}
-      <div className="mini-radio-bar" role="region" aria-label="שורת שידורים">
-        <div className="mini-radio-bar__inner">
+      <div className="mini-media-dock" role="region" aria-label="נגן">
+        <div className="mini-media-dock__strip">
+          <div
+            className={
+              'mini-radio-bar__inner mini-radio-bar__inner--radio-only'
+              + (playerMode === 'youtube' ? ' mini-radio-bar__inner--youtube-row' : '')
+            }
+          >
+            <button
+              type="button"
+              className="mini-radio-bar__btn mini-radio-bar__close"
+              title="סגור"
+              aria-label="סגור שורת הנגן"
+              onClick={closeBar}
+            >
+              ✕
+            </button>
 
-          {/* ── Radio gear (far left) ── */}
-          <button type="button" className="mini-radio-bar__btn mini-yt__gear"
-            title="הגדרות רדיו" aria-label="הגדרות רדיו" style={{ opacity: 0.45, cursor: 'default' }}>⚙</button>
-
-          {/* ── Radio: select → play → dot ── */}
-          <select className="mini-radio-bar__select" value={stationId ?? ''}
-            onChange={e => setStationId?.(e.target.value)} aria-label="תחנת רדיו">
-            {(stations ?? []).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-          <button type="button" className="mini-radio-bar__btn" onClick={toggleRadio}
-            aria-label={radioPlaying ? 'השהה' : 'נגן'}>
-            {radioPlaying ? '⏸' : '▶'}
-          </button>
-          <span className={'mini-radio-bar__dot' + (radioPlaying ? ' mini-radio-bar__dot--live' : '')} aria-hidden />
-
-          {/* ── Single shared volume fader — center ── */}
-          <div className="mini-bar-vols">
-            <input type="range" className="mini-radio-bar__vol mini-radio-bar__vol--shared" min={0} max={1} step={0.01}
-              value={sharedVol} onChange={e => handleVol(Number(e.target.value))} aria-label="עוצמת שמע" />
+            {playerMode === 'radio' ? (
+              <>
+                <div id="mini-media-bar-radio" className="mini-radio-bar__segment mini-media-bar__segment--focus">
+                  <select className="mini-radio-bar__select" value={stationId ?? ''}
+                    onChange={e => setStationId?.(e.target.value, { fromUserPick: true })} aria-label="תחנת רדיו">
+                    {(stations ?? []).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                  <button type="button" className="mini-radio-bar__btn" onClick={toggleRadio}
+                    aria-label={radioPlaying ? 'השהה' : 'נגן'}>
+                    {radioPlaying ? '⏸' : '▶'}
+                  </button>
+                  <span className={'mini-radio-bar__dot' + (radioPlaying ? ' mini-radio-bar__dot--live' : '')} aria-hidden />
+                </div>
+                <div className="mini-bar-vols">
+                  <input type="range" className="mini-radio-bar__vol mini-radio-bar__vol--shared" min={0} max={1} step={0.01}
+                    value={sharedVol} onChange={e => handleVol(Number(e.target.value))} aria-label="עוצמת שמע" />
+                </div>
+              </>
+            ) : (
+              <>
+                <div id="mini-media-bar-youtube" className="mini-radio-bar__segment mini-media-bar__segment--focus">
+                  <select
+                    className="mini-radio-bar__select"
+                    value={ytSelectedId}
+                    onChange={e => {
+                      const n = Number(e.target.value);
+                      setYtSelectedId(n);
+                      writeYtSelectedStationId(n);
+                      setYtTvUrl(null);
+                    }}
+                    aria-label="תחנת יוטיוב"
+                  >
+                    {ytStations.map(s => <option key={s.id} value={s.id}>{s.id}. {s.name}</option>)}
+                  </select>
+                  <button
+                    type="button"
+                    className="mini-radio-bar__btn"
+                    onClick={toggleYoutubePlayback}
+                    aria-label={ytPlaying ? 'כבה ניגון יוטיוב' : 'הפעל ניגון יוטיוב'}
+                    title={ytPlaying ? 'כבה' : (embedUrl ? 'הפעל' : 'הזן קישור YouTube')}
+                  >
+                    {ytPlaying ? '⏸' : '▶'}
+                  </button>
+                  <span className={'mini-radio-bar__dot' + (ytPlaying ? ' mini-radio-bar__dot--live' : '')} aria-hidden />
+                </div>
+                <div className="mini-yt-vol-gear">
+                  <div className="mini-bar-vols">
+                    <input
+                      type="range"
+                      className="mini-radio-bar__vol mini-radio-bar__vol--shared"
+                      min={0}
+                      max={1}
+                      step={0.01}
+                      value={sharedVol}
+                      onChange={e => handleVol(Number(e.target.value))}
+                      aria-label="עוצמת שמע"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="mini-radio-bar__btn mini-yt__gear"
+                    onClick={openConfig}
+                    title="ערוך תחנות יוטיוב"
+                    aria-label="ערוך תחנות יוטיוב"
+                  >
+                    ⚙
+                  </button>
+                </div>
+              </>
+            )}
           </div>
-
-          {/* ── YouTube: dot → play → select ── */}
-          <span className={'mini-radio-bar__dot' + (embedUrl ? ' mini-radio-bar__dot--live' : '')} aria-hidden />
-          <button type="button" className="mini-radio-bar__btn" onClick={playYt}
-            aria-label="פתח ביוטיוב" title={embedUrl ? 'פתח בנגן' : 'הזן קישור YouTube'}>
-            ▶
-          </button>
-          <select className="mini-radio-bar__select" value={ytSelectedId}
-            onChange={e => setYtSelectedId(Number(e.target.value))} aria-label="תחנת יוטיוב">
-            {ytStations.map(s => <option key={s.id} value={s.id}>{s.id}. {s.name}</option>)}
-          </select>
-
-          {/* ── YouTube gear (far right) ── */}
-          <button type="button" className="mini-radio-bar__btn mini-yt__gear"
-            onClick={openConfig} title="ערוך תחנות יוטיוב" aria-label="ערוך תחנות יוטיוב">⚙</button>
-
         </div>
       </div>
     </>

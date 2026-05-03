@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import QuickNavInlineLinks from '../components/layout/QuickNavInlineLinks.jsx';
 import { getApiBaseUrl } from '../lib/apiBaseUrl.js';
+import PageOverviewLink from '../components/ui/PageOverviewLink.jsx';
 
 const CONTACT_EMAIL = 'omgomgo044@gmail.com';
 /** לקישור wa.me */
@@ -274,6 +274,10 @@ function ContactContent() {
           font-weight: 600;
           margin-top: 10px;
           list-style: none;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
         }
         .contact-admin-details summary::-webkit-details-marker { display: none; }
       `}</style>
@@ -320,7 +324,10 @@ function ContactContent() {
 
       {!adminToken ? (
         <details className="contact-admin-details" style={{ marginTop: 4 }}>
-          <summary>כניסת מנהל</summary>
+          <summary>
+            <span>כניסת מנהל</span>
+            <PageOverviewLink title="סקירת העמוד — צור קשר" stopPropagation />
+          </summary>
           <form
             onSubmit={handleAdminLogin}
             style={{
@@ -579,11 +586,13 @@ export default function StaticInfoPage({ pageId }) {
             ← חזרה
           </button>
         </p>
-        <h1 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: 16, letterSpacing: '0.02em' }}>
+        <h1
+          id="page-overview"
+          style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: 16, letterSpacing: '0.02em' }}
+        >
           {isTerms ? 'תקנון שימוש' : c.title}
         </h1>
         {isTerms ? <TermsContent /> : <ContactContent />}
-        <QuickNavInlineLinks style={{ marginTop: 28 }} />
       </div>
     </div>
   );

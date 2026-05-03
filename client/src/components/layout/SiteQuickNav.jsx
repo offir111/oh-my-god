@@ -12,6 +12,8 @@ export default function SiteQuickNav() {
   const debate = useAppStore(s => s.debate);
   const user = useAppStore(s => s.user);
   const pendingUser = useAppStore(s => s.pendingUser);
+  const headerPodcastPanelOpen = useAppStore(s => s.headerPodcastPanelOpen);
+  const toggleHeaderPodcastPanel = useAppStore(s => s.toggleHeaderPodcastPanel);
 
   if (!user && !pendingUser) return null;
 
@@ -88,9 +90,16 @@ export default function SiteQuickNav() {
           <NavLink to="/blog" className={linkClass}>
             בלוגים
           </NavLink>
-          <NavLink to="/podcast" className={linkClass}>
+          <button
+            type="button"
+            className={
+              'site-quick-nav__link'
+              + ((pathname === '/podcast' || headerPodcastPanelOpen) ? ' site-quick-nav__link--active' : '')
+            }
+            onClick={() => toggleHeaderPodcastPanel()}
+          >
             פודקאסט LIVE
-          </NavLink>
+          </button>
           <NavLink to="/video-live" className={linkClass}>
             וידיאו+LIVE TV
           </NavLink>

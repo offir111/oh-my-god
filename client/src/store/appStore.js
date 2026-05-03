@@ -55,8 +55,36 @@ export const useAppStore = create((set) => ({
   spectatorCount: 0,
   streamingMessage: null,
   ytTvUrl: null,
+  /** שורת מיני רדיו+יוטיוב — מוצגת רק אחרי פתיחה מהתפריט */
+  miniMediaBarOpen: false,
+  miniMediaBarFocus: null,
+  /** אחרי openMiniMediaBar(..., { play: true }) — MiniRadioBar מפעיל את התחנה ומאפס */
+  miniMediaBarPlayOnOpen: null,
+  /** פאנל פודקאסט LIVE מתחת לכותרת — נפתח מהתפריט */
+  headerPodcastPanelOpen: false,
 
   setStreamingMessage: (msg) => set({ streamingMessage: msg }),
+  openMiniMediaBar: (focus, opts) =>
+    set({
+      miniMediaBarOpen: true,
+      miniMediaBarFocus: focus === 'youtube' ? 'youtube' : 'radio',
+      miniMediaBarPlayOnOpen:
+        opts?.play === true ? (focus === 'youtube' ? 'youtube' : 'radio') : null,
+    }),
+  /** החלפת מצב בשורת המיני — תמיד רדיו או יוטיוב, לא שניהם */
+  setMiniMediaBarFocus: (focus, opts) =>
+    set({
+      miniMediaBarOpen: true,
+      miniMediaBarFocus: focus === 'youtube' ? 'youtube' : 'radio',
+      miniMediaBarPlayOnOpen:
+        opts?.play === true ? (focus === 'youtube' ? 'youtube' : 'radio') : null,
+    }),
+  closeMiniMediaBar: () =>
+    set({ miniMediaBarOpen: false, miniMediaBarFocus: null, miniMediaBarPlayOnOpen: null }),
+  toggleHeaderPodcastPanel: () =>
+    set(s => ({ headerPodcastPanelOpen: !s.headerPodcastPanelOpen })),
+  openHeaderPodcastPanel: () => set({ headerPodcastPanelOpen: true }),
+  closeHeaderPodcastPanel: () => set({ headerPodcastPanelOpen: false }),
   setYtTvUrl: (url) => set({ ytTvUrl: url }),
   appendStreamingChunk: (chunk) => set(s => ({
     streamingMessage: s.streamingMessage
@@ -69,10 +97,16 @@ export const useAppStore = create((set) => ({
     if (pendingUser) {
       persistPending(pendingUser);
       persistFullUser(null);
-      set({ pendingUser, user: null });
+      set({ pendingUser, user: null, headerPodcastPanelOpen: false });
     } else {
       persistPending(null);
-      set({ pendingUser: null });
+      set({
+        pendingUser: null,
+        miniMediaBarOpen: false,
+        miniMediaBarFocus: null,
+        miniMediaBarPlayOnOpen: null,
+        headerPodcastPanelOpen: false,
+      });
     }
   },
 
@@ -84,7 +118,14 @@ export const useAppStore = create((set) => ({
     } else {
       persistFullUser(null);
       persistPending(null);
-      set({ user: null, pendingUser: null });
+      set({
+        user: null,
+        pendingUser: null,
+        miniMediaBarOpen: false,
+        miniMediaBarFocus: null,
+        miniMediaBarPlayOnOpen: null,
+        headerPodcastPanelOpen: false,
+      });
     }
   },
 

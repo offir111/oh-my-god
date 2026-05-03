@@ -1,18 +1,33 @@
 /**
  * זרמי שידור חי לתחנות מרכזיות בישראל.
  * כל URL הוא זרם Icecast/MP3 ישיר שעובר דרך פרוקסי בשרת.
+ * סדר ברירת מחדל: 100 → 102 ת״א → 102 דרום → רשת ב (95) → רשת ג → גלגלץ → 99 → שאר התחנות.
  */
 export const ISRAELI_RADIO_STATIONS = [
-  // ── 5 תחנות הכי פופולריות ──
   {
-    id: 'glz',
-    name: 'גל"צ (גלי צה"ל)',
-    streamUrl: 'https://glz.streamgates.net/glz_mp3/icecast.audio',
+    id: 'radius100',
+    name: '100FM',
+    streamUrl: 'https://100fm.streamgates.net/100Fm/mp3/icecast.audio',
+  },
+  {
+    id: 'telaviv102',
+    name: 'רדיו תל אביב 102',
+    streamUrl: 'https://102fm.streamgates.net/102fm/mp3/icecast.audio',
+  },
+  {
+    id: 'radio-darom',
+    name: 'רדיו דרום 102',
+    streamUrl: 'https://102.streamgates.net/RadioDaromLevant/mp3/icecast.audio',
   },
   {
     id: 'kan-bet',
     name: 'כאן ב (רשת ב)',
     streamUrl: 'https://radiokan.streamgates.net/kanbet/mp3/icecast.audio',
+  },
+  {
+    id: 'kan-gimmel',
+    name: 'כאן ג (רשת ג)',
+    streamUrl: 'https://kan24.streamgates.net/kangimmel/mp3/icecast.audio',
   },
   {
     id: 'galgalatz',
@@ -25,11 +40,10 @@ export const ISRAELI_RADIO_STATIONS = [
     streamUrl: 'https://eco99fm.streamgates.net/Eco99fm/mp3/icecast.audio',
   },
   {
-    id: 'radius100',
-    name: '100FM',
-    streamUrl: 'https://100fm.streamgates.net/100Fm/mp3/icecast.audio',
+    id: 'glz',
+    name: 'גל"צ (גלי צה"ל)',
+    streamUrl: 'https://glz.streamgates.net/glz_mp3/icecast.audio',
   },
-  // ── תחנות קהל מאמינים ──
   {
     id: 'kol-berama',
     name: 'קול ברמה',
@@ -55,25 +69,9 @@ export const ISRAELI_RADIO_STATIONS = [
     name: 'קול נשמה',
     streamUrl: 'https://kolneshama.streamgates.net/KolNeshama/mp3/icecast.audio',
   },
-  // ── שאר התחנות ──
   {
     id: 'kan-main',
     name: 'כאן — רדיו תוכן עברי',
     streamUrl: 'https://radiokan.streamgates.net/kankan/mp3/icecast.audio',
-  },
-  {
-    id: 'kan-gimmel',
-    name: 'כאן ג (רשת ג)',
-    streamUrl: 'https://kan24.streamgates.net/kangimmel/mp3/icecast.audio',
-  },
-  {
-    id: 'telaviv102',
-    name: 'רדיו תל אביב 102',
-    streamUrl: 'https://102fm.streamgates.net/102fm/mp3/icecast.audio',
-  },
-  {
-    id: 'radio-darom',
-    name: 'רדיו דרום 102',
-    streamUrl: 'https://102.streamgates.net/RadioDaromLevant/mp3/icecast.audio',
   },
 ];

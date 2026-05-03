@@ -1,10 +1,24 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAppStore, rehydrateUserIfNeeded } from '../../store/appStore.js';
 import { disconnectSocket, connectSocket } from '../../socket.js';
 import BibleModal from '../ui/BibleModal.jsx';
 import UserAvatarSlot from '../ui/UserAvatarSlot.jsx';
 import { getCageAvatarDataUrlForDisplayName } from '../../lib/cageUserProfile.js';
+import { HEADER_TICKER_TOPICS } from '../../data/headerTickerTopics.js';
+
+/** חפיפה בין כפתור התפריט לפאנל — מניעת סגירה במעבר עכבר על רווח ריק */
+const MENU_DOCK_BRIDGE_PX = 12;
+/** ~1mm ב־96dpi — הקטנת מלבן התפריט כפי שביקשו */
+const MENU_RECT_SHRINK_1MM_PX = 96 / 25.4;
+/** הורדת התפריט כשנפתח — 3mm מתחת ל־r.bottom+2 (סה״כ מהבקשות) */
+const MENU_DOCK_EXTRA_DOWN_MM_PX = 3 * MENU_RECT_SHRINK_1MM_PX;
+/** הזזה שמאלה — חצי ס״מ + 1mm (ב־96dpi) */
+const MENU_DOCK_SHIFT_LEFT_PX = 0.5 * (96 / 2.54) + MENU_RECT_SHRINK_1MM_PX;
+
+/** כפול מהירות מול טיקר המשפטים (60s ל־50%) — כאן 30s ל־50% מאותו אורך מסלול */
+const HEADER_NAV_MARQUEE_DURATION_S = 30;
 
 const STATS_CACHE_KEY = 'omg_stats_cache';
 function readCachedStats() {
@@ -38,28 +52,38 @@ function cacheStats(stats) {
 export default function AppHeader() {
   const user = useAppStore(s => s.user);
   const pendingUser = useAppStore(s => s.pendingUser);
+  const ytTvUrl = useAppStore(s => s.ytTvUrl);
+  const miniMediaBarOpen = useAppStore(s => s.miniMediaBarOpen);
+  const miniMediaBarFocus = useAppStore(s => s.miniMediaBarFocus);
+  const openMiniMediaBar = useAppStore(s => s.openMiniMediaBar);
+  const headerPodcastPanelOpen = useAppStore(s => s.headerPodcastPanelOpen);
+  const openHeaderPodcastPanel = useAppStore(s => s.openHeaderPodcastPanel);
+  const debate = useAppStore(s => s.debate);
   const setUser = useAppStore(s => s.setUser);
   const setPendingUser = useAppStore(s => s.setPendingUser);
   const resetDebate = useAppStore(s => s.resetDebate);
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  /** מיקום תפריט מצומד לכפתור (מדידת getBoundingClientRect) */
+  const [menuDock, setMenuDock] = useState(null);
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
   const [bibleOpen, setBibleOpen] = useState(false);
   const [stats, setStats] = useState({ registered: 0, online: 0, registeredList: [], onlineList: [] });
   const [profileStats, setProfileStats] = useState(null);
-  const [listOpen, setListOpen] = useState(null); // 'registered' | null — רשומים רק למנהל
   const [onlineModalOpen, setOnlineModalOpen] = useState(false);
   const menuRef = useRef();
-  const listRef = useRef();
+  const menuPortalRef = useRef(null);
+  const menuHoverCloseTimerRef = useRef(null);
+  const hoverMenuOpenTimerRef = useRef(null);
+  /** סנכרון ל־openMenuFromHover בלי סגירה של stale state */
+  const menuOpenRef = useRef(false);
+  /**
+   * נפתח מ־hover: לחיצה ראשונה על הכפתור לא סוגרת (רק מבטלת את הדגל), השנייה סוגרת.
+   * נפתח בלחיצה מהמצב סגור: הדגל כבוי — לחיצה הבאה סוגרת כרגיל.
+   */
+  const menuFirstCloseClickSuppressedRef = useRef(false);
   const avatarWrapRef = useRef();
-
-  const statsAdminUsername = (import.meta.env.VITE_STATS_ADMIN_USERNAME || '').trim().toLowerCase();
-  const userNorm = String(user?.username || '').trim().toLowerCase();
-  /** מנהל OMG (שם שמור בשרת) או משתמש שהוגדר ב־VITE_STATS_ADMIN_USERNAME */
-  const canSeeRegistered =
-    userNorm === 'omg' ||
-    Boolean(statsAdminUsername && userNorm === statsAdminUsername);
 
   // Show green avatar also when registered but not yet in debate
   const activeUser = user || pendingUser;
@@ -106,20 +130,114 @@ export default function AppHeader() {
     return () => clearInterval(t);
   }, [loadStats]);
 
+  function clearMenuHoverTimer() {
+    if (menuHoverCloseTimerRef.current != null) {
+      clearTimeout(menuHoverCloseTimerRef.current);
+      menuHoverCloseTimerRef.current = null;
+    }
+  }
+
+  function cancelHoverMenuOpenTimer() {
+    if (hoverMenuOpenTimerRef.current != null) {
+      clearTimeout(hoverMenuOpenTimerRef.current);
+      hoverMenuOpenTimerRef.current = null;
+    }
+  }
+
+  const updateMenuDock = useCallback(() => {
+    const wrap = menuRef.current;
+    if (!wrap || typeof window === 'undefined') return;
+    const r = wrap.getBoundingClientRect();
+    const margin = 8;
+    const vw = window.innerWidth;
+    const vwUsable = vw - margin * 2;
+    const width = Math.max(240, Math.round(Math.min(430 - MENU_RECT_SHRINK_1MM_PX, Math.max(240, vwUsable))));
+    /* פתיחה מימין לכפתור: קצה שמאל של התפריט אחרי הכפתור, מתפרס לתוך העמוד (לא שמאלה ממנו) */
+    const gapPx = 4;
+    let left = Math.round(r.right + gapPx - MENU_DOCK_SHIFT_LEFT_PX);
+    left = Math.max(margin, Math.min(left, vw - width - margin));
+    /* מתחת לכפתור + הורדה ב־mm */
+    setMenuDock({
+      top: Math.round(r.bottom + 2 + MENU_DOCK_EXTRA_DOWN_MM_PX),
+      left,
+      width,
+      bridgePx: MENU_DOCK_BRIDGE_PX,
+    });
+  }, []);
+
+  /** פתיחה מעוכבת — לחיצה מהירה על הכפתור מספיקה לפתוח בלי «לחיצה ראשונה לא סוגרת» */
+  const HOVER_MENU_OPEN_MS = 280;
+
+  function openMenuFromHover() {
+    clearMenuHoverTimer();
+    if (menuOpenRef.current) return;
+    cancelHoverMenuOpenTimer();
+    hoverMenuOpenTimerRef.current = window.setTimeout(() => {
+      hoverMenuOpenTimerRef.current = null;
+      if (!menuOpenRef.current) {
+        menuFirstCloseClickSuppressedRef.current = true;
+        updateMenuDock();
+        setMenuOpen(true);
+      }
+    }, HOVER_MENU_OPEN_MS);
+  }
+
+  function scheduleCloseMenuFromHover() {
+    clearMenuHoverTimer();
+    cancelHoverMenuOpenTimer();
+    menuHoverCloseTimerRef.current = window.setTimeout(() => {
+      menuHoverCloseTimerRef.current = null;
+      setMenuOpen(false);
+    }, 520);
+  }
+
   useEffect(() => {
     function handleClick(e) {
-      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
-      if (listRef.current && !listRef.current.contains(e.target)) setListOpen(null);
-      if (avatarWrapRef.current && !avatarWrapRef.current.contains(e.target)) setAvatarMenuOpen(false);
+      const t = e.target;
+      if (!menuRef.current?.contains(t) && !menuPortalRef.current?.contains(t)) {
+        clearMenuHoverTimer();
+        cancelHoverMenuOpenTimer();
+        setMenuOpen(false);
+      }
+      if (avatarWrapRef.current && !avatarWrapRef.current.contains(t)) setAvatarMenuOpen(false);
     }
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
   useEffect(() => {
+    menuOpenRef.current = menuOpen;
+    if (!menuOpen) {
+      menuFirstCloseClickSuppressedRef.current = false;
+      cancelHoverMenuOpenTimer();
+    }
+  }, [menuOpen]);
+
+  useLayoutEffect(() => {
+    if (!menuOpen) {
+      setMenuDock(null);
+      return;
+    }
+    updateMenuDock();
+    window.addEventListener('resize', updateMenuDock);
+    return () => {
+      window.removeEventListener('resize', updateMenuDock);
+    };
+  }, [menuOpen, updateMenuDock]);
+
+  useEffect(() => () => {
+    clearMenuHoverTimer();
+    cancelHoverMenuOpenTimer();
+  }, []);
+
+  useEffect(() => {
     if (!menuOpen) return;
     function onKey(e) {
-      if (e.key === 'Escape') setMenuOpen(false);
+      if (e.key === 'Escape') {
+        clearMenuHoverTimer();
+        cancelHoverMenuOpenTimer();
+        setMenuOpen(false);
+      }
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -133,10 +251,6 @@ export default function AppHeader() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onlineModalOpen]);
-
-  useEffect(() => {
-    if (!canSeeRegistered) setListOpen(null);
-  }, [canSeeRegistered]);
 
   useEffect(() => {
     if (!avatarMenuOpen) return;
@@ -184,6 +298,9 @@ export default function AppHeader() {
 
   /** התנתקות מלאה — רק מתפריט העיגול */
   function fullLogout() {
+    clearMenuHoverTimer();
+    cancelHoverMenuOpenTimer();
+    setMenuOpen(false);
     disconnectSocket();
     setUser(null);
     resetDebate();
@@ -192,6 +309,9 @@ export default function AppHeader() {
   }
 
   function abortPendingRegistration() {
+    clearMenuHoverTimer();
+    cancelHoverMenuOpenTimer();
+    setMenuOpen(false);
     setPendingUser(null);
     setAvatarMenuOpen(false);
     navigate('/login');
@@ -202,8 +322,9 @@ export default function AppHeader() {
    * מתעדכן בראוטר גם בלי מעבר ל־URL אחר לפעמים — נשמר תאום עם LoginPage.
    */
   function goAppHome() {
+    clearMenuHoverTimer();
+    cancelHoverMenuOpenTimer();
     setMenuOpen(false);
-    setListOpen(null);
     setOnlineModalOpen(false);
     setAvatarMenuOpen(false);
 
@@ -234,28 +355,362 @@ export default function AppHeader() {
     ? (nick.length <= 5 ? nick : nick.charAt(0))
     : null;
 
+  /** כמו SiteQuickNav — סדר עמודות: מילוי עמודה ימין ואז שמאל (grid-auto-flow: column) */
+  const headerGridNavItems = useMemo(() => {
+    const { pathname, hash, search } = location;
+    const sp = new URLSearchParams(search);
+    const chatActive = pathname === '/faith' && (hash === '#chat' || hash === '');
+    const faithDedActive = pathname === '/faith' && hash === '#rabbi';
+    const aiNavActive =
+      (pathname === '/lobby' && sp.get('ai') === '1') ||
+      (Boolean(debate?.isAI) && debate?.id && pathname === `/debate/${debate.id}`);
+    const hasFullSession =
+      Boolean(user?.username) && (user.side === 'believer' || user.side === 'atheist');
+    const homePath = hasFullSession ? '/login?logo=nav' : '/login';
+    const homeActive = pathname === '/login';
+
+    return [
+      { key: 'chat', label: 'צ׳אט', to: '/faith#chat', active: chatActive, kind: 'link' },
+      { key: 'know', label: 'מאגר ידע', to: '/knowledge', active: pathname === '/knowledge', kind: 'link' },
+      { key: 'faith', label: 'דת', to: '/faith#rabbi', active: faithDedActive, kind: 'link' },
+      {
+        key: 'ai',
+        label: 'AI',
+        to: '/lobby?ai=1',
+        active: aiNavActive,
+        kind: !user && pendingUser?.username ? 'ai-pending' : 'link',
+      },
+      { key: 'live', label: 'רב VS מדען', to: '/live-events', active: pathname === '/live-events', kind: 'link' },
+      { key: 'home', label: 'דף הבית', to: homePath, active: homeActive, kind: 'link' },
+      { key: 'blog', label: 'בלוגים', to: '/blog', active: pathname === '/blog', kind: 'link' },
+      {
+        key: 'pod',
+        label: 'פודקאסט LIVE',
+        to: '/podcast',
+        active: pathname === '/podcast' || headerPodcastPanelOpen,
+        kind: 'podcast-toggle',
+      },
+      {
+        key: 'vid',
+        label: 'וידיאו+LIVE TV',
+        to: '/video-live',
+        active: pathname === '/video-live' && !ytTvUrl,
+        kind: 'link',
+      },
+      { key: 'ph', label: 'תמונות', to: '/photos', active: pathname === '/photos', kind: 'link' },
+    ];
+  }, [
+    location.pathname,
+    location.hash,
+    location.search,
+    user,
+    pendingUser,
+    debate?.id,
+    debate?.isAI,
+    ytTvUrl,
+    headerPodcastPanelOpen,
+  ]);
+
+  const menuRadioSectionActive =
+    (miniMediaBarOpen && miniMediaBarFocus === 'radio') || location.pathname === '/radio';
+  const menuYtSectionActive =
+    (miniMediaBarOpen && miniMediaBarFocus === 'youtube') ||
+    (location.pathname === '/video-live' && Boolean(ytTvUrl));
+  const menuProfileCellActive = location.pathname.startsWith('/profile/');
+  const menuRegisteredActive = location.pathname === '/registered';
+  const profileMenuPath = canOpenHeaderProfile
+    ? `/profile/${encodeURIComponent(profileNavUsername)}`
+    : null;
+
+  const headerNavStripCells = useMemo(() => {
+    const cells = headerGridNavItems.map((it) => ({ ...it, stripKey: it.key }));
+    cells.push(
+      {
+        stripKey: 'prof',
+        label: 'פרופיל',
+        kind: profileMenuPath ? 'link' : 'disabled',
+        to: profileMenuPath || '/login',
+        active: menuProfileCellActive,
+      },
+      { stripKey: 'reg', label: 'רשומים', kind: 'link', to: '/registered', active: menuRegisteredActive },
+      { stripKey: 'contact', label: 'צור קשר', kind: 'link', to: '/contact', active: location.pathname === '/contact' },
+      { stripKey: 'settings', label: 'הגדרות', kind: 'link', to: '/settings', active: location.pathname === '/settings' },
+      { stripKey: 'terms', label: 'תקנון', kind: 'link', to: '/terms', active: location.pathname === '/terms' },
+      { stripKey: 'tanakh', label: 'תנ״ך', kind: 'bible-open', active: false },
+      { stripKey: 'radio', label: 'רדיו', kind: 'mini-radio', active: menuRadioSectionActive },
+      { stripKey: 'yt', label: 'נגן YouTube', kind: 'mini-yt', active: menuYtSectionActive },
+    );
+    return cells;
+  }, [
+    headerGridNavItems,
+    profileMenuPath,
+    menuProfileCellActive,
+    menuRegisteredActive,
+    location.pathname,
+    menuRadioSectionActive,
+    menuYtSectionActive,
+  ]);
+
+  function renderHeaderNavStripItem(item, reactKey) {
+    const cls =
+      'app-header-nav-strip__link'
+      + (item.active ? ' app-header-nav-strip__link--active' : '')
+      + (item.kind === 'disabled' ? ' app-header-nav-strip__link--disabled' : '');
+    if (item.kind === 'disabled') {
+      return <span key={reactKey} className={cls}>{item.label}</span>;
+    }
+    if (item.kind === 'podcast-toggle') {
+      return (
+        <button key={reactKey} type="button" className={cls} onClick={() => openHeaderPodcastPanel()}>
+          {item.label}
+        </button>
+      );
+    }
+    if (item.kind === 'bible-open') {
+      return (
+        <button key={reactKey} type="button" className={cls} onClick={() => setBibleOpen(true)}>
+          {item.label}
+        </button>
+      );
+    }
+    if (item.kind === 'mini-radio') {
+      return (
+        <button key={reactKey} type="button" className={cls} onClick={() => openMiniMediaBar('radio', { play: true })}>
+          {item.label}
+        </button>
+      );
+    }
+    if (item.kind === 'mini-yt') {
+      return (
+        <button key={reactKey} type="button" className={cls} onClick={() => openMiniMediaBar('youtube', { play: true })}>
+          {item.label}
+        </button>
+      );
+    }
+    if (item.kind === 'ai-pending') {
+      return (
+        <Link key={reactKey} className={cls} to="/login" state={{ autoAI: true }}>
+          {item.label}
+        </Link>
+      );
+    }
+    return (
+      <Link key={reactKey} className={cls} to={item.to}>
+        {item.label}
+      </Link>
+    );
+  }
+
   return (
     <>
       <style>{`
-        .app-header {
+        .app-header-shell {
           position: fixed;
-          top: 0; left: 0; right: 0;
-          height: 58px;
+          top: 0;
+          left: 0;
+          right: 0;
+          z-index: 1000;
+          display: flex;
+          flex-direction: column;
+          align-items: stretch;
+          gap: 0;
+          pointer-events: none;
+          box-shadow: 0 4px 24px rgba(0,0,0,0.25);
+        }
+        .app-header-shell > * {
+          pointer-events: auto;
+        }
+        .app-header {
+          position: relative;
+          height: var(--app-header-main-h, 58px);
+          flex-shrink: 0;
           display: flex;
           align-items: center;
           justify-content: space-between;
           padding-inline-start: 16px;
           padding-inline-end: 4px;
-          z-index: 1000;
           overflow: visible;
-          pointer-events: none;
           background: rgba(7, 7, 12, 0.72);
           backdrop-filter: blur(18px);
           -webkit-backdrop-filter: blur(18px);
           border-bottom: 1px solid var(--border, rgba(255,255,255,0.08));
-          box-shadow: 0 4px 24px rgba(0,0,0,0.25);
         }
         .app-header > * { pointer-events: all; }
+        .app-header-ticker-strip {
+          flex-shrink: 0;
+          margin-top: var(--app-header-strips-gap, 1mm);
+          display: flex;
+          justify-content: center;
+          align-items: stretch;
+          padding-inline: var(--app-shell-gutter);
+          box-sizing: border-box;
+          background: transparent;
+        }
+        .app-header-ticker-strip__inner {
+          width: 100%;
+          max-width: calc(var(--login-entry-panels-max, 430px) + var(--app-header-strips-width-extra, 2cm));
+          box-sizing: border-box;
+          border-radius: var(--radius-sm, 10px);
+          border-bottom: 1px solid var(--border, rgba(255,255,255,0.08));
+          background: rgba(10, 10, 14, 0.82);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          overflow: hidden;
+          display: flex;
+          align-items: center;
+          direction: ltr;
+          padding-block: 0;
+        }
+        .app-header-ticker-wrap {
+          overflow: hidden;
+          width: 100%;
+          padding: 0 2px;
+          line-height: 1.2;
+        }
+        .app-header-ticker-inner {
+          display: inline-block;
+          white-space: nowrap;
+          animation: app-header-ticker-scroll 60s linear infinite;
+          will-change: transform;
+        }
+        .app-header-ticker-strip:hover .app-header-ticker-inner,
+        .app-header-ticker-strip__inner:hover .app-header-ticker-inner {
+          animation-play-state: paused;
+        }
+        @keyframes app-header-ticker-scroll {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        .app-header-ticker-item {
+          display: inline-block;
+          color: var(--text-secondary, #b4b4c0);
+          font-weight: 600;
+          font-size: clamp(0.62rem, 2.2vw, 0.74rem);
+          font-family: var(--font-sans, Rubik, sans-serif);
+          padding: 0 18px;
+          line-height: 1.2;
+          vertical-align: baseline;
+          direction: rtl;
+          unicode-bidi: embed;
+        }
+        .app-header-ticker-sep {
+          color: var(--muted, #8a8a9a);
+          font-size: 0.55rem;
+          opacity: 0.7;
+        }
+        .app-header-nav-strip {
+          flex-shrink: 0;
+          margin-top: var(--app-header-ticker-nav-gap, 0px);
+          display: flex;
+          justify-content: center;
+          align-items: stretch;
+          padding-inline: var(--app-shell-gutter);
+          box-sizing: border-box;
+          background: transparent;
+        }
+        .app-header-nav-strip--masthead {
+          flex: 1;
+          min-width: 0;
+          margin-top: 0;
+          padding-inline: 6px;
+          align-self: stretch;
+          z-index: 5;
+        }
+        .app-header-nav-strip--masthead .app-header-nav-strip__inner {
+          width: 100%;
+          max-width: 100%;
+          padding: 0 4px;
+        }
+        .app-header-nav-strip__inner {
+          width: 100%;
+          max-width: calc(var(--login-entry-panels-max, 430px) + var(--app-header-strips-width-extra, 2cm));
+          box-sizing: border-box;
+          border-radius: var(--radius-sm, 10px);
+          border-bottom: 1px solid var(--border, rgba(255,255,255,0.1));
+          background: rgba(7, 7, 12, 0.88);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          padding: 0 6px;
+          display: flex;
+          align-items: center;
+        }
+        .app-header-nav-strip__viewport {
+          direction: ltr;
+          overflow: hidden;
+          width: 100%;
+          min-height: 0;
+          flex: 1;
+        }
+        .app-header-nav-strip__track {
+          display: inline-flex;
+          flex-direction: row;
+          direction: rtl;
+          align-items: center;
+          flex-wrap: nowrap;
+          gap: 0;
+          will-change: transform;
+          white-space: nowrap;
+        }
+        .app-header-nav-strip__track--marquee {
+          animation: app-header-nav-marquee ${HEADER_NAV_MARQUEE_DURATION_S}s linear infinite;
+        }
+        .app-header-nav-strip:hover .app-header-nav-strip__track--marquee,
+        .app-header-nav-strip__inner:hover .app-header-nav-strip__track--marquee,
+        .app-header-nav-strip__viewport:hover .app-header-nav-strip__track--marquee {
+          animation-play-state: paused;
+        }
+        @keyframes app-header-nav-marquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        .app-header-nav-strip__link {
+          flex-shrink: 0;
+          position: relative;
+          display: inline-flex;
+          align-items: center;
+          box-sizing: border-box;
+          font-family: var(--font-sans, Rubik, sans-serif);
+          font-size: clamp(0.62rem, 2.2vw, 0.74rem);
+          font-weight: 600;
+          color: var(--text-secondary, #b4b4c0);
+          text-decoration: none;
+          background: none;
+          border: none;
+          cursor: pointer;
+          padding: 0 4px;
+          border-radius: 3px;
+          transition: color 0.15s ease, transform 0.15s ease, text-shadow 0.15s ease;
+          white-space: nowrap;
+          line-height: 1.15;
+        }
+        .app-header-nav-strip__link:not(:first-child) {
+          padding-inline-start: 7px;
+        }
+        .app-header-nav-strip__link:not(:first-child)::before {
+          content: '';
+          position: absolute;
+          inset-block: 0;
+          inset-inline-start: 0;
+          width: 1px;
+          background: #5c3d2e;
+          pointer-events: none;
+        }
+        .app-header-nav-strip__link:hover:not(:disabled):not(.app-header-nav-strip__link--disabled) {
+          color: var(--gold, #fbbf24);
+          transform: scale(1.06);
+          text-shadow: 0 0 14px rgba(251, 191, 36, 0.38);
+        }
+        .app-header-nav-strip__link--active {
+          color: #e0e7ff;
+        }
+        .app-header-nav-strip__link--active:hover:not(.app-header-nav-strip__link--disabled) {
+          color: var(--gold, #fbbf24);
+        }
+        .app-header-nav-strip__link--disabled {
+          opacity: 0.38;
+          cursor: default;
+          pointer-events: none;
+        }
         .app-header__inner {
           flex: 1;
           display: flex;
@@ -273,7 +728,7 @@ export default function AppHeader() {
           gap: 6px;
         }
         .header-zone--brand {
-          gap: 0;
+          gap: 10px;
           margin-inline-end: -2px;
           align-items: center;
           flex-shrink: 0;
@@ -281,33 +736,62 @@ export default function AppHeader() {
           z-index: 12;
         }
         .header-dots-wrap {
-          margin-inline-start: -10px;
+          margin-inline-start: 0;
+          flex-shrink: 0;
         }
 
+        /* גובה כמו .header-avatar (38px) — מלבן צר לסימטריה מול העיגול מימין */
         .header-dots-btn {
           box-sizing: border-box;
           margin: 0;
-          padding-block: 8px;
-          padding-inline-start: 4px;
-          padding-inline-end: 12px;
-          min-width: 40px;
-          min-height: 44px;
-          border: none;
-          border-radius: 10px;
-          background: transparent;
-          color: var(--text, #fff);
-          font-size: 1.35rem;
-          line-height: 1;
+          padding: 0;
+          width: 26px;
+          height: 38px;
+          min-width: 26px;
+          min-height: 38px;
+          border: 1px solid var(--border-strong, rgba(255,255,255,0.14));
+          border-radius: 8px;
+          background: rgba(255,255,255,0.05);
+          color: var(--text, #f4f4f8);
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          transition: background 0.18s, opacity 0.18s, transform 0.12s;
+          transition: background 0.18s, color 0.18s, border-color 0.18s, transform 0.12s;
+        }
+        .header-menu-icon {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 3px;
+          width: 100%;
+          height: 100%;
+          pointer-events: none;
+        }
+        .header-menu-icon__bar {
+          display: block;
+          width: 8px;
+          height: 2px;
+          flex-shrink: 0;
+          border-radius: 1.5px;
+          background: rgba(244, 244, 248, 0.98);
         }
         .header-dots-btn:hover {
-          background: rgba(255,255,255,0.07);
+          background: rgba(255,255,255,0.1);
+          border-color: rgba(255,255,255,0.22);
+        }
+        .header-dots-btn:hover .header-menu-icon__bar {
+          background: #fff;
         }
         .header-dots-btn:active { transform: scale(0.96); }
+        .header-dots-btn--open {
+          background: rgba(99,102,241,0.15);
+          border-color: rgba(99,102,241,0.45);
+        }
+        .header-dots-btn--open .header-menu-icon__bar {
+          background: #fff;
+        }
         .header-dots-btn:focus-visible {
           outline: 2px solid var(--accent, #6366f1);
           outline-offset: 2px;
@@ -670,47 +1154,197 @@ export default function AppHeader() {
             filter: blur(2px) brightness(0.88);
           }
         }
-        /* התפריט נפתח מתחת לכפתור הנקודות בלבד; left:0 — מתפשט לכיוון המרכז (לא מתחת ללוגו משמאל) */
-        .header-dots-menu {
-          position: absolute;
-          top: calc(100% + 8px);
+        /* תפריט — פורטל, מצומד לכפתור; רוחב עד ~430px פחות 1mm כמו פאנלים בדף הבית */
+        .header-grid-menu-backdrop--passive {
+          position: fixed;
+          top: var(--appheader-h, 58px);
           left: 0;
-          right: auto;
-          background: rgba(18, 18, 26, 0.96);
-          backdrop-filter: blur(16px);
-          -webkit-backdrop-filter: blur(16px);
-          border: 1px solid var(--border-strong, rgba(255,255,255,0.14));
-          border-radius: 14px;
-          min-width: 210px;
-          max-width: min(280px, calc(100vw - 32px));
+          right: 0;
+          bottom: 0;
+          z-index: 11999;
+          background: rgba(0, 0, 0, 0.38);
+          pointer-events: none;
+        }
+        /* מיקום ב־JS: left = right(כפתור) + מרווח — נפתח ימינה לתוך העמוד */
+        .header-grid-menu-portal {
+          position: fixed;
+          z-index: 12001;
+          /* כמעט כל גובה המסך מתחת לכותרת — בלי גלילה ברוב המכשירים */
+          max-height: calc(100vh - var(--appheader-h, 58px) - 4px - env(safe-area-inset-bottom, 0px));
+          display: flex;
+          flex-direction: column;
           overflow: hidden;
-          box-shadow: 0 16px 48px rgba(0,0,0,0.55);
-          direction: rtl;
-          z-index: 3000;
+          border-radius: 10px;
+          box-shadow: 0 18px 48px rgba(0, 0, 0, 0.55);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          pointer-events: auto;
+          isolation: isolate;
         }
-        .header-dots-menu a, .header-dots-menu button {
-          display: block;
+        @supports (height: 100dvh) {
+          .header-grid-menu-portal {
+            max-height: calc(100dvh - var(--appheader-h, 58px) - 4px - env(safe-area-inset-bottom, 0px));
+          }
+        }
+        .header-grid-menu {
+          position: relative;
           width: 100%;
-          padding: 14px 18px;
-          color: var(--text, #fff);
-          text-decoration: none;
-          font-size: 0.9rem;
-          font-weight: 600;
-          background: none;
-          border: none;
-          border-bottom: 1px solid var(--border, rgba(255,255,255,0.08));
-          text-align: right;
-          cursor: pointer;
-          font-family: var(--font-sans, Rubik, sans-serif);
+          flex: 1 1 auto;
+          min-height: 0;
+          max-height: 100%;
+          background: #050508;
+          direction: rtl;
+          display: flex;
+          flex-direction: column;
           box-sizing: border-box;
-          transition: background 0.15s;
+          font-family: var(--font-sans);
+          font-size: 0.78rem;
+          font-weight: 400;
         }
-        .header-dots-menu a:last-child { border-bottom: none; }
-        .header-dots-menu a:hover, .header-dots-menu button:hover {
-          background: rgba(255,255,255,0.06);
+        .header-grid-menu__scroll {
+          flex: 1 1 auto;
+          min-height: 0;
+          overflow-x: hidden;
+          overflow-y: auto;
+          -webkit-overflow-scrolling: touch;
+          display: flex;
+          flex-direction: column;
+          padding: 6px 0 4px;
+          box-sizing: border-box;
         }
-        .header-menu-bible {
-          color: var(--gold, #fbbf24) !important;
+        /* שורה עליונה: שתי משבצות ריקות + אונליין (ימין במסך — עמודה ראשונה ב־RTL) */
+        .header-grid-menu__top-row {
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr;
+          direction: rtl;
+          border: 1px solid rgba(255, 255, 255, 0.35);
+          background: #000;
+        }
+        .header-grid-menu__top-row .header-grid-menu__cell {
+          margin: 0 0 -0.5px -0.5px;
+        }
+        .header-grid-menu__cell--placeholder {
+          cursor: default;
+          pointer-events: none;
+        }
+        .header-grid-menu__cell--online {
+          flex-direction: column;
+          align-items: flex-end;
+          justify-content: center;
+          gap: 2px;
+          font: inherit;
+          color: inherit;
+          background: #000;
+        }
+        .header-grid-menu__cell--online:hover {
+          background: rgba(255, 255, 255, 0.06);
+        }
+        .header-grid-menu__nav {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          grid-auto-flow: row;
+          border: 1px solid rgba(255, 255, 255, 0.35);
+          border-top: none;
+          background: #000;
+        }
+        .header-grid-menu__cell {
+          box-sizing: border-box;
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          text-align: right;
+          padding: 7px 12px;
+          min-height: 38px;
+          border: 0.5px solid rgba(255, 255, 255, 0.28);
+          margin: 0 0 -0.5px -0.5px;
+          color: #f4f4f8;
+          font-family: var(--font-sans);
+          font-size: 0.78rem;
+          font-weight: 400;
+          text-decoration: none;
+          background: #000;
+          cursor: pointer;
+          transition: background 0.12s, color 0.12s;
+        }
+        .header-grid-menu__cell:hover {
+          background: rgba(255, 255, 255, 0.06);
+        }
+        .header-grid-menu__cell--active {
+          background: rgba(99, 102, 241, 0.12);
+          color: #e0e7ff;
+        }
+        .header-grid-menu__cell--disabled {
+          opacity: 0.45;
+          cursor: default;
+          pointer-events: none;
+        }
+        .header-grid-menu__cell--tanakh {
+          color: var(--gold, #fbbf24);
+        }
+        .header-grid-menu__secondary {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          grid-template-rows: repeat(2, minmax(38px, auto));
+          border: 1px solid rgba(255, 255, 255, 0.35);
+          border-top: none;
+          background: #000;
+        }
+        .header-grid-menu__secondary .header-grid-menu__cell {
+          margin: 0 0 -0.5px -0.5px;
+        }
+        .header-grid-menu__media-row {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          border: 1px solid rgba(255, 255, 255, 0.35);
+          border-top: none;
+          background: #000;
+        }
+        .header-grid-menu__media-row .header-grid-menu__cell {
+          margin: 0 0 -0.5px -0.5px;
+        }
+        .header-grid-menu__profile-row {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          border: 1px solid rgba(255, 255, 255, 0.35);
+          border-top: none;
+          background: #000;
+        }
+        .header-grid-menu__profile-row .header-grid-menu__cell {
+          margin: 0 0 -0.5px -0.5px;
+        }
+        .header-grid-menu__logout {
+          flex-shrink: 0;
+          align-self: stretch;
+          width: 100%;
+          box-sizing: border-box;
+          margin: 0;
+          margin-top: 1px;
+          padding: 13px 14px calc(13px + env(safe-area-inset-bottom, 0px));
+          border: none;
+          border-radius: 0;
+          border-top: 1px solid rgba(255, 255, 255, 0.12);
+          background: #dc2626;
+          background-image: linear-gradient(180deg, #f87171 0%, #dc2626 38%, #b91c1c 100%);
+          color: #fff;
+          font-family: var(--font-sans);
+          font-size: 0.78rem;
+          font-weight: 700;
+          line-height: 1.3;
+          letter-spacing: 0.02em;
+          cursor: pointer;
+          box-shadow:
+            0 0 0 1px rgba(127, 29, 29, 0.55),
+            0 4px 18px rgba(220, 38, 38, 0.55);
+          transition: background 0.15s, filter 0.15s, box-shadow 0.15s;
+        }
+        .header-grid-menu__logout:hover {
+          background-image: linear-gradient(180deg, #fca5a5 0%, #ef4444 40%, #dc2626 100%);
+          filter: brightness(1.04);
+          box-shadow:
+            0 0 0 1px rgba(153, 27, 27, 0.65),
+            0 6px 22px rgba(239, 68, 68, 0.55);
+        }
+        .header-grid-menu__logout:active {
+          transform: scale(0.99);
         }
 
         .header-avatar-wrap { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; }
@@ -916,55 +1550,6 @@ export default function AppHeader() {
           background: rgba(255,255,255,0.1);
           border-color: var(--border-strong, rgba(255,255,255,0.18));
         }
-        .header-stats {
-          display: flex;
-          gap: 10px;
-          align-items: center;
-          height: 38px;
-          direction: rtl;
-          position: relative;
-          flex: 1;
-          justify-content: center;
-          min-width: 0;
-          /* רק כפתורי הסטט נקליקים — לא הרחבת הרקע השקוף מעל הלוגו */
-          pointer-events: none;
-        }
-        .header-stats.header-zone {
-          position: relative;
-        }
-        .header-stats > button.header-stat,
-        .header-stats > .header-stat:not(.header-stat--disabled),
-        .header-stats .stats-list-popup {
-          pointer-events: auto;
-        }
-        .header-stat {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          min-height: 38px;
-          box-sizing: border-box;
-          line-height: 1.25;
-          cursor: pointer;
-          padding: 6px 12px;
-          border-radius: 12px;
-          transition: background 0.2s;
-          border: 1px solid transparent;
-        }
-        .header-stat:hover {
-          background: rgba(255,255,255,0.06);
-          border-color: var(--border, rgba(255,255,255,0.08));
-        }
-        button.header-stat {
-          font: inherit;
-          color: inherit;
-          background: none;
-        }
-        .header-stat--disabled {
-          cursor: not-allowed;
-          opacity: 0.48;
-          pointer-events: none;
-        }
         .online-modal-overlay {
           position: fixed;
           inset: 0;
@@ -1066,40 +1651,9 @@ export default function AppHeader() {
           text-transform: uppercase;
           letter-spacing: 0.06em;
         }
-        .stats-list-popup {
-          position: absolute;
-          top: 48px;
-          left: 50%;
-          transform: translateX(-50%);
-          background: rgba(18, 18, 26, 0.98);
-          backdrop-filter: blur(14px);
-          border: 1px solid var(--border-strong, rgba(255,255,255,0.14));
-          border-radius: 14px;
-          min-width: 200px;
-          max-height: 280px;
-          overflow-y: auto;
-          box-shadow: 0 16px 48px rgba(0,0,0,0.55);
-          direction: rtl;
-          z-index: 2000;
-          padding: 8px 0;
-        }
-        .stats-list-title {
-          padding: 10px 16px 8px;
-          font-size: 0.72rem;
-          font-weight: 700;
-          color: var(--muted, #8a8a9a);
-          border-bottom: 1px solid var(--border, rgba(255,255,255,0.08));
-          margin-bottom: 4px;
-          letter-spacing: 0.04em;
-        }
-        .stats-list-item {
-          padding: 9px 16px;
-          font-size: 0.88rem;
-          color: var(--text, #fff);
-          font-weight: 500;
-        }
       `}</style>
 
+      <div className="app-header-shell">
       <div className="app-header">
         <div className="app-header__inner">
         {/* Right side: avatar */}
@@ -1213,95 +1767,26 @@ export default function AppHeader() {
               </div>
             )}
           </div>
-          {activeUser && (
-            <button
-              type="button"
-              onClick={() => {
-                if (window.confirm('להתנתק מהחשבון?')) {
-                  if (user) fullLogout();
-                  else abortPendingRegistration();
-                }
-              }}
-              title="התנתקות"
-              aria-label="התנתקות"
-              style={{
-                width: 30, height: 30, borderRadius: '50%',
-                border: '1px solid rgba(255,255,255,0.22)',
-                background: 'rgba(255,255,255,0.08)',
-                color: 'rgba(180,180,192,0.75)', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '0.72rem', lineHeight: 1, flexShrink: 0,
-                marginInlineStart: 6,
-                transition: 'background 0.15s, border-color 0.15s, color 0.15s',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = 'rgba(248,113,113,0.22)';
-                e.currentTarget.style.borderColor = 'rgba(248,113,113,0.6)';
-                e.currentTarget.style.color = '#fca5a5';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
-                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)';
-                e.currentTarget.style.color = 'rgba(180,180,192,0.75)';
-              }}
-            >
-              ✕
-            </button>
-          )}
         </div>
 
-        {/* Stats — center */}
-        <div className="header-zone header-zone--stats header-stats" ref={listRef}>
-          {canSeeRegistered ? (
-            <button
-              type="button"
-              className="header-stat"
-              onClick={() => {
-                setOnlineModalOpen(false);
-                setListOpen(l => l === 'registered' ? null : 'registered');
-              }}
-              aria-label="רשומים — פתיחת רשימת נרשמים"
-              aria-expanded={listOpen === 'registered'}
-            >
-              <span className="header-stat-num">{stats.registered}</span>
-              <span className="header-stat-label">רשומים</span>
-            </button>
-          ) : (
-            <div className="header-stat" aria-label="רשומים">
-              <span className="header-stat-num">{stats.registered}</span>
-              <span className="header-stat-label">רשומים</span>
-            </div>
-          )}
-          <button
-            type="button"
-            className="header-stat"
-            onClick={() => {
-              setListOpen(null);
-              setOnlineModalOpen(true);
-              loadStats();
-            }}
-          >
-            <span className="header-stat-num">{stats.online}</span>
-            <span className="header-stat-label">אונליין</span>
-          </button>
-
-          {listOpen === 'registered' && canSeeRegistered && (
-            <div className="stats-list-popup">
-              <div className="stats-list-title">
-                {`👥 נרשמו (${stats.registered})`}
+        <nav className="app-header-nav-strip app-header-nav-strip--masthead" aria-label="קיצורי דרך מתפריט">
+          <div className="app-header-nav-strip__inner">
+            <div className="app-header-nav-strip__viewport">
+              <div className="app-header-nav-strip__track app-header-nav-strip__track--marquee">
+                {[0, 1].flatMap((rep) =>
+                  headerNavStripCells.map((item, i) =>
+                    renderHeaderNavStripItem(
+                      item,
+                      `nav-mq-${rep}-${item.stripKey ?? item.key}-${i}`,
+                    ),
+                  ),
+                )}
               </div>
-              {stats.registeredList.length === 0 ? (
-                <div className="stats-list-item" style={{ color: 'var(--muted)' }}>אין עדיין</div>
-              ) : (
-                stats.registeredList.map((name, i) => (
-                  <div key={i} className="stats-list-item">👤 {name}</div>
-                ))
-              )}
             </div>
-          )}
-        </div>
+          </div>
+        </nav>
 
-        {/* RTL: לוגו ראשון ב-DOM (ימין), נקודות שני — תפריט בצד שמאל */}
+        {/* RTL: אזור לוגו + תפריט — בקצה הנגדי לאווטאר */}
         <div className="header-zone header-zone--brand">
           <button type="button" className="header-app-brand" onClick={goAppHome} aria-label="דף הבית">
             <span className="header-logo-mark-wrap">
@@ -1314,31 +1799,229 @@ export default function AppHeader() {
             </span>
             <span className="header-logo-watermark" aria-hidden="true">O M G</span>
           </button>
-          <div ref={menuRef} className="header-dots-wrap" style={{ position: 'relative' }}>
+          <div
+            ref={menuRef}
+            className="header-dots-wrap"
+            style={{ position: 'relative' }}
+            onMouseEnter={openMenuFromHover}
+            onMouseLeave={scheduleCloseMenuFromHover}
+          >
             <button
               type="button"
-              className="header-dots-btn"
-              onClick={() => setMenuOpen(o => !o)}
+              className={'header-dots-btn' + (menuOpen ? ' header-dots-btn--open' : '')}
+              onClick={() => {
+                clearMenuHoverTimer();
+                if (!menuOpen) {
+                  cancelHoverMenuOpenTimer();
+                  menuFirstCloseClickSuppressedRef.current = false;
+                  updateMenuDock();
+                  setMenuOpen(true);
+                  return;
+                }
+                if (menuFirstCloseClickSuppressedRef.current) {
+                  menuFirstCloseClickSuppressedRef.current = false;
+                  return;
+                }
+                setMenuOpen(false);
+              }}
               aria-label="תפריט"
-              aria-haspopup="true"
+              aria-haspopup="dialog"
               aria-expanded={menuOpen}
             >
-              ⋮
+              <span className="header-menu-icon" aria-hidden="true">
+                <span className="header-menu-icon__bar" />
+                <span className="header-menu-icon__bar" />
+                <span className="header-menu-icon__bar" />
+              </span>
             </button>
-            {menuOpen && (
-              <div className="header-dots-menu" role="menu">
-                <button type="button" className="header-menu-bible" onClick={() => { setBibleOpen(true); setMenuOpen(false); }}>
-                  📖 ספר התנ״ך
-                </button>
-                <Link to="/settings" onClick={() => setMenuOpen(false)}>⚙️ הגדרות</Link>
-                <Link to="/terms" onClick={() => setMenuOpen(false)}>📋 תקנון</Link>
-                <Link to="/contact" onClick={() => setMenuOpen(false)}>✉️ צור קשר</Link>
-              </div>
-            )}
           </div>
         </div>
         </div>
       </div>
+      <div className="app-header-ticker-strip" aria-label="נושאים מוצגים">
+        <div className="app-header-ticker-strip__inner">
+          <div className="app-header-ticker-wrap">
+            <div className="app-header-ticker-inner">
+              {[...Array(2)].flatMap((_, rep) =>
+                HEADER_TICKER_TOPICS.map((topic, i) => (
+                  <span key={`t-${rep}-${i}`}>
+                    <span className="app-header-ticker-item">{topic}</span>
+                    <span className="app-header-ticker-sep">◆</span>
+                  </span>
+                )),
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+      </div>
+
+      {menuOpen && menuDock
+        && createPortal(
+          <>
+            <div className="header-grid-menu-backdrop header-grid-menu-backdrop--passive" aria-hidden />
+            <div
+              ref={menuPortalRef}
+              className="header-grid-menu-portal"
+              style={{
+                top: menuDock.top,
+                left: menuDock.left,
+                width: menuDock.width,
+                paddingTop: menuDock.bridgePx ?? MENU_DOCK_BRIDGE_PX,
+                boxSizing: 'border-box',
+              }}
+              onMouseEnter={openMenuFromHover}
+              onMouseLeave={scheduleCloseMenuFromHover}
+            >
+            <div
+              className="header-grid-menu"
+              role="dialog"
+              aria-modal="true"
+              aria-label="תפריט ניווט"
+            >
+              <div className="header-grid-menu__scroll">
+              <div className="header-grid-menu__top-row" role="group" aria-label="שורה עליונה">
+                <button
+                  type="button"
+                  className="header-grid-menu__cell header-grid-menu__cell--online"
+                  aria-label={`גולשים מחוברים כרגע: ${stats.online}`}
+                  onClick={() => {
+                    setOnlineModalOpen(true);
+                    loadStats();
+                    setMenuOpen(false);
+                  }}
+                >
+                  <span className="header-stat-num">{stats.online}</span>
+                  <span className="header-stat-label">אונליין</span>
+                </button>
+                <span className="header-grid-menu__cell header-grid-menu__cell--placeholder" aria-hidden="true" />
+                <span className="header-grid-menu__cell header-grid-menu__cell--placeholder" aria-hidden="true" />
+              </div>
+              <div className="header-grid-menu__nav">
+                {headerGridNavItems.map(item => {
+                  const cls =
+                    'header-grid-menu__cell'
+                    + (item.active ? ' header-grid-menu__cell--active' : '')
+                    + (item.kind === 'disabled' ? ' header-grid-menu__cell--disabled' : '');
+                  if (item.kind === 'disabled') {
+                    return (
+                      <span key={item.key} className={cls}>{item.label}</span>
+                    );
+                  }
+                  if (item.kind === 'ai-pending') {
+                    return (
+                      <Link
+                        key={item.key}
+                        className={cls}
+                        to="/login"
+                        state={{ autoAI: true }}
+                        onClick={() => setMenuOpen(false)}
+                      >
+                        {item.label}
+                      </Link>
+                    );
+                  }
+                  if (item.kind === 'podcast-toggle') {
+                    return (
+                      <button
+                        key={item.key}
+                        type="button"
+                        className={cls}
+                        onClick={() => {
+                          openHeaderPodcastPanel();
+                          setMenuOpen(false);
+                        }}
+                      >
+                        {item.label}
+                      </button>
+                    );
+                  }
+                  return (
+                    <Link
+                      key={item.key}
+                      className={cls}
+                      to={item.to}
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
+              <div className="header-grid-menu__profile-row" role="group" aria-label="פרופיל ורשומים">
+                {profileMenuPath ? (
+                  <Link
+                    className={`header-grid-menu__cell${menuProfileCellActive ? ' header-grid-menu__cell--active' : ''}`}
+                    to={profileMenuPath}
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    פרופיל
+                  </Link>
+                ) : (
+                  <span className="header-grid-menu__cell header-grid-menu__cell--disabled">פרופיל</span>
+                )}
+                <Link
+                  className={`header-grid-menu__cell${menuRegisteredActive ? ' header-grid-menu__cell--active' : ''}`}
+                  to="/registered"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  רשומים
+                </Link>
+              </div>
+              <div className="header-grid-menu__secondary">
+                <Link className="header-grid-menu__cell" to="/contact" onClick={() => setMenuOpen(false)}>צור קשר</Link>
+                <Link className="header-grid-menu__cell" to="/settings" onClick={() => setMenuOpen(false)}>הגדרות</Link>
+                <Link className="header-grid-menu__cell" to="/terms" onClick={() => setMenuOpen(false)}>תקנון</Link>
+                <button
+                  type="button"
+                  className="header-grid-menu__cell header-grid-menu__cell--tanakh"
+                  onClick={() => { setBibleOpen(true); setMenuOpen(false); }}
+                >
+                  תנ״ך
+                </button>
+              </div>
+              <div className="header-grid-menu__media-row" role="group" aria-label="רדיו ו־YouTube">
+                <button
+                  type="button"
+                  className={`header-grid-menu__cell${menuRadioSectionActive ? ' header-grid-menu__cell--active' : ''}`}
+                  onClick={() => {
+                    openMiniMediaBar('radio', { play: true });
+                    setMenuOpen(false);
+                  }}
+                >
+                  רדיו
+                </button>
+                <button
+                  type="button"
+                  className={`header-grid-menu__cell${menuYtSectionActive ? ' header-grid-menu__cell--active' : ''}`}
+                  onClick={() => {
+                    openMiniMediaBar('youtube', { play: true });
+                    setMenuOpen(false);
+                  }}
+                >
+                  נגן YouTube
+                </button>
+              </div>
+              </div>
+              <button
+                type="button"
+                className="header-grid-menu__logout"
+                onClick={() => {
+                  if (user) fullLogout();
+                  else if (pendingUser) abortPendingRegistration();
+                  else {
+                    setMenuOpen(false);
+                    navigate('/login');
+                  }
+                }}
+              >
+                התנתקות
+              </button>
+            </div>
+            </div>
+          </>,
+          document.body,
+        )}
 
       {bibleOpen && <BibleModal onClose={() => setBibleOpen(false)} />}
 

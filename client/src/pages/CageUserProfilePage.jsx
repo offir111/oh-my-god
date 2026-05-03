@@ -355,7 +355,7 @@ function ProfilePostCard({ post, username }) {
 export default function CageUserProfilePage() {
   const { username: usernameParam } = useParams();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const chatReturnHref = useMemo(
     () => safeFaithChatReturnHref(searchParams.get('returnTo') || ''),
     [searchParams],
@@ -407,6 +407,22 @@ export default function CageUserProfilePage() {
   useEffect(() => {
     if (!canEditProfile) setEditOpen(false);
   }, [canEditProfile]);
+
+  useEffect(() => {
+    if (searchParams.get('compose') !== '1') return;
+    const strip = () => {
+      const next = new URLSearchParams(searchParams);
+      next.delete('compose');
+      if (next.toString() !== searchParams.toString()) setSearchParams(next, { replace: true });
+    };
+    if (!viewerNorm) return;
+    if (isOwner) {
+      strip();
+      return;
+    }
+    setMsgOpen(true);
+    strip();
+  }, [searchParams, setSearchParams, viewerNorm, isOwner]);
 
   const personalEditPanelRef = useRef(null);
   useEffect(() => {
@@ -1558,7 +1574,14 @@ export default function CageUserProfilePage() {
             <button
               type="button"
               className="cage-msg-btn"
-              onClick={() => setToast('מערכת הודעות — בקרוב')}
+              onClick={() => {
+                if (!viewerNorm) {
+                  setToast('יש להתחבר כדי לשלוח הודעה');
+                  window.setTimeout(() => setToast(''), 2200);
+                  return;
+                }
+                setMsgOpen(true);
+              }}
             >
               <span aria-hidden>✉</span> שלח הודעה
             </button>

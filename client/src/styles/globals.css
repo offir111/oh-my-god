@@ -33,14 +33,36 @@
   --radius: 16px;
   --radius-sm: 10px;
   --radius-pill: 999px;
-  --appheader-h: 58px;
-  --quick-nav-h: 64px;
-  --mini-radio-h: 38px;
+  --app-header-main-h: 58px;
+  /* שורת טיקר (משפטים נעים); שורת הניווט הנעה נמצאת בתוך שורת המסטהד */
+  --app-header-ticker-h: 18px;
+  --app-header-navstrip-h: 0px;
+  /* רווח בין שורת המסטהד (עם קיצורי הדרך) לטיקר המשפטים */
+  --app-header-strips-gap: 3cm;
+  --app-header-ticker-nav-gap: 0px;
+  --appheader-h: calc(
+    var(--app-header-main-h) + var(--app-header-ticker-h) +
+    var(--app-header-strips-gap) + var(--app-header-ticker-nav-gap)
+  );
+  /* שורת ניווט צרה (SiteQuickNav) הוסרה — נשאר 0 לתאימות ל־--shell-top */
+  --quick-nav-h: 0px;
+  /* גובה שורת הנגן המשותפת (רדיו או יוטיוב — מתחלף מהתפריט); מוקטן ~30% לעומת 1.3 */
+  --mini-media-ui-scale: 0.91;
+  --mini-media-strip-h: calc(38px * var(--mini-media-ui-scale));
+  --mini-radio-h: var(--mini-media-strip-h);
+  /* מרווח מתחת לטיקר/שורת כותרות הניווט הנעה — נגן רדיו/יוטיוב לא ייחפף */
+  --mini-media-bar-top-gap: 3mm;
   /* מתחת לכותרת הקבועה + שורת הניווט הצרה */
   --shell-top: calc(var(--appheader-h) + var(--quick-nav-h));
   /* דפדפן: רוחב עמודת תוכן משותפת לכותרת / ניווט / גוף */
   --app-shell-content-max: 920px;
   --app-shell-gutter: clamp(16px, 4.5vw, 36px);
+  /* כמו .login-panels בדף הכניסה — שורת מאמין / אתאיסט */
+  --login-entry-panels-max: 430px;
+  /* רוחב נוסף לשורות הטיקר והניווט מתחת לכותרת */
+  --app-header-strips-width-extra: 2cm;
+  /* הרחבה נוספת לרוחב נגן הרדיו (למשל ~3 ס"מ) */
+  --mini-radio-bar-width-extra: 3cm;
 
   /* Depth */
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.45);
@@ -81,31 +103,43 @@ html, body {
 }
 
 #root.radio-bar-shown {
-  padding-top: calc(var(--shell-top) + var(--mini-radio-h));
+  padding-top: calc(var(--shell-top) + var(--mini-media-bar-top-gap) + var(--mini-radio-h));
 }
 
-/* —— נגן רדיו מוקטן (מחת לניווט) —— */
-.mini-radio-bar {
+/* —— שורת נגן יחידה (רדיו או יוטיוב לפי התפריט) —— */
+.mini-media-dock {
   position: fixed;
-  top: var(--shell-top);
+  top: calc(var(--shell-top) + var(--mini-media-bar-top-gap));
   left: 0;
   right: 0;
   z-index: 148;
-  height: var(--mini-radio-h);
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   background: rgba(10, 10, 16, 0.97);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(251, 191, 36, 0.2);
   box-shadow: 0 2px 8px rgba(0,0,0,0.45);
 }
+.mini-media-dock__strip {
+  flex-shrink: 0;
+  height: var(--mini-media-strip-h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
 
-/* inner wrapper — 70% of page max-width (narrowed by 30%) */
+/* inner — ברוחב שורת מאמין/אתאיסט; ממורכז על המסך (ללא transform) */
 .mini-radio-bar__inner {
-  max-width: calc(var(--app-shell-content-max, 920px) * 0.7);
-  width: 100%;
-  margin: 0 auto;
+  width: min(
+    calc(var(--login-entry-panels-max, 430px) + var(--mini-radio-bar-width-extra, 3cm)),
+    calc(100vw - 2 * var(--app-shell-gutter, 18px))
+  );
+  max-width: 100%;
+  margin: 0;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   direction: ltr;
@@ -113,6 +147,61 @@ html, body {
   box-sizing: border-box;
   height: 100%;
   gap: 3px;
+}
+/* רק רדיו: תיבת תחנות + פיידר בתוך אותו רוחב */
+.mini-radio-bar__inner--radio-only {
+  justify-content: flex-start;
+  gap: 8px;
+}
+.mini-radio-bar__inner--radio-only > .mini-radio-bar__segment {
+  flex: 1 1 0%;
+  min-width: 0;
+}
+.mini-radio-bar__inner--radio-only .mini-radio-bar__select {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: min(160px, 32vw);
+  max-width: none;
+}
+.mini-radio-bar__inner--radio-only > .mini-bar-vols {
+  flex: 1 1 0%;
+  max-width: none;
+  min-width: 0;
+  justify-content: stretch;
+}
+.mini-radio-bar__inner--radio-only:not(.mini-radio-bar__inner--youtube-row) .mini-radio-bar__vol--shared {
+  width: max(2rem, calc(100% - 1cm));
+  max-width: 100%;
+}
+
+/* יוטיוב: פיידר מוזז 2 ס״מ ימינה וצמוד ל־⚙ */
+.mini-radio-bar__inner--youtube-row > .mini-yt-vol-gear {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 4px;
+  margin-inline-start: 2cm;
+}
+.mini-radio-bar__inner--youtube-row > .mini-yt-vol-gear .mini-bar-vols {
+  flex: 0 0 auto;
+  min-width: 0;
+  justify-content: flex-end;
+}
+.mini-radio-bar__inner--youtube-row .mini-radio-bar__vol--shared {
+  width: max(2rem, min(160px, 42vw));
+  max-width: 100%;
+}
+.mini-radio-bar__segment {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+  padding: 2px 4px;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+.mini-media-bar__segment--focus {
+  outline: none;
 }
 
 /* left cluster: dot + play + close */
@@ -124,8 +213,8 @@ html, body {
 }
 
 .mini-radio-bar__dot {
-  width: 7px;
-  height: 7px;
+  width: calc(7px * var(--mini-media-ui-scale));
+  height: calc(7px * var(--mini-media-ui-scale));
   border-radius: 50%;
   background: var(--muted);
   flex-shrink: 0;
@@ -152,9 +241,9 @@ html, body {
   font: inherit;
   font-size: 0.72rem;
   font-weight: 700;
-  color: var(--gold);
+  color: var(--text-secondary);
   background: rgba(0,0,0,0.75);
-  border: 1px solid rgba(251,191,36,0.35);
+  border: 1px solid var(--border);
   border-radius: 7px;
   padding: 2px 5px;
   cursor: pointer;
@@ -162,7 +251,7 @@ html, body {
   min-width: 0;
   flex-shrink: 1;
   direction: rtl;
-  height: 26px;
+  height: calc(26px * var(--mini-media-ui-scale));
   -webkit-appearance: none;
   appearance: none;
 }
@@ -170,7 +259,10 @@ html, body {
   background: #0a0a10;
   color: #f4f4f8;
 }
-.mini-radio-bar__select:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+.mini-radio-bar__select:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.28);
+  outline-offset: 1px;
+}
 
 .mini-radio-bar__vol {
   width: clamp(30px, 5vw, 65px);
@@ -186,8 +278,8 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: calc(26px * var(--mini-media-ui-scale));
+  height: calc(26px * var(--mini-media-ui-scale));
   border-radius: 6px;
   border: 1px solid var(--border-strong);
   background: rgba(255,255,255,0.06);
@@ -214,7 +306,7 @@ html, body {
 /* separator between the two volume sliders */
 .mini-bar-sep {
   width: 1px;
-  height: 22px;
+  height: calc(22px * var(--mini-media-ui-scale));
   background: rgba(255,255,255,0.12);
   flex-shrink: 0;
 }
@@ -416,14 +508,25 @@ html, body {
 
 .site-quick-nav__link {
   color: var(--text-secondary);
-  font-size: clamp(0.68rem, 2.8vw, 0.8rem);
-  font-weight: 600;
+  /* כמו תוויות שדות בעריכת פרופיל (למשל «תאריך הצטרפות», «קצת עלי»): Rubik 0.78rem רגיל */
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  font-weight: 400;
   text-decoration: none;
   padding: 3px 8px;
   border-radius: 8px;
   border: 1px solid transparent;
   white-space: nowrap;
   transition: none;
+}
+button.site-quick-nav__link {
+  cursor: pointer;
+  font: inherit;
+  background: none;
+  -webkit-appearance: none;
+  appearance: none;
+  text-align: center;
+  color: var(--text-secondary);
 }
 
 .site-quick-nav__link:hover {
@@ -445,69 +548,6 @@ html, body {
 .site-quick-nav__link.site-quick-nav__link--nav-disabled:hover {
   color: var(--text-secondary);
   background: transparent;
-}
-
-/* —— טאבים / כפתורי ניווט מהיר בפוטר (הגדרות / תקנון / צור קשר) —— */
-.quick-nav-footer {
-  font-size: clamp(0.82rem, 3vw, 0.92rem);
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 14px;
-}
-
-.quick-nav-footer__label {
-  color: var(--accent);
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-.quick-nav-footer__pills {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: stretch;
-  gap: 8px;
-}
-
-.quick-nav-footer__pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 40px;
-  padding: 8px 14px;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--border-strong);
-  background: rgba(255, 255, 255, 0.05);
-  box-shadow: var(--shadow-xs);
-  color: var(--text);
-  font-weight: 600;
-  text-decoration: none;
-  white-space: nowrap;
-  transition:
-    color 0.18s,
-    background 0.18s,
-    border-color 0.18s,
-    box-shadow 0.18s,
-    transform 0.12s;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.quick-nav-footer__pill:hover {
-  border-color: rgba(99, 102, 241, 0.45);
-  background: rgba(99, 102, 241, 0.12);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-}
-
-.quick-nav-footer__pill:active {
-  transform: translateY(1px);
-}
-
-.quick-nav-footer__pill.quick-nav-footer__pill--active {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  box-shadow:
-    0 0 0 1px rgba(99, 102, 241, 0.35),
-    0 4px 14px rgba(0, 0, 0, 0.2);
 }
 
 a {
@@ -580,6 +620,34 @@ input:focus, textarea:focus {
   min-height: calc(100vh - var(--shell-top));
   display: flex;
   flex-direction: column;
+}
+
+#page-overview {
+  scroll-margin-top: calc(var(--shell-top, 122px) + 12px);
+}
+
+.page-overview-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex-shrink: 0;
+  border-radius: 8px;
+  color: var(--muted);
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+  background: rgba(255, 255, 255, 0.04);
+  line-height: 0;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.page-overview-link:hover {
+  color: var(--accent, #a5b4fc);
+  border-color: rgba(99, 102, 241, 0.45);
+  background: rgba(99, 102, 241, 0.12);
+}
+.page-overview-link:focus-visible {
+  outline: 2px solid rgba(251, 191, 36, 0.55);
+  outline-offset: 2px;
 }
 
 .container {
@@ -1013,7 +1081,8 @@ html[data-reduce-motion="on"] .scale-in,
 html[data-reduce-motion="on"] .pulse-anim,
 html[data-reduce-motion="on"] .phase-transition,
 html[data-reduce-motion="on"] .score-pop,
-html[data-reduce-motion="on"] .ticker-inner,
+html[data-reduce-motion="on"] .app-header-ticker-inner,
+html[data-reduce-motion="on"] .app-header-nav-strip__track--marquee,
 html[data-reduce-motion="on"] [class*="login-title-ch--"] {
   animation: none !important;
   transition-duration: 0.01ms !important;

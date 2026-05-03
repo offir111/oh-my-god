@@ -4,7 +4,6 @@ import { Capacitor } from '@capacitor/core';
 import { useAppStore, rehydrateUserIfNeeded } from './store/appStore.js';
 import { connectSocket, disconnectSocket } from './socket.js';
 import AppHeader from './components/layout/AppHeader.jsx';
-import SiteQuickNav from './components/layout/SiteQuickNav.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import LobbyPage from './pages/LobbyPage.jsx';
 import DebatePage from './pages/DebatePage.jsx';
@@ -15,6 +14,7 @@ import LeaderboardPage from './pages/LeaderboardPage.jsx';
 import LiveEventsPage from './pages/LiveEventsPage.jsx';
 import LivrPage from './pages/LivrPage.jsx';
 import StaticInfoPage from './pages/StaticInfoPage.jsx';
+import RegisteredMembersPage from './pages/RegisteredMembersPage.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
 import ReligionFaithPage from './pages/ReligionFaithPage.jsx';
 import FaithAdvertisersPage from './pages/FaithAdvertisersPage.jsx';
@@ -26,6 +26,7 @@ import VideoLivePage from './pages/VideoLivePage.jsx';
 import RadioPage from './pages/RadioPage.jsx';
 import { RadioAudioProvider } from './context/RadioAudioContext.jsx';
 import MiniRadioBar from './components/layout/MiniRadioBar.jsx';
+import HomeLivePodcastPanel from './components/HomeLivePodcastPanel.jsx';
 import { applyPreferencesToDocument, loadPreferences } from './lib/appPreferences.js';
 
 /** תופס קריסת רינדור — במקום מסך שחור ללא הסבר */
@@ -156,7 +157,7 @@ export default function App() {
       <RadioAudioProvider>
         <AppErrorBoundary>
           <AppHeader />
-          <SiteQuickNav />
+          <HomeLivePodcastPanel />
           <MiniRadioBar />
           <main id="main-content" className="app-main" tabIndex={-1}>
             <Routes>
@@ -169,6 +170,7 @@ export default function App() {
             <Route path="/faith" element={<RequireSession><ReligionFaithPage /></RequireSession>} />
             <Route path="/profile/me" element={<RequireAuth><ProfileMeRedirect /></RequireAuth>} />
             <Route path="/profile/:username" element={<RequireSession><CageUserProfilePage /></RequireSession>} />
+            <Route path="/registered" element={<RequireSession><RegisteredMembersPage /></RequireSession>} />
             <Route path="/blog" element={<RequireSession><BlogPage /></RequireSession>} />
             <Route path="/photos" element={<RequireSession><PhotosPage /></RequireSession>} />
             <Route path="/podcast" element={<RequireSession><PodcastPage /></RequireSession>} />

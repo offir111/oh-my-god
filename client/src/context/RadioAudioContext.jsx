@@ -1,6 +1,10 @@
-import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
+} from 'react';
 import { ISRAELI_RADIO_STATIONS } from '../data/israeliRadioStations.js';
 import { getApiBaseUrl } from '../lib/apiBaseUrl.js';
+import { displayStationNameHebrewPrefer } from '../lib/radioStationDisplayName.js';
+import { sortIsraelRadioStationsForMenu } from '../lib/radioStationIsraelOrder.js';
 
 const RadioAudioContext = createContext(null);
 
@@ -36,14 +40,24 @@ export function proxyUrl(streamUrl) {
 export function RadioAudioProvider({ children }) {
   const [audioEl,      setAudioEl]      = useState(null);
   const [stationId,    setStationIdRaw] = useState(readSavedStationId);
-  const [stations,     setStations]     = useState(ISRAELI_RADIO_STATIONS);
+  const [stations, setStations] = useState(() =>
+    sortIsraelRadioStationsForMenu(
+      ISRAELI_RADIO_STATIONS.map(s => ({
+        ...s,
+        name: displayStationNameHebrewPrefer(s.name),
+      })),
+    ),
+  );
   const [volume,       setVolumeRaw]    = useState(readSavedVolume);
   const [apiLoading,   setApiLoading]   = useState(true);
   const [radioActive,  setRadioActive]  = useState(false); // true once user has pressed play
   const wasPlayingRef = useRef(false);
   const playGenRef    = useRef(0);
+  /** בחירת תחנה מה־UI — נגן אוטומטית אחרי טעינת הזרם */
+  const stationPickAutoplayRef = useRef(false);
 
-  const setStationId = (id) => {
+  const setStationId = (id, opts) => {
+    if (opts?.fromUserPick) stationPickAutoplayRef.current = true;
     setStationIdRaw(id);
     try { localStorage.setItem(LS_STATION, id); } catch {}
   };
@@ -65,8 +79,15 @@ export function RadioAudioProvider({ children }) {
           if (!Array.isArray(data) || data.length === 0) continue;
           const mapped = data
             .filter(s => s.url_resolved && !hasArabicScript(s.name))
-            .map(s => ({ id: s.stationuuid, name: s.name.trim() || s.name, streamUrl: s.url_resolved }));
-          if (mapped.length > 0) { setStations(mapped); break; }
+            .map(s => ({
+              id: s.stationuuid,
+              name: displayStationNameHebrewPrefer(String(s.name || '').trim() || s.name),
+              streamUrl: s.url_resolved,
+            }));
+          if (mapped.length > 0) {
+            setStations(sortIsraelRadioStationsForMenu(mapped));
+            break;
+          }
         } catch (e) {
           if (e?.name === 'AbortError') return;
         }
@@ -97,11 +118,16 @@ export function RadioAudioProvider({ children }) {
     if (!a || !st?.streamUrl) return;
     playGenRef.current += 1;
     const wasPlaying = !a.paused;
+    const pickAutoplay = stationPickAutoplayRef.current;
+    stationPickAutoplayRef.current = false;
     const src = proxyUrl(st.streamUrl);
     a.src = src;
     a.setAttribute('data-radio-src', src);
     a.load();
-    if (wasPlaying) a.play().catch(() => {});
+    if (wasPlaying || pickAutoplay) {
+      a.play().catch(() => {});
+      if (pickAutoplay) setRadioActive(true);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audioEl, stationId, stations]);
 
@@ -145,6 +171,29 @@ export function RadioAudioProvider({ children }) {
     };
   }, [audioEl]);
 
+  /** עצירת ניגון בלי למחוק src — אחרת useEffect של הזרם לא רץ שוב ו־▶ „נשבר” אחרי ✕ */
+  const pauseRadioPlayback = useCallback(() => {
+    const a = audioEl;
+    if (!a) return;
+    a.pause();
+    setRadioActive(false);
+  }, [audioEl]);
+
+  /** עצירה + ניקוי זרם — רק התנתקות / יציאה מזהות */
+  const resetRadioPlayback = useCallback(() => {
+    const a = audioEl;
+    if (!a) return;
+    a.pause();
+    a.removeAttribute('src');
+    a.removeAttribute('data-radio-src');
+    try {
+      a.load();
+    } catch {
+      /* ignore */
+    }
+    setRadioActive(false);
+  }, [audioEl]);
+
   const radioStation = stations.find(s => s.id === stationId) ?? stations[0] ?? null;
 
   const value = useMemo(() => ({
@@ -155,8 +204,10 @@ export function RadioAudioProvider({ children }) {
     volume, setVolume,
     apiLoading,
     radioActive, setRadioActive,
+    pauseRadioPlayback,
+    resetRadioPlayback,
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [audioEl, stationId, stations, radioStation, volume, apiLoading]);
+  }), [audioEl, stationId, stations, radioStation, volume, apiLoading, pauseRadioPlayback, resetRadioPlayback]);
 
   return (
     <RadioAudioContext.Provider value={value}>

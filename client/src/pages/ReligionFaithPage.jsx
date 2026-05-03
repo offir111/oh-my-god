@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { BiblePanel } from '../components/ui/BibleModal.jsx';
 import FaithChatPanel from '../components/faith/FaithChatPanel.jsx';
 import { FaithSubnavTabs } from '../components/faith/FaithSubnavTabs.jsx';
+import PageOverviewLink from '../components/ui/PageOverviewLink.jsx';
 import { RABBI_QUESTION_GROUPS } from '../data/rabbiCommonQuestions.js';
 import { fetchIsraelShabbatCandles } from '../lib/hebcalShabbatTimes.js';
 import {
@@ -447,9 +448,14 @@ export default function ReligionFaithPage() {
           left: 12px;
           display: flex;
           flex-wrap: wrap;
+          align-items: center;
           gap: 6px;
           z-index: 2;
           max-width: calc(100% - 24px);
+        }
+        .faith-shabbat-actions .page-overview-link {
+          width: 1.6rem;
+          height: 1.6rem;
         }
         .faith-shabbat-actions[data-halacha-open='true'] {
           z-index: 100060;
@@ -824,6 +830,19 @@ export default function ReligionFaithPage() {
           position: relative;
           border-bottom: 1px solid var(--border);
         }
+        .faith-cats-toolbar {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding-inline-end: 10px;
+        }
+        .faith-cats-toolbar .faith-cats {
+          flex: 1;
+          min-width: 0;
+        }
+        .faith-cats-overview-link {
+          align-self: center;
+        }
         .faith-cats {
           display: flex;
           gap: 8px;
@@ -893,6 +912,19 @@ export default function ReligionFaithPage() {
           font-weight: 700;
           line-height: 1.45;
           color: rgba(248, 250, 252, 0.96);
+        }
+        .faith-rabbi-preview-row {
+          display: flex;
+          align-items: flex-start;
+          gap: 8px;
+          margin-bottom: 10px;
+        }
+        .faith-rabbi-preview-row .faith-rabbi-preview-btn {
+          flex: 1;
+          margin-bottom: 0;
+        }
+        .faith-rabbi-preview-row .page-overview-link {
+          margin-top: 4px;
         }
         .faith-rabbi-preview-btn {
           display: block;
@@ -1332,8 +1364,9 @@ export default function ReligionFaithPage() {
                 </>
               ) : null}
             </div>
+            <PageOverviewLink title="סקירת העמוד — דת ואמונה" />
           </div>
-          <h1>דת ואמונה</h1>
+          <h1 id="page-overview">דת ואמונה</h1>
           <p>המקום השייך לקהל המאמינים וכל מי שסקרן להכיר,</p>
           <div className="args-knowledge-composer-wrap">
             <div className="debate-composer args-knowledge-debate-composer">
@@ -1393,14 +1426,17 @@ export default function ReligionFaithPage() {
                       return (
                         <li key={rowKey}>
                           <p className="faith-rabbi-q">{item.q}</p>
-                          <button
-                            type="button"
-                            className="faith-rabbi-preview-btn"
-                            onClick={() => toggleRabbiAnswer(rowKey)}
-                            aria-expanded={isOpen}
-                          >
-                            {item.preview}
-                          </button>
+                          <div className="faith-rabbi-preview-row">
+                            <PageOverviewLink title="סקירת העמוד — דת ואמונה" />
+                            <button
+                              type="button"
+                              className="faith-rabbi-preview-btn"
+                              onClick={() => toggleRabbiAnswer(rowKey)}
+                              aria-expanded={isOpen}
+                            >
+                              {item.preview}
+                            </button>
+                          </div>
                           {isOpen && (
                             <div className="faith-rabbi-answer-full" role="region">
                               {item.answer}
@@ -1445,14 +1481,17 @@ export default function ReligionFaithPage() {
                       return (
                         <li key={rowKey}>
                           <p className="faith-rabbi-q">{item.q}</p>
-                          <button
-                            type="button"
-                            className="faith-rabbi-preview-btn"
-                            onClick={() => toggleRabbiAnswer(rowKey)}
-                            aria-expanded={isOpen}
-                          >
-                            {item.preview}
-                          </button>
+                          <div className="faith-rabbi-preview-row">
+                            <PageOverviewLink title="סקירת העמוד — דת ואמונה" />
+                            <button
+                              type="button"
+                              className="faith-rabbi-preview-btn"
+                              onClick={() => toggleRabbiAnswer(rowKey)}
+                              aria-expanded={isOpen}
+                            >
+                              {item.preview}
+                            </button>
+                          </div>
                           {isOpen && (
                             <div className="faith-rabbi-answer-full" role="region" aria-label="תשובה מורחבת">
                               {item.answer}

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import QuickNavInlineLinks from '../components/layout/QuickNavInlineLinks.jsx';
 import {
   loadPreferences,
   savePreferences,
@@ -165,8 +164,6 @@ export default function SettingsPage() {
         <button type="button" className="btn btn-ghost" onClick={resetAll} style={{ marginTop: 4 }}>
           איפוס כל ההגדרות לברירת מחדל
         </button>
-
-        <QuickNavInlineLinks style={{ marginTop: 32 }} />
       </div>
     </div>
   );

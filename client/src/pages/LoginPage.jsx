@@ -3,27 +3,6 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAppStore, rehydrateUserIfNeeded } from '../store/appStore.js';
 import { connectSocket, socket } from '../socket.js';
 import { getApiBaseUrl } from '../lib/apiBaseUrl.js';
-import { HOME_LIVE_BROADCAST_BY_KEY } from '../data/homeLiveBroadcastEditor.js';
-import { youtubeEmbedIdFromClip } from '../lib/youtubeEmbedId.js';
-import {
-  loadHomeLiveBroadcastOverrides,
-  mergeHomeLiveBroadcastWithOverrides,
-  saveHomeLiveBroadcastOverrides,
-} from '../utils/homeLiveBroadcastEditorStorage.js';
-import HomeLiveListenTransport from '../components/HomeLiveListenTransport.jsx';
-
-const HOME_LIVE_TAB_KEYS = ['faith-1', 'faith-2', 'faith-3', 'atheism-1', 'atheism-2', 'atheism-3'];
-
-function homeLiveEntryHasListenSource(entry) {
-  if (!entry) return false;
-  if (String(entry.listenAudioUrl || '').trim()) return true;
-  return Boolean(
-    youtubeEmbedIdFromClip({
-      youtubeId: entry.listenYoutubeId,
-      watchUrl: entry.listenYoutubeUrl,
-    }),
-  );
-}
 /**
  * ════════════════════════════════════════════════════════════════════════
  * ✅  דמויות דף הכניסה — PNG עם רקע שקוף (תוקן סופית!)
@@ -122,9 +101,7 @@ const EINSTEIN_SPARKLES = [
 ];
 
 const TITLE_WAVE_CHARS = ['o', 'h', ' ', 'm', 'y', ' ', 'G', 'O', 'D'];
-/** שורת הסבר (ללא גל תווים) + שורת משנה מונפשת */
-const SUBTITLE_HINT =
-  'כשלוחצים איקס אחרי כיוון רדיו חוזרים לדף הבית, הרדיו לא עוצר במעבר בין הדפים';
+/** שורת משנה מונפשת מתחת לכותרת */
 const SUBTITLE_WAVE_CHARS = Array.from('אמונה ודת VS אתאיזם ומדע');
 
 /** עוצמת כתום עד ~90% — 10% ערבוב עם לבן (דף כניסה + צור קשר) */
@@ -163,21 +140,6 @@ export default function LoginPage() {
   const [homeAnimationRun, setHomeAnimationRun] = useState(0);
   /** כתום על הלוגו למשך שנייה — מסונכרן להבזק איינשטיין */
   const [einsteinBurstLogoOrange, setEinsteinBurstLogoOrange] = useState(false);
-  /** טאב שידור חי — נגינה בלבד (לחיצה דלקת / לחיצה שוב כיבוי), בלי פתיחת פאנל */
-  const [homeLivePlayingKey, setHomeLivePlayingKey] = useState(null);
-  /** חסימת לחיצות „רפאים” רגעית אחרי הופעת שורת הפודקאסטים (בלי pointer-events — לא נתקעים) */
-  const podcastAccidentalPressBlockUntilRef = useRef(0);
-  const hadPodcastUiRef = useRef(false);
-  /** עורך OMG — overrides ללינקי שמע (localStorage) */
-  const [liveBroadcastOverrides, setLiveBroadcastOverrides] = useState(() => loadHomeLiveBroadcastOverrides());
-  const [omgLiveEditDraft, setOmgLiveEditDraft] = useState({ audio: '', yid: '', yurl: '', tabLabel: '' });
-  /** מעטפת עריכת OMG — נפרדת מלחיצת הטאב */
-  const [homeLiveOmgEditorShellOpen, setHomeLiveOmgEditorShellOpen] = useState(false);
-  const [homeLiveOmgEditorTabKey, setHomeLiveOmgEditorTabKey] = useState('faith-1');
-  /** קישור קצר ל־«רב VS מדען» אחרי כל לחיצה על טאב שידור */
-  const [homeLiveVsLinkVisible, setHomeLiveVsLinkVisible] = useState(false);
-  const [homeLiveVsFlashTick, setHomeLiveVsFlashTick] = useState(0);
-  const homeLiveVsLinkTimerRef = useRef(null);
   const currentUser = useAppStore(s => s.user);
   const setUser = useAppStore(s => s.setUser);
   const setPendingUser = useAppStore(s => s.setPendingUser);
@@ -196,20 +158,7 @@ export default function LoginPage() {
     registered?.username?.trim()
     || currentUser?.username?.trim()
     || (username.trim() ? username.trim() : undefined);
-  const hasPodcastUi = Boolean(registered || currentUser);
   const shouldPlayHomePanels = homeAnimationRun > 0;
-
-  useEffect(() => {
-    if (!hasPodcastUi) {
-      hadPodcastUiRef.current = false;
-      return;
-    }
-    if (!hadPodcastUiRef.current) {
-      hadPodcastUiRef.current = true;
-      setHomeLivePlayingKey(null);
-      podcastAccidentalPressBlockUntilRef.current = Date.now() + 480;
-    }
-  }, [hasPodcastUi]);
 
   function playHomeAnimationSequence() {
     setHomeAnimationRun(run => run + 1);
@@ -263,13 +212,6 @@ export default function LoginPage() {
 
   useEffect(() => {
     playHomeAnimationSequence();
-  }, []);
-
-  useEffect(() => () => {
-    if (homeLiveVsLinkTimerRef.current) {
-      clearTimeout(homeLiveVsLinkTimerRef.current);
-      homeLiveVsLinkTimerRef.current = null;
-    }
   }, []);
 
   useEffect(() => {
@@ -384,8 +326,7 @@ export default function LoginPage() {
     persistLoginUsername(name);
     persistLoginPassword(name, password);
     setRegistered(pending);
-    podcastAccidentalPressBlockUntilRef.current = Date.now() + 500;
-    /** מונע מ־Enter (אחרי כניסה) „ליפול” על כפתור הטאב הראשון (זמיר כהן) שמופיע מעל */
+    /** מונע מ־Enter (אחרי כניסה) „ליפול” על כפתור מעל */
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         const ae = document.activeElement;
@@ -509,117 +450,6 @@ export default function LoginPage() {
     startAIDebate(name, 'believer');
   }
 
-  const mergedLiveBroadcastByKey = useMemo(
-    () => mergeHomeLiveBroadcastWithOverrides(HOME_LIVE_BROADCAST_BY_KEY, liveBroadcastOverrides),
-    [liveBroadcastOverrides],
-  );
-  const mergedLiveBroadcastRef = useRef(mergedLiveBroadcastByKey);
-  mergedLiveBroadcastRef.current = mergedLiveBroadcastByKey;
-  const statsLiveEditorNorm = (import.meta.env.VITE_STATS_ADMIN_USERNAME || '').trim().toLowerCase();
-  const sessionLiveEditorNorm =
-    currentUser?.username?.trim().toLowerCase()
-    || registered?.username?.trim().toLowerCase()
-    || '';
-  const isOmgLiveEditor =
-    sessionLiveEditorNorm === 'omg'
-    || Boolean(statsLiveEditorNorm && sessionLiveEditorNorm === statsLiveEditorNorm);
-
-  useEffect(() => {
-    const e = mergedLiveBroadcastByKey[homeLiveOmgEditorTabKey];
-    if (!e) return;
-    setOmgLiveEditDraft({
-      audio: String(e.listenAudioUrl ?? ''),
-      yid: String(e.listenYoutubeId ?? ''),
-      yurl: String(e.listenYoutubeUrl ?? ''),
-      tabLabel: String(e.tabLabel ?? ''),
-    });
-  }, [homeLiveOmgEditorTabKey, mergedLiveBroadcastByKey]);
-
-  useLayoutEffect(() => {
-    if (!homeLivePlayingKey) return;
-    const ent = mergedLiveBroadcastByKey[homeLivePlayingKey];
-    if (!homeLiveEntryHasListenSource(ent)) setHomeLivePlayingKey(null);
-  }, [homeLivePlayingKey, mergedLiveBroadcastByKey]);
-
-  const homeLiveTransport = useMemo(() => {
-    if (!homeLivePlayingKey) return { direct: '', youtubeVideoId: '' };
-    const ent = mergedLiveBroadcastByKey[homeLivePlayingKey];
-    if (!ent) return { direct: '', youtubeVideoId: '' };
-    const direct = String(ent.listenAudioUrl || '').trim();
-    if (direct) return { direct, youtubeVideoId: '' };
-    const id = youtubeEmbedIdFromClip({
-      youtubeId: ent.listenYoutubeId,
-      watchUrl: ent.listenYoutubeUrl,
-    });
-    if (!id) return { direct: '', youtubeVideoId: '' };
-    return { direct: '', youtubeVideoId: id };
-  }, [homeLivePlayingKey, mergedLiveBroadcastByKey]);
-
-  function flashLiveVsLink() {
-    if (homeLiveVsLinkTimerRef.current) {
-      clearTimeout(homeLiveVsLinkTimerRef.current);
-      homeLiveVsLinkTimerRef.current = null;
-    }
-    setHomeLiveVsLinkVisible(true);
-    setHomeLiveVsFlashTick(t => t + 1);
-    homeLiveVsLinkTimerRef.current = setTimeout(() => {
-      setHomeLiveVsLinkVisible(false);
-      homeLiveVsLinkTimerRef.current = null;
-    }, 10000);
-  }
-
-  useLayoutEffect(() => {
-    if (!homeLiveVsLinkVisible || homeLiveVsFlashTick === 0) return;
-    document.getElementById('login-live-events-flash-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, [homeLiveVsLinkVisible, homeLiveVsFlashTick]);
-
-  function toggleHomeLiveTabListen(tabKey) {
-    setHomeLivePlayingKey(prev => {
-      if (prev === tabKey) return null;
-      const ent = mergedLiveBroadcastRef.current[tabKey];
-      if (!homeLiveEntryHasListenSource(ent)) return prev;
-      return tabKey;
-    });
-  }
-
-  function handleLiveTabPress(tabKey) {
-    if (Date.now() < podcastAccidentalPressBlockUntilRef.current) return;
-    flashLiveVsLink();
-    toggleHomeLiveTabListen(tabKey);
-  }
-
-  function persistOmgLiveListenFields() {
-    const tabKey = homeLiveOmgEditorTabKey;
-    const next = { ...liveBroadcastOverrides };
-    const audio = omgLiveEditDraft.audio.trim();
-    const yid = omgLiveEditDraft.yid.trim();
-    const yurl = omgLiveEditDraft.yurl.trim();
-    const tabLabel = omgLiveEditDraft.tabLabel.trim();
-    if (!audio && !yid && !yurl) delete next[tabKey];
-    else {
-      next[tabKey] = {
-        listenAudioUrl: audio,
-        listenYoutubeId: yid,
-        listenYoutubeUrl: yurl,
-        ...(tabLabel ? { tabLabel } : {}),
-      };
-    }
-    saveHomeLiveBroadcastOverrides(next);
-    setLiveBroadcastOverrides(next);
-    if (homeLivePlayingKey === tabKey) setHomeLivePlayingKey(null);
-    setHomeLiveOmgEditorShellOpen(false);
-  }
-
-  function clearOmgLiveTabOverrides() {
-    const tabKey = homeLiveOmgEditorTabKey;
-    const next = { ...liveBroadcastOverrides };
-    delete next[tabKey];
-    saveHomeLiveBroadcastOverrides(next);
-    setLiveBroadcastOverrides(next);
-    setOmgLiveEditDraft({ audio: '', yid: '', yurl: '', tabLabel: '' });
-    if (homeLivePlayingKey === tabKey) setHomeLivePlayingKey(null);
-  }
-
   return (
     <>
       <style>{`
@@ -680,428 +510,6 @@ export default function LoginPage() {
           color: var(--text-secondary, #b4b4c0);
           font-size: 0.78rem;
           font-weight: 700;
-        }
-        .login-hero-live-events-link-row {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          min-height: 2.1em;
-          padding: 4px 0;
-          box-sizing: border-box;
-        }
-        .login-hero-live-events-link {
-          font-size: clamp(0.62rem, 2.2vw, 0.82rem);
-          font-weight: 800;
-          color: #4ade80;
-          text-decoration: underline;
-          text-underline-offset: 2px;
-        }
-        .login-hero-live-events-link:hover {
-          color: #86efac;
-        }
-        .login-hero-live-events-link:focus-visible {
-          outline: 2px solid var(--accent, #6366f1);
-          outline-offset: 2px;
-          border-radius: 4px;
-        }
-        .login-ticker-podcast-stack {
-          display: flex;
-          flex-direction: column;
-          align-items: stretch;
-          gap: 0;
-          width: 100%;
-          max-width: 540px;
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-          flex-shrink: 0;
-          align-self: center;
-        }
-        .ticker-wrap {
-          width: 100%;
-          max-width: 540px;
-          border: 1px solid var(--border-strong, rgba(255,255,255,0.14));
-          border-radius: 12px;
-          overflow: hidden;
-          padding: 6px 0;
-          background: rgba(14, 14, 20, 0.55);
-          backdrop-filter: blur(10px);
-          -webkit-backdrop-filter: blur(10px);
-          direction: ltr;
-          margin: 0;
-          flex-shrink: 0;
-          box-shadow: var(--shadow-sm, 0 4px 14px rgba(0,0,0,0.35));
-        }
-        .ticker-inner {
-          display: inline-block;
-          white-space: nowrap;
-          animation: ticker-scroll 60s linear infinite;
-          will-change: transform;
-        }
-        .ticker-inner:hover {
-          animation-play-state: paused;
-        }
-        @keyframes ticker-scroll {
-          0%   { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
-        }
-        .ticker-item {
-          display: inline-block;
-          color: var(--text-secondary, #b4b4c0);
-          font-weight: 600;
-          font-size: clamp(0.62rem, 2.2vw, 0.74rem);
-          padding: 0 18px;
-          direction: rtl;
-          unicode-bidi: embed;
-        }
-        .ticker-sep {
-          color: var(--muted, #8a8a9a);
-          font-size: 0.55rem;
-          opacity: 0.7;
-        }
-        /* פודקאסטים — שישה טאבים ברוחב שווה עד התווית */
-        .home-live-broadcast-row {
-          position: relative;
-          z-index: 4;
-          width: 100%;
-          max-width: 540px;
-          display: flex;
-          flex-direction: row;
-          align-items: stretch;
-          justify-content: flex-start;
-          flex-wrap: nowrap;
-          gap: 8px;
-          padding: 2px 4px 6px;
-          box-sizing: border-box;
-          margin: 0;
-          min-width: 0;
-        }
-        .home-live-broadcast-label-col {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-end;
-          justify-content: flex-start;
-          flex-shrink: 0;
-          gap: 1px;
-          padding-top: 1px;
-        }
-        .home-live-broadcast-label {
-          font-size: clamp(0.58rem, 2.2vw, 0.72rem);
-          font-weight: 800;
-          color: var(--text-secondary, #b4b4c0);
-          white-space: nowrap;
-          letter-spacing: 0.02em;
-          line-height: 1.2;
-        }
-        .home-live-omg-edit-link {
-          border: none;
-          background: none;
-          padding: 0;
-          margin: 0;
-          cursor: pointer;
-          font: inherit;
-          font-size: clamp(0.42rem, 1.55vw, 0.52rem);
-          font-weight: 700;
-          color: rgba(180, 180, 192, 0.72);
-          letter-spacing: 0.03em;
-          text-decoration: underline;
-          text-underline-offset: 2px;
-          line-height: 1.25;
-          -webkit-appearance: none;
-          appearance: none;
-          text-align: end;
-        }
-        .home-live-omg-edit-link:hover {
-          color: var(--gold, #fbbf24);
-        }
-        .home-live-omg-edit-link:focus-visible {
-          outline: 1px solid var(--accent, #6366f1);
-          outline-offset: 2px;
-          border-radius: 2px;
-        }
-        .home-live-broadcast-tabs {
-          display: flex;
-          flex-direction: row;
-          flex-wrap: nowrap;
-          align-items: stretch;
-          gap: 5px;
-          flex: 1 1 0;
-          min-width: 0;
-          justify-content: flex-start;
-        }
-        .home-live-tab {
-          display: flex;
-          flex: 1 1 0;
-          min-width: 0;
-          align-items: center;
-          justify-content: center;
-          padding: 3px 4px;
-          border-radius: 6px;
-          font-size: clamp(0.48rem, 1.85vw, 0.62rem);
-          font-weight: 800;
-          text-decoration: none;
-          border: 1px solid transparent;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          transition: filter 0.15s ease, border-color 0.15s ease, background 0.15s ease;
-          font-family: var(--font-sans, Rubik, system-ui, sans-serif);
-          box-sizing: border-box;
-          /* שם הטאב תמיד קדמי בלבן — האדום/ירוק רק רקע ומסגרת */
-          color: #ffffff;
-          -webkit-font-smoothing: antialiased;
-          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55), 0 0 1px rgba(0, 0, 0, 0.4);
-        }
-        .home-live-tab:hover {
-          filter: brightness(1.1);
-        }
-        .home-live-tab:focus-visible {
-          outline: 2px solid var(--accent, #6366f1);
-          outline-offset: 1px;
-        }
-        .home-live-tab--faith {
-          background: rgba(239, 68, 68, 0.22);
-          border-color: rgba(248, 113, 113, 0.52);
-        }
-        .home-live-tab--atheism {
-          background: rgba(16, 185, 129, 0.2);
-          border-color: rgba(52, 211, 153, 0.45);
-        }
-        button.home-live-tab {
-          cursor: pointer;
-          -webkit-appearance: none;
-          appearance: none;
-          text-align: center;
-        }
-        .home-live-tab--selected {
-          box-shadow: inset 0 0 0 1px rgba(255,255,255,0.38);
-          filter: brightness(1.12);
-        }
-        .home-live-broadcast-block {
-          position: relative;
-          width: 100%;
-          max-width: 540px;
-          margin-bottom: 8px;
-          box-sizing: border-box;
-        }
-        .home-live-transport {
-          position: relative;
-          z-index: 1;
-          width: 100%;
-          max-width: 540px;
-          margin: 4px auto 0;
-          padding: 4px 8px;
-          box-sizing: border-box;
-          border-radius: 8px;
-          border: 1px solid rgba(255,255,255,0.1);
-          background: rgba(0,0,0,0.22);
-        }
-        .home-live-transport--slim {
-          position: relative;
-        }
-        .home-live-transport-slim-row {
-          display: flex;
-          flex-direction: row;
-          align-items: center;
-          gap: 8px;
-          min-height: 22px;
-          direction: ltr;
-          unicode-bidi: isolate;
-        }
-        .home-live-transport-slim-play {
-          flex: 0 0 auto;
-          cursor: pointer;
-          padding: 2px 6px;
-          line-height: 1;
-          border-radius: 6px;
-          border: 1px solid rgba(255,255,255,0.16);
-          background: rgba(255,255,255,0.07);
-          color: var(--text, #f4f4f8);
-          font-size: 0.65rem;
-          font-family: var(--font-sans, Rubik, system-ui, sans-serif);
-        }
-        .home-live-transport-slim-play:hover {
-          filter: brightness(1.08);
-        }
-        .home-live-transport-rail {
-          flex: 1 1 0;
-          min-width: 0;
-          display: flex;
-          align-items: center;
-        }
-        .home-live-transport-audio-el {
-          display: none;
-        }
-        .home-live-transport-times-slim {
-          flex: 0 0 auto;
-          font-variant-numeric: tabular-nums;
-          font-size: 0.58rem;
-          font-weight: 700;
-          color: rgba(255,255,255,0.78);
-          white-space: nowrap;
-        }
-        .home-live-transport-times-sep {
-          opacity: 0.5;
-          padding: 0 1px;
-        }
-        /* מסילה דקה (~4px) + עיגול אדום — התקדמות משמאל לימין (LTR) */
-        .home-live-transport-range.home-live-transport-range--red {
-          width: 100%;
-          height: 18px;
-          margin: 0;
-          padding: 0;
-          cursor: pointer;
-          direction: ltr;
-          -webkit-appearance: none;
-          appearance: none;
-          background: transparent;
-          accent-color: #ef4444;
-        }
-        .home-live-transport-range--red::-webkit-slider-runnable-track {
-          height: 4px;
-          border-radius: 2px;
-          background: rgba(255,255,255,0.22);
-        }
-        .home-live-transport-range--red::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          width: 11px;
-          height: 11px;
-          margin-top: -3.5px;
-          border-radius: 50%;
-          background: #ef4444;
-          border: 1px solid rgba(0,0,0,0.35);
-          box-shadow: 0 0 0 1px rgba(255,255,255,0.15);
-        }
-        .home-live-transport-range--red::-moz-range-track {
-          height: 4px;
-          border-radius: 2px;
-          background: rgba(255,255,255,0.22);
-        }
-        .home-live-transport-range--red::-moz-range-thumb {
-          width: 11px;
-          height: 11px;
-          border-radius: 50%;
-          background: #ef4444;
-          border: 1px solid rgba(0,0,0,0.35);
-          box-shadow: 0 0 0 1px rgba(255,255,255,0.15);
-        }
-        /* מיכל הנגן מוטמע ב-portal ל־body — לא כאן */
-        .home-live-transport-yt-player-mount {
-          width: 320px;
-          height: 180px;
-        }
-        .home-live-transport-yt-err {
-          margin: 4px 0 0;
-          font-size: 0.58rem;
-          color: #fca5a5;
-          text-align: center;
-        }
-        .home-live-omg-editor-shell {
-          width: 100%;
-          max-width: 540px;
-          margin: 0 auto;
-          padding: 0 6px 8px;
-          box-sizing: border-box;
-        }
-        .home-live-omg-editor-tab-row {
-          margin-bottom: 8px;
-        }
-        .home-live-omg-editor-tab-row label {
-          display: block;
-          font-size: 0.62rem;
-          font-weight: 800;
-          color: var(--text-secondary, #b4b4c0);
-          margin-bottom: 4px;
-        }
-        .home-live-omg-editor-tab-select {
-          width: 100%;
-          box-sizing: border-box;
-          padding: 7px 9px;
-          font-size: 0.72rem;
-          font-weight: 700;
-          border-radius: 8px;
-          border: 1px solid rgba(255,255,255,0.16);
-          background: rgba(8,8,14,0.75);
-          color: var(--text, #f4f4f8);
-        }
-        .home-live-omg-editor {
-          margin: 0 0 14px;
-          padding: 10px 10px 12px;
-          border-radius: 10px;
-          border: 1px dashed rgba(251, 191, 36, 0.45);
-          background: rgba(251, 191, 36, 0.06);
-          text-align: right;
-        }
-        .home-live-omg-editor-title {
-          margin: 0 0 8px;
-          font-size: 0.72rem;
-          font-weight: 900;
-          color: var(--gold, #fbbf24);
-          letter-spacing: 0.03em;
-        }
-        .home-live-omg-editor-note {
-          margin: 0 0 10px;
-          font-size: 0.62rem;
-          font-weight: 600;
-          color: var(--muted, #8a8a9a);
-          line-height: 1.45;
-        }
-        .home-live-omg-editor-field {
-          margin-bottom: 8px;
-        }
-        .home-live-omg-editor-field label {
-          display: block;
-          font-size: 0.62rem;
-          font-weight: 800;
-          color: var(--text-secondary, #b4b4c0);
-          margin-bottom: 3px;
-        }
-        .home-live-omg-editor-field input {
-          width: 100%;
-          box-sizing: border-box;
-          padding: 7px 9px;
-          font-size: 0.68rem;
-          border-radius: 8px;
-          border: 1px solid rgba(255,255,255,0.16);
-          background: rgba(8,8,14,0.75);
-          color: var(--text, #f4f4f8);
-          direction: ltr;
-          text-align: left;
-        }
-        .home-live-omg-editor-field input:focus {
-          outline: none;
-          border-color: var(--accent, #6366f1);
-          box-shadow: 0 0 0 2px rgba(99,102,241,0.2);
-        }
-        .home-live-omg-editor-actions {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 6px;
-          justify-content: flex-start;
-          margin-top: 10px;
-        }
-        .home-live-omg-editor-actions button {
-          cursor: pointer;
-          font-size: 0.65rem;
-          font-weight: 800;
-          padding: 6px 10px;
-          border-radius: 8px;
-          border: 1px solid rgba(255,255,255,0.18);
-          background: rgba(255,255,255,0.08);
-          color: var(--text, #f4f4f8);
-        }
-        .home-live-omg-editor-actions button:hover {
-          filter: brightness(1.08);
-        }
-        .home-live-omg-editor-actions .home-live-omg-save {
-          border-color: rgba(52, 211, 153, 0.45);
-          background: rgba(16, 185, 129, 0.18);
-          color: #a7f3d0;
-        }
-        .home-live-omg-editor-actions .home-live-omg-danger {
-          border-color: rgba(248, 113, 113, 0.45);
-          background: rgba(239, 68, 68, 0.12);
-          color: #fecaca;
         }
         .login-title {
           font-size: clamp(2.35rem, 10vw, 4.8rem);
@@ -1191,16 +599,6 @@ export default function LoginPage() {
           align-items: center;
           gap: 10px;
           margin: 8px 0 0;
-        }
-        .login-subtitle-hint {
-          margin: 0;
-          font-size: clamp(0.7rem, 3.1vw, 0.86rem);
-          font-weight: 600;
-          color: var(--text-secondary, #b4b4c0);
-          line-height: 1.55;
-          max-width: min(36rem, 100%);
-          text-align: center;
-          direction: rtl;
         }
         .login-subtitle-stack .login-subtitle-wave {
           margin: 0;
@@ -1550,35 +948,6 @@ export default function LoginPage() {
           line-height: 1.55;
           margin: -4px 0 2px;
         }
-        .login-links {
-          display: flex;
-          gap: 24px;
-          justify-content: center;
-          flex-wrap: wrap;
-          margin-top: 18px;
-          padding: 0 12px 8px;
-        }
-        .login-link {
-          color: var(--text-secondary, #b4b4c0);
-          font-size: clamp(0.82rem, 3.2vw, 0.9rem);
-          text-decoration: none;
-          font-weight: 600;
-          padding: 8px 12px;
-          border-radius: 10px;
-          transition: color 0.2s, background 0.2s;
-        }
-        .login-link:hover {
-          color: var(--gold, #fbbf24);
-          background: rgba(251, 191, 36, 0.08);
-        }
-        .login-link-icon {
-          display: inline-block;
-          margin-inline-end: 5px;
-          font-size: 0.95em;
-          line-height: 1;
-          vertical-align: -0.12em;
-          opacity: 0.92;
-        }
         .login-error {
           color: #f87171;
           margin-top: 8px;
@@ -1589,210 +958,9 @@ export default function LoginPage() {
 
       <div className="login-page">
 
-        {(registered || currentUser) && <div className="login-ticker-podcast-stack">
-        <div className="ticker-wrap">
-          <div className="ticker-inner">
-            {[...Array(2)].map((_, rep) =>
-              [
-                'האם יש אלוהים?',
-                'מתי נברא העולם?',
-                'תאוריית המפץ הגדול',
-                'העולם מסודר ולכן מחייב בורא',
-                'תקופת הדינוזאורים לפני שישים מיליון שנה',
-                'מתי נברא העולם עפ התנ״ך?',
-                'איך עפ האבולוציה נוצר החיים הראשון מדומם — אביוגנזה',
-                'האם נכון שארנבת מעלה גרה?',
-                'האם נכון שאין דג שיש לו סנפיר ואין לו קשקשים?',
-                'רטרו-וירוסים — הוכחה שלאדם ולקוף יש אב משותף',
-                '99% מהDNA של האדם והשימפנזה זהה',
-                'עפ תארוך פחמן 14 גיל היקום גדול בהרבה מ-5700 שנה כפי טענת התנ״ך',
-              ].map((topic, i) => (
-                <span key={`${rep}-${i}`}>
-                  <span className="ticker-item">{topic}</span>
-                  <span className="ticker-sep">◆</span>
-                </span>
-              ))
-            )}
-          </div>
-        </div>
-
-        <div className="home-live-broadcast-block">
-          {isOmgLiveEditor && homeLiveOmgEditorShellOpen ? (
-            <div className="home-live-omg-editor-shell">
-              <div className="home-live-omg-editor-tab-row">
-                <label htmlFor="omg-live-tab-select">טאב לעריכה</label>
-                <select
-                  id="omg-live-tab-select"
-                  className="home-live-omg-editor-tab-select"
-                  value={homeLiveOmgEditorTabKey}
-                  onChange={e => setHomeLiveOmgEditorTabKey(e.target.value)}
-                >
-                  {HOME_LIVE_TAB_KEYS.map(k => {
-                    const m = mergedLiveBroadcastByKey[k];
-                    const opt =
-                      (m?.tabLabel && String(m.tabLabel).trim()) || HOME_LIVE_BROADCAST_BY_KEY[k]?.title || k;
-                    return (
-                      <option key={k} value={k}>
-                        {opt}
-                      </option>
-                    );
-                  })}
-                </select>
-              </div>
-              <div className="home-live-omg-editor">
-                <p className="home-live-omg-editor-title">לינקי שמע / יוטיוב לטאב הנבחר</p>
-                <p className="home-live-omg-editor-note">
-                  שמירה מקומית בלבד (localStorage). לחיצה על טאב בדף מפעילה או עוצרת נגינה בלי לפתוח חלונות.
-                </p>
-                <div className="home-live-omg-editor-field">
-                  <label htmlFor="omg-live-audio-url">קישור שמע ישיר (mp3, m4a…)</label>
-                  <input
-                    id="omg-live-audio-url"
-                    type="url"
-                    autoComplete="off"
-                    placeholder="https://…/הרצאה.mp3"
-                    value={omgLiveEditDraft.audio}
-                    onChange={e => setOmgLiveEditDraft(d => ({ ...d, audio: e.target.value }))}
-                  />
-                </div>
-                <div className="home-live-omg-editor-field">
-                  <label htmlFor="omg-live-yt-id">מזהה YouTube (אופציונלי)</label>
-                  <input
-                    id="omg-live-yt-id"
-                    type="text"
-                    autoComplete="off"
-                    placeholder="למשל dQw4w9WgXcQ"
-                    value={omgLiveEditDraft.yid}
-                    onChange={e => setOmgLiveEditDraft(d => ({ ...d, yid: e.target.value }))}
-                  />
-                </div>
-                <div className="home-live-omg-editor-field">
-                  <label htmlFor="omg-live-yt-url">או קישור YouTube מלא</label>
-                  <input
-                    id="omg-live-yt-url"
-                    type="url"
-                    autoComplete="off"
-                    placeholder="https://www.youtube.com/watch?v=…"
-                    value={omgLiveEditDraft.yurl}
-                    onChange={e => setOmgLiveEditDraft(d => ({ ...d, yurl: e.target.value }))}
-                  />
-                </div>
-                {homeLiveEntryHasListenSource({
-                  listenAudioUrl: omgLiveEditDraft.audio,
-                  listenYoutubeId: omgLiveEditDraft.yid,
-                  listenYoutubeUrl: omgLiveEditDraft.yurl,
-                }) ? (
-                  <div className="home-live-omg-editor-field">
-                    <label htmlFor="omg-live-tab-label">שם על הטאב (במקום ברירת המחדל)</label>
-                    <input
-                      id="omg-live-tab-label"
-                      type="text"
-                      autoComplete="off"
-                      placeholder="למשל שם ההרצאה או האורח"
-                      maxLength={48}
-                      value={omgLiveEditDraft.tabLabel}
-                      onChange={e => setOmgLiveEditDraft(d => ({ ...d, tabLabel: e.target.value }))}
-                    />
-                  </div>
-                ) : null}
-                <div className="home-live-omg-editor-actions">
-                  <button type="button" className="home-live-omg-save" onClick={() => persistOmgLiveListenFields()}>
-                    שמירה
-                  </button>
-                  <button type="button" className="home-live-omg-danger" onClick={() => clearOmgLiveTabOverrides()}>
-                    ניקוי שמירה לטאב
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : null}
-          <div className="home-live-broadcast-row" dir="rtl" aria-label="פודקאסטים — הקשבה">
-            <div className="home-live-broadcast-label-col">
-              <span className="home-live-broadcast-label">פודקאסטים:</span>
-              {isOmgLiveEditor ? (
-                <button
-                  type="button"
-                  className="home-live-omg-edit-link"
-                  onClick={() => setHomeLiveOmgEditorShellOpen(v => !v)}
-                  aria-expanded={homeLiveOmgEditorShellOpen}
-                >
-                  {homeLiveOmgEditorShellOpen ? 'סגירה' : 'עריכה'}
-                </button>
-              ) : null}
-            </div>
-            <div className="home-live-broadcast-tabs" role="list">
-              {[1, 2, 3].map(slot => {
-                const tabKey = `faith-${slot}`;
-                const ent = mergedLiveBroadcastByKey[tabKey];
-                const custom = String(ent?.tabLabel || '').trim();
-                const btnLabel = custom || (slot === 1 ? 'הרב זמיר כהן' : 'LIVE');
-                const ariaDefault =
-                  slot === 1
-                    ? 'שידור חי אמונה: הרב זמיר כהן — לחיצה נגן או עוצר'
-                    : `שידור חי אמונה מס׳ ${slot} — לחיצה נגן או עוצר`;
-                return (
-                  <button
-                    key={tabKey}
-                    type="button"
-                    role="listitem"
-                    className={`home-live-tab home-live-tab--faith${homeLivePlayingKey === tabKey ? ' home-live-tab--selected' : ''}`}
-                    aria-pressed={homeLivePlayingKey === tabKey}
-                    aria-label={custom ? `שידור חי אמונה: ${custom} — לחיצה נגן או עוצר` : ariaDefault}
-                    onClick={() => handleLiveTabPress(tabKey)}
-                  >
-                    {btnLabel}
-                  </button>
-                );
-              })}
-              {[1, 2, 3].map(slot => {
-                const tabKey = `atheism-${slot}`;
-                const ent = mergedLiveBroadcastByKey[tabKey];
-                const custom = String(ent?.tabLabel || '').trim();
-                const btnLabel = custom || (slot === 1 ? 'הקו האתאיסטי' : 'LIVE');
-                const ariaDefault =
-                  slot === 1
-                    ? 'שידור חי אתאיזם: הקו האתאיסטי — לחיצה נגן או עוצר'
-                    : `שידור חי אתאיזם מס׳ ${slot} — לחיצה נגן או עוצר`;
-                return (
-                  <button
-                    key={tabKey}
-                    type="button"
-                    role="listitem"
-                    className={`home-live-tab home-live-tab--atheism${homeLivePlayingKey === tabKey ? ' home-live-tab--selected' : ''}`}
-                    aria-pressed={homeLivePlayingKey === tabKey}
-                    aria-label={custom ? `שידור חי אתאיזם: ${custom} — לחיצה נגן או עוצר` : ariaDefault}
-                    onClick={() => handleLiveTabPress(tabKey)}
-                  >
-                    {btnLabel}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          {homeLivePlayingKey && (homeLiveTransport.direct || homeLiveTransport.youtubeVideoId) ? (
-            <HomeLiveListenTransport
-              key={homeLivePlayingKey}
-              tabKey={homeLivePlayingKey}
-              directUrl={homeLiveTransport.direct}
-              youtubeVideoId={homeLiveTransport.youtubeVideoId}
-            />
-          ) : null}
-        </div>
-        </div>}
-
         <section className="login-hero-card" aria-label="דף הבית והרשמה">
           <div className="login-brand-block">
-            {homeLiveVsLinkVisible ? (
-              <div
-                className="login-hero-live-events-link-row"
-                id="login-live-events-flash-anchor"
-                aria-live="polite"
-              >
-                <Link className="login-hero-live-events-link" to="/live-events">
-                  למעבר לסרטונים לחץ כאן
-                </Link>
-              </div>
-            ) : (registered || currentUser) ? (
+            {(registered || currentUser) ? (
               <span className="login-status-pill">
                 {currentUser ? `מחובר כ-${currentUser.username}` : `שלום ${registered.username}`}
               </span>
@@ -1834,7 +1002,6 @@ export default function LoginPage() {
               </Link>
             </h1>
             <div className="login-subtitle login-subtitle-stack">
-              <p className="login-subtitle-hint">{SUBTITLE_HINT}</p>
               <p className="login-subtitle-wave">
                 {SUBTITLE_WAVE_CHARS.map((ch, index) => {
                   const intensity = 0.9 + (index / (SUBTITLE_WAVE_CHARS.length - 1)) * 0.1;
@@ -2052,40 +1219,6 @@ export default function LoginPage() {
                 🤖 דיון מול AI
               </button>
 
-              {/* Site features grid */}
-              <div style={{
-                display: 'grid', gridTemplateColumns: '1fr 1fr',
-                gap: 10, width: '100%', marginTop: 6,
-              }}>
-                {[
-                  { icon: '💬', label: 'צ׳אט אמונה', to: '/faith#chat' },
-                  { icon: '📖', label: 'שאל את הרב', to: '/faith#rabbi' },
-                  { icon: '📝', label: 'בלוג', to: '/blog' },
-                  { icon: '📚', label: 'מאגר ידע', to: '/knowledge' },
-                  { icon: '🏆', label: 'רב VS מדען', to: '/live-events' },
-                  { icon: '📻', label: 'רדיו', to: '/radio' },
-                ].map(({ icon, label, to }) => (
-                  <Link
-                    key={to}
-                    to={to}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 10,
-                      padding: '13px 14px', borderRadius: 12,
-                      background: 'rgba(255,255,255,0.06)',
-                      border: '1px solid rgba(255,255,255,0.12)',
-                      color: 'var(--text, #fff)', textDecoration: 'none',
-                      fontWeight: 700, fontSize: '0.88rem',
-                      transition: 'background 0.15s',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
-                  >
-                    <span style={{ fontSize: '1.2rem' }}>{icon}</span>
-                    {label}
-                  </Link>
-                ))}
-              </div>
-
               <button
                 style={{ background: 'none', border: 'none', color: '#aaa', fontSize: '0.85rem', cursor: 'pointer', marginTop: 2, fontWeight: 700 }}
                 onClick={() => setSelectedSide(null)}
@@ -2097,18 +1230,6 @@ export default function LoginPage() {
             </>}
         </section>
 
-        {(registered || currentUser) && <div className="login-links">
-          <Link to="/radio" className="login-link" aria-label="רדיו — שידורים מישראל">
-            <span className="login-link-icon" aria-hidden>📻</span>
-            רדיו
-          </Link>
-          <Link to="/faith" className="login-link" aria-label="דת ואמונה">
-            <span className="login-link-icon" aria-hidden>📖</span>
-            דת
-          </Link>
-          <Link to="/knowledge" className="login-link">📚 מאגר ידע</Link>
-          <Link to="/live-events" className="login-link">🏆 רב VS מדען</Link>
-        </div>}
       </div>
     </>
   );
