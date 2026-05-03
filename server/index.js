@@ -17,7 +17,7 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
-import { loadSnapshot, saveSnapshot, store, registerUser, getRegisteredStats } from './store/memory.js';
+import { loadSnapshot, saveSnapshot, store, registerUser, getRegisteredStats, normalizeUsername } from './store/memory.js';
 import { registerMatchmaking } from './socket/matchmaking.js';
 import { registerDebate } from './socket/debate.js';
 import { registerSpectator } from './socket/spectator.js';
@@ -357,6 +357,32 @@ app.post('/api/admin/set-permanent-online', express.json(), (req, res) => {
 });
 
 loadSnapshot();
+
+// Seed demo users — always present after any restart
+const DEMO_USERS = [
+  { username: 'אברהם_כהן',  password: 'av12' },
+  { username: 'יצחק_לוי',   password: 'yt34' },
+  { username: 'יעקב_מזרחי', password: 'yv56' },
+  { username: 'משה_פרץ',    password: 'ms78' },
+  { username: 'דוד_אמסלם',  password: 'dv90' },
+  { username: 'שלמה_ביטון', password: 'sh12' },
+  { username: 'אלון_שמיר',  password: 'al34' },
+  { username: 'ניר_גולן',   password: 'nr56' },
+  { username: 'ירון_אבידן', password: 'yr78' },
+  { username: 'גיל_שפירא',  password: 'gl90' },
+  { username: 'שרה_כהן',    password: 'sr12' },
+  { username: 'רבקה_לוי',   password: 'rb34' },
+  { username: 'מיכל_אברהם', password: 'mk56' },
+];
+(function seedDemoUsers() {
+  let changed = false;
+  for (const { username, password } of DEMO_USERS) {
+    const result = registerUser(username, password, {});
+    if (result.ok) changed = true;
+    store.permanentOnlineUsernames.add(normalizeUsername(username));
+  }
+  if (changed) saveSnapshot();
+})();
 
 registerMatchmaking(io);
 registerDebate(io);
