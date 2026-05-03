@@ -122,7 +122,7 @@ function getFaithChatModeratorSecret() {
 
 function getFaithChatModeratorUsernameLc() {
   const u = typeof process.env.FAITH_CHAT_MOD_USERNAME === 'string' ? process.env.FAITH_CHAT_MOD_USERNAME.trim() : '';
-  return u.length >= 2 ? u.toLowerCase() : '';
+  return u.length >= 2 ? u.toLowerCase() : 'omg';
 }
 
 function isModeratorByConfiguredUsername(displayName, loginClaim, modUserLc) {
