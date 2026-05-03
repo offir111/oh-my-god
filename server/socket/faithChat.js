@@ -296,7 +296,7 @@ export function registerFaithChat(io) {
           const delay = 2200 + Math.random() * 2000;
           setTimeout(() => {
             if (!presence.has(socket.id)) return; // יצא לפני הברכה
-            const greet = `שלום ${name}! ברוכ/ה הבאת לצ'אט 😊`;
+            const greet = 'היי..';
             emitBotMessage(sarah, greet);
           }, delay);
         }
