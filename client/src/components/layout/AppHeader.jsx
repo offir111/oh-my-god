@@ -370,9 +370,14 @@ export default function AppHeader() {
     const homeActive = pathname === '/login';
 
     return [
-      { key: 'chat', label: 'צ׳אט', to: '/faith#chat', active: chatActive, kind: 'link' },
-      { key: 'know', label: 'מאגר ידע', to: '/knowledge', active: pathname === '/knowledge', kind: 'link' },
-      { key: 'faith', label: 'דת', to: '/faith#rabbi', active: faithDedActive, kind: 'link' },
+      {
+        key: 'vid',
+        label: 'LIVE TV',
+        to: '/video-live',
+        active: pathname === '/video-live' && !ytTvUrl,
+        kind: 'link',
+      },
+      { key: 'live', label: 'רב VS מדען', to: '/live-events', active: pathname === '/live-events', kind: 'link' },
       {
         key: 'ai',
         label: 'AI',
@@ -380,9 +385,7 @@ export default function AppHeader() {
         active: aiNavActive,
         kind: !user && pendingUser?.username ? 'ai-pending' : 'link',
       },
-      { key: 'live', label: 'רב VS מדען', to: '/live-events', active: pathname === '/live-events', kind: 'link' },
-      { key: 'home', label: 'דף הבית', to: homePath, active: homeActive, kind: 'link' },
-      { key: 'blog', label: 'בלוגים', to: '/blog', active: pathname === '/blog', kind: 'link' },
+      { key: 'know', label: 'מאגר ידע', to: '/knowledge', active: pathname === '/knowledge', kind: 'link' },
       {
         key: 'pod',
         label: 'פודקאסט LIVE',
@@ -390,14 +393,11 @@ export default function AppHeader() {
         active: pathname === '/podcast' || headerPodcastPanelOpen,
         kind: 'podcast-toggle',
       },
-      {
-        key: 'vid',
-        label: 'וידיאו+LIVE TV',
-        to: '/video-live',
-        active: pathname === '/video-live' && !ytTvUrl,
-        kind: 'link',
-      },
+      { key: 'blog', label: 'בלוגים', to: '/blog', active: pathname === '/blog', kind: 'link' },
+      { key: 'chat', label: 'צ׳אט', to: '/faith#chat', active: chatActive, kind: 'link' },
+      { key: 'faith', label: 'דת', to: '/faith#rabbi', active: faithDedActive, kind: 'link' },
       { key: 'ph', label: 'תמונות', to: '/photos', active: pathname === '/photos', kind: 'link' },
+      { key: 'home', label: 'דף הבית', to: homePath, active: homeActive, kind: 'link' },
     ];
   }, [
     location.pathname,
