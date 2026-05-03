@@ -28,6 +28,7 @@ export const store = {
   blockedNormUsernames: new Set(),
   adminNotesByNorm: new Map(), // נירמול → הערת מנהל (אזהרה / פנימי)
   topicCounts: new Map(),   // topicId → מספר אזכורים בהודעות טקסט (אדם + AI)
+  permanentOnlineUsernames: new Set(), // יוזרים שתמיד מוצגים כמחוברים (demo)
 };
 
 export function createDebateState(debateId, believer, atheist, isAI = false, aiSide = null) {
@@ -248,6 +249,7 @@ export function saveSnapshot() {
       blockedNormUsernames: [...store.blockedNormUsernames],
       adminNotesByNorm: Object.fromEntries(store.adminNotesByNorm),
       topicCounts: Object.fromEntries(store.topicCounts),
+      permanentOnlineUsernames: [...store.permanentOnlineUsernames],
       savedAt: new Date().toISOString(),
     };
     fs.writeFileSync(SNAPSHOT_PATH, JSON.stringify(data, null, 2), 'utf8');
@@ -283,6 +285,9 @@ export function loadSnapshot() {
     }
     if (data.topicCounts && typeof data.topicCounts === 'object') {
       store.topicCounts = new Map(Object.entries(data.topicCounts).map(([k, v]) => [k, Number(v) || 0]));
+    }
+    if (Array.isArray(data.permanentOnlineUsernames)) {
+      store.permanentOnlineUsernames = new Set(data.permanentOnlineUsernames.map(normalizeUsername).filter(Boolean));
     }
 
     const nu = new Set(

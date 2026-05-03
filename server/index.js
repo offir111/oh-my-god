@@ -183,6 +183,8 @@ app.get('/api/tv-proxy', async (req, res) => {
 app.get('/api/stats', (_, res) => {
   // Count unique usernames online (same user from multiple devices = 1)
   const onlineSet = new Set([...store.users.values()].map(u => u.username));
+  // Add permanent demo users to online list
+  for (const u of store.permanentOnlineUsernames) onlineSet.add(u);
   const { registered, registeredList } = getRegisteredStats();
   res.json({
     registered,
@@ -343,6 +345,15 @@ app.post('/api/admin/set-count', express.json(), (req, res) => {
   store.registeredCount = Math.max(store.registeredCount, store.registeredUsernames.size);
   saveSnapshot();
   res.json({ ok: true, registeredCount: getRegisteredStats().registered });
+});
+
+// Admin: set permanent online demo users
+app.post('/api/admin/set-permanent-online', express.json(), (req, res) => {
+  const { usernames } = req.body;
+  if (!Array.isArray(usernames)) return res.status(400).json({ error: 'usernames must be array' });
+  store.permanentOnlineUsernames = new Set(usernames.map(u => String(u).trim()).filter(Boolean));
+  saveSnapshot();
+  res.json({ ok: true, permanentOnline: [...store.permanentOnlineUsernames] });
 });
 
 loadSnapshot();
