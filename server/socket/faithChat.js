@@ -2,6 +2,8 @@
  * צ'אט דת ואמונה: נוכחות בזמן אמת, חדר ציבורי ושיחות ישירות (מספר שיחות פרטיות במקביל).
  */
 import { v4 as uuid } from 'uuid';
+import Groq from 'groq-sdk';
+import { chatCompletionWithFallback } from '../lib/groqChat.js';
 
 /** משתתפים בדיבור + ברשימת מחוברים (נוכחות) */
 const ROOM = 'faith-chat-public';
@@ -12,6 +14,90 @@ const MAX_NAME = 40;
 const MIN_INTERVAL_PUBLIC = 700;
 const MIN_INTERVAL_DM = 350;
 const MAX_CONCURRENT_DM_PER_USER = 8;
+
+/* ─── בוטים וירטואליים ───────────────────────────────────────────── */
+
+const BOTS = [
+  {
+    socketId: 'bot:שרה_כהן',
+    displayName: 'שרה כהן',
+    color: '#f9a8d4',
+    gender: 'female',
+    joinedAt: Date.now() - 1000 * 60 * 30,
+    systemPrompt:
+      'את שרה כהן, אישה מאמינה ורוחנית, חמה ומקבלת כל אדם. את משתתפת בצ\'אט דת ואמונה. '
+      + 'תני תשובה קצרה בלבד (משפט אחד עד שניים לכל היותר), אישית ומכבדת. '
+      + 'את מאמינה באלוהים ובחשיבות הדיאלוג בין מאמינים לאתאיסטים. דברי עברית בלבד.',
+  },
+  {
+    socketId: 'bot:ניר_גולן',
+    displayName: 'ניר גולן',
+    color: '#93c5fd',
+    gender: 'male',
+    joinedAt: Date.now() - 1000 * 60 * 45,
+    systemPrompt:
+      'אתה ניר גולן, אדם רציונלי וסקרן שמתעניין בפילוסופיה ומדע. אתה משתתף בצ\'אט דת ואמונה. '
+      + 'תן תשובה קצרה בלבד (משפט אחד עד שניים לכל היותר), מחשבתית ולא פוגענית. '
+      + 'אתה אתאיסט אך מכבד מאמינים ומעוניין בדיאלוג אמיתי. דבר עברית בלבד.',
+  },
+  {
+    socketId: 'bot:יעקב_מזרחי',
+    displayName: 'יעקב מזרחי',
+    color: '#86efac',
+    gender: 'male',
+    joinedAt: Date.now() - 1000 * 60 * 20,
+    systemPrompt:
+      'אתה יעקב מזרחי, יהודי מסורתי שאוהב לחקור שאלות עמוקות של אמונה ופילוסופיה. '
+      + 'תן תשובה קצרה בלבד (משפט אחד עד שניים לכל היותר), עם גוון מסורתי אם מתאים. '
+      + 'אתה מעריך דיאלוג פתוח ואינך מחפש עימות. דבר עברית בלבד.',
+  },
+];
+
+const BOT_IDS = new Set(BOTS.map(b => b.socketId));
+
+function isBotId(socketId) {
+  return BOT_IDS.has(socketId);
+}
+
+function getGroqClient() {
+  const key = process.env.GROQ_API_KEY;
+  if (!key) return null;
+  try { return new Groq({ apiKey: key }); } catch { return null; }
+}
+
+function looksLikeQuestion(text) {
+  if (!text) return false;
+  if (text.endsWith('?')) return true;
+  const triggers = ['מה ', 'למה ', 'איך ', 'האם ', 'מדוע ', 'כיצד ', 'מי ', 'מתי ', 'כמה '];
+  return triggers.some(w => text.includes(w));
+}
+
+async function generateBotReply(bot, questionText) {
+  const groq = getGroqClient();
+  if (groq) {
+    try {
+      const res = await chatCompletionWithFallback(
+        groq,
+        {
+          messages: [
+            { role: 'system', content: bot.systemPrompt },
+            { role: 'user', content: questionText },
+          ],
+          max_tokens: 100,
+          temperature: 0.85,
+        },
+        'faith-bot',
+      );
+      const reply = res.choices?.[0]?.message?.content?.trim();
+      if (reply) return reply;
+    } catch (e) {
+      console.error('[faith-bot] Groq error:', e?.message);
+    }
+  }
+  return 'שאלה מעניינת שכדאי לחשוב עליה! 🤔';
+}
+
+/* ─── עזר ────────────────────────────────────────────────────────── */
 
 /** מפתח חדר מאינדוקס מאוגד — אחוזת לכל זוג משתמשים */
 function dmRoomName(a, b) {
@@ -29,7 +115,6 @@ function getFaithDmPartnerToRoom(socket) {
 const PUBLIC_HISTORY_TTL_MS = 60 * 60 * 1000;
 const PUBLIC_HISTORY_MAX = 600;
 
-/** אם קיים ובהתאמה בשקע — ניתן למחוק הודעות ציבור/פרט מהשרת (מנהלי צ׳אט בלבד) */
 function getFaithChatModeratorSecret() {
   const s = typeof process.env.FAITH_CHAT_MOD_SECRET === 'string' ? process.env.FAITH_CHAT_MOD_SECRET.trim() : '';
   return s.length >= 8 ? s : '';
@@ -63,9 +148,6 @@ function pushPublicHistory(msg) {
   prunePublicHistoryBuffer();
 }
 
-/**
- * כניסה / יציאה / ניתוק — לא נשמרים בהיסטוריית ההודעות, רק שידור חי למחוברים ל־ROOM_VIEW.
- */
 function emitFaithPublicSystem(io, systemType, displayName) {
   const safe =
     typeof displayName === 'string' && displayName.trim()
@@ -101,12 +183,6 @@ function sanitizeFaithMessageColor(raw) {
   return undefined;
 }
 
-/**
- * @param {import('socket.io').Server} io
- * @param {import('socket.io').Socket} socket
- * @param {string} partnerId
- * @param {string} partnerReason
- */
 function closeFaithDmOne(io, socket, partnerId, partnerReason) {
   const myMap = getFaithDmPartnerToRoom(socket);
   const room = myMap.get(partnerId);
@@ -128,10 +204,17 @@ export function registerFaithChat(io) {
   const modSecretConfigured = getFaithChatModeratorSecret();
   const modUsernameLc = getFaithChatModeratorUsernameLc();
   const lastPublic = new Map();
-  /** מפתח: `${senderId}:${partnerId}` — קצב פר שיחה */
   const lastDmPair = new Map();
   /** @type {Map<string, { displayName: string, joinedAt: number }>} */
   const presence = new Map();
+
+  /* ── הכנס בוטים לנוכחות מייד עם ההפעלה ── */
+  for (const bot of BOTS) {
+    presence.set(bot.socketId, { displayName: bot.displayName, joinedAt: bot.joinedAt });
+  }
+
+  /** מגביל תגובות בוטים — מקסימום אחת כל 20 שניות */
+  let lastBotReplyAt = 0;
 
   function listUsers() {
     return [...presence.entries()].map(([socketId, v]) => ({
@@ -151,6 +234,20 @@ export function registerFaithChat(io) {
     if (now - prev < minGap) return false;
     lastDmPair.set(k, now);
     return true;
+  }
+
+  /** שלח הודעת בוט לציבור */
+  function emitBotMessage(bot, text) {
+    const payload = {
+      id: uuid(),
+      fromSocketId: bot.socketId,
+      displayName: bot.displayName,
+      text,
+      ts: Date.now(),
+      color: bot.color,
+    };
+    pushPublicHistory(payload);
+    io.to(ROOM_VIEW).emit('FAITH_CHAT_MESSAGE', payload);
   }
 
   io.on('connection', socket => {
@@ -192,6 +289,17 @@ export function registerFaithChat(io) {
         socket.emit('FAITH_PUBLIC_HISTORY', { messages: getPublicHistorySnapshot() });
         socket.emit('FAITH_MODERATOR_STATUS', { active: socket.data.faithChatModerator });
         emitFaithPublicSystem(io, 'join', name);
+
+        /* ── שרה מברכת כל יוזר אמיתי (חד פעמי בכניסה) ── */
+        const sarah = BOTS.find(b => b.gender === 'female');
+        if (sarah) {
+          const delay = 2200 + Math.random() * 2000;
+          setTimeout(() => {
+            if (!presence.has(socket.id)) return; // יצא לפני הברכה
+            const greet = `שלום ${name}! ברוכ/ה הבאת לצ'אט 😊`;
+            emitBotMessage(sarah, greet);
+          }, delay);
+        }
       },
     );
 
@@ -251,12 +359,37 @@ export function registerFaithChat(io) {
       };
       pushPublicHistory(payload);
       io.to(ROOM_VIEW).emit('FAITH_CHAT_MESSAGE', payload);
+
+      /* ── בוט עונה לשאלות (לא לבוטים עצמם, עם מגבלת קצב) ── */
+      if (looksLikeQuestion(t) && !isBotId(socket.id)) {
+        const timeSinceLast = now - lastBotReplyAt;
+        if (timeSinceLast > 20000 && Math.random() < 0.75) {
+          lastBotReplyAt = now;
+          const bot = BOTS[Math.floor(Math.random() * BOTS.length)];
+          const delay = 3500 + Math.random() * 5000;
+          const question = t;
+          setTimeout(async () => {
+            if (!io) return;
+            const reply = await generateBotReply(bot, question);
+            emitBotMessage(bot, reply);
+          }, delay);
+        }
+      }
     });
 
     socket.on('FAITH_DM_OPEN', ({ targetSocketId } = {}) => {
       if (!presence.has(socket.id) || typeof targetSocketId !== 'string') return;
       if (targetSocketId === socket.id) return;
       if (!presence.has(targetSocketId)) return;
+
+      /* בוטים לא מקבלים DM */
+      if (isBotId(targetSocketId)) {
+        socket.emit('FAITH_DM_ERROR', {
+          message: 'לא ניתן לשלוח הודעות פרטיות לבוט.',
+          targetSocketId,
+        });
+        return;
+      }
 
       const target = io.sockets.sockets.get(targetSocketId);
       if (!target || !target.rooms?.has(ROOM)) return;
