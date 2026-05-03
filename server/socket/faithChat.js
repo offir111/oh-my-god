@@ -72,15 +72,18 @@ function looksLikeQuestion(text) {
   return triggers.some(w => text.includes(w));
 }
 
-async function generateBotReply(bot, questionText) {
+async function generateBotReply(bot, questionText, isDm = false) {
   const groq = getGroqClient();
+  const sysPrompt = isDm
+    ? bot.systemPrompt + ' זו שיחה פרטית — היה/יי קצת יותר אישי/ת ונגיש/ה.'
+    : bot.systemPrompt;
   if (groq) {
     try {
       const res = await chatCompletionWithFallback(
         groq,
         {
           messages: [
-            { role: 'system', content: bot.systemPrompt },
+            { role: 'system', content: sysPrompt },
             { role: 'user', content: questionText },
           ],
           max_tokens: 100,
@@ -94,7 +97,7 @@ async function generateBotReply(bot, questionText) {
       console.error('[faith-bot] Groq error:', e?.message);
     }
   }
-  return 'שאלה מעניינת שכדאי לחשוב עליה! 🤔';
+  return isDm ? 'מעניין, ספר/י לי עוד...' : 'שאלה מעניינת שכדאי לחשוב עליה! 🤔';
 }
 
 /* ─── עזר ────────────────────────────────────────────────────────── */
@@ -382,11 +385,31 @@ export function registerFaithChat(io) {
       if (targetSocketId === socket.id) return;
       if (!presence.has(targetSocketId)) return;
 
-      /* בוטים לא מקבלים DM */
+      /* DM עם בוט — חדר וירטואלי */
       if (isBotId(targetSocketId)) {
-        socket.emit('FAITH_DM_ERROR', {
-          message: 'לא ניתן לשלוח הודעות פרטיות לבוט.',
-          targetSocketId,
+        const myMap = getFaithDmPartnerToRoom(socket);
+        if (myMap.has(targetSocketId)) {
+          socket.emit('FAITH_DM_OPENED', {
+            roomId: myMap.get(targetSocketId),
+            partnerSocketId: targetSocketId,
+            partnerName: presence.get(targetSocketId)?.displayName,
+          });
+          return;
+        }
+        if (myMap.size >= MAX_CONCURRENT_DM_PER_USER) {
+          socket.emit('FAITH_DM_ERROR', {
+            message: `הגעת למקסימום שיחות פרטיות (${MAX_CONCURRENT_DM_PER_USER}).`,
+            targetSocketId,
+          });
+          return;
+        }
+        const botRoom = dmRoomName(socket.id, targetSocketId);
+        socket.join(botRoom);
+        myMap.set(targetSocketId, botRoom);
+        socket.emit('FAITH_DM_OPENED', {
+          roomId: botRoom,
+          partnerSocketId: targetSocketId,
+          partnerName: presence.get(targetSocketId)?.displayName,
         });
         return;
       }
@@ -475,6 +498,28 @@ export function registerFaithChat(io) {
         ...(c ? { color: c } : {}),
       };
       io.to(room).emit('FAITH_DM_MESSAGE', dmPayload);
+
+      /* תגובת בוט אוטומטית בDM */
+      if (isBotId(partnerSocketId)) {
+        const bot = BOTS.find(b => b.socketId === partnerSocketId);
+        if (bot) {
+          const msgText = t;
+          const delay = 1500 + Math.random() * 3000;
+          setTimeout(async () => {
+            const reply = await generateBotReply(bot, msgText, true);
+            const botPayload = {
+              id: uuid(),
+              roomId: room,
+              fromSocketId: bot.socketId,
+              displayName: bot.displayName,
+              text: reply,
+              ts: Date.now(),
+              color: bot.color,
+            };
+            io.to(room).emit('FAITH_DM_MESSAGE', botPayload);
+          }, delay);
+        }
+      }
     });
 
     socket.on('FAITH_DM_TYPING', ({ typing, partnerSocketId } = {}) => {
