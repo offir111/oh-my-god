@@ -317,6 +317,54 @@ app.post('/api/ai-voice-chat', async (req, res) => {
   }
 });
 
+// ElevenLabs TTS — eleven_multilingual_v2 supports Hebrew
+const ELEVENLABS_VOICE_MAP = {
+  1:  'TxGEqnHWrfWFTfGW9XjX', // קריין גברי — Josh (deep)
+  2:  '21m00Tcm4TlvDq8ikWAM', // קריינית נשית — Rachel
+  3:  'VR6AewLTigWG4xSOukaG', // הרב זמיר כהן — Arnold (wise, crisp)
+  4:  'ODq5zmih8GrVes37Dy39',  // הררי — Daniel (intellectual)
+  5:  'pNInz6obpgDQGcFmaJgB', // ראש ממשלה — Adam (authoritative)
+  6:  'yoZ06aMxZJJ28mfd3POQ', // טראמפ — Sam (raspy, assertive)
+  7:  'ErXwobaYiN019PkySvjV', // דובר אנגלית — Antoni
+  8:  'ErXwobaYiN019PkySvjV', // דובר ספרדית — Antoni (multilingual)
+  9:  'VR6AewLTigWG4xSOukaG', // דובר אידיש — Arnold
+  10: 'pNInz6obpgDQGcFmaJgB', // אלוהים — Adam (deep, majestic)
+};
+
+app.post('/api/elevenlabs-tts', async (req, res) => {
+  const { text, characterId } = req.body || {};
+  if (!text || typeof text !== 'string') return res.status(400).json({ error: 'missing text' });
+
+  const apiKey = process.env.ELEVENLABS_API_KEY;
+  if (!apiKey) return res.status(503).json({ error: 'ElevenLabs not configured' });
+
+  const voiceId = ELEVENLABS_VOICE_MAP[characterId] || 'pNInz6obpgDQGcFmaJgB';
+
+  try {
+    const upstream = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+      method: 'POST',
+      headers: { 'xi-api-key': apiKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: text.slice(0, 1000),
+        model_id: 'eleven_multilingual_v2',
+        voice_settings: { stability: 0.5, similarity_boost: 0.75, use_speaker_boost: true },
+      }),
+    });
+    if (!upstream.ok) {
+      const err = await upstream.text().catch(() => '');
+      console.error('[elevenlabs-tts] error', upstream.status, err.slice(0, 200));
+      return res.status(502).json({ error: 'ElevenLabs upstream error' });
+    }
+    const buf = await upstream.arrayBuffer();
+    res.set('Content-Type', 'audio/mpeg');
+    res.set('Cache-Control', 'no-store');
+    res.send(Buffer.from(buf));
+  } catch (e) {
+    console.error('[elevenlabs-tts] error', e.message);
+    res.status(500).json({ error: 'ElevenLabs TTS error' });
+  }
+});
+
 // OpenAI TTS voice per character — onyx/echo/fable for males, nova/shimmer for females
 const OPENAI_VOICE_MAP = {
   1:  'onyx',    // קריין גברי — עמוק ורהוט
