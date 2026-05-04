@@ -65,7 +65,7 @@ app.use('/api/leaderboard', leaderboardRouter);
 app.use('/api/admin', adminRouter);
 
 app.get('/api/health', (_, res) =>
-  res.json({ ok: true, provider: 'groq', version: 7, tts: !!process.env.OPENAI_API_KEY }));
+  res.json({ ok: true, provider: 'groq', version: 8, tts: !!process.env.OPENAI_API_KEY, elevenlabs: !!process.env.ELEVENLABS_API_KEY }));
 
 // Quick TTS connectivity check — returns JSON (not audio) for easy browser testing
 app.get('/api/tts-check', async (_req, res) => {
