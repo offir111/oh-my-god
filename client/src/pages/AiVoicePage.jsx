@@ -102,6 +102,7 @@ export default function AiVoicePage() {
   const [callDuration, setCallDuration] = useState(0);
 
   const [previewCharId, setPreviewCharId] = useState(null);
+  const [lastPreviewedId, setLastPreviewedId] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
   const [userTurn, setUserTurn] = useState(false);
 
@@ -423,16 +424,18 @@ export default function AiVoicePage() {
             fontSize: '0.72rem', fontWeight: 600,
             animation: 'fadeUp 0.3s ease',
           }}>
-            לחץ על דובר — הוא יברך אותך ויזמין לשיחה 👇
+            {lastPreviewedId
+              ? 'לחץ שוב על אותו דובר להתחלת שיחה 👆'
+              : 'לחץ על דובר — הוא יברך אותך ויזמין לשיחה 👇'}
           </div>
 
-          {/* Character grid — click = start conversation */}
+          {/* Character grid — first click = preview, second click = start call */}
           <div style={{ flexShrink: 0, padding: '10px 12px 4px' }}>
             <div style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8,
             }}>
               <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                לחץ על דובר להתחלת שיחה
+                {lastPreviewedId ? 'לחץ שוב להתחלת שיחה' : 'לחץ על דובר לתצוגה מקדימה'}
               </span>
               <span style={{ color: 'rgba(255,255,255,0.22)', fontSize: '0.63rem' }}>{CHARACTERS.length} דמויות</span>
             </div>
@@ -442,15 +445,23 @@ export default function AiVoicePage() {
               paddingBottom: 2,
             }}>
               {CHARACTERS.map(ch => {
-                const sel = selectedChar.id === ch.id;
+                const sel = lastPreviewedId === ch.id;
                 return (
                   <button
                     key={ch.id}
                     type="button"
                     className="aiv-char-card"
                     onClick={() => {
-                      setSelectedChar(ch);
-                      startCall(ch);
+                      if (lastPreviewedId === ch.id) {
+                        // second click → start conversation
+                        setLastPreviewedId(null);
+                        setSelectedChar(ch);
+                        startCall(ch);
+                      } else {
+                        // first click → preview greeting
+                        setLastPreviewedId(ch.id);
+                        speakPreview(ch);
+                      }
                     }}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 8, padding: '9px 10px',
@@ -569,7 +580,7 @@ export default function AiVoicePage() {
                   <button
                     type="button"
                     aria-label="חזור לבחירת דובר"
-                    onClick={() => { endCall(); setTimeout(() => { setCallState('idle'); setTranscript([]); setFactErrors([]); setUserTurn(false); setIsRecording(false); }, 50); }}
+                    onClick={() => { endCall(); setTimeout(() => { setCallState('idle'); setTranscript([]); setFactErrors([]); setUserTurn(false); setIsRecording(false); setLastPreviewedId(null); }, 50); }}
                     style={{
                       width: 20, height: 20, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.25)',
                       background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)',
