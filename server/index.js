@@ -17,7 +17,16 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
-import { loadSnapshot, saveSnapshot, store, registerUser, getRegisteredStats, normalizeUsername } from './store/memory.js';
+import {
+  loadSnapshot,
+  saveSnapshot,
+  store,
+  registerUser,
+  getRegisteredStats,
+  normalizeUsername,
+  getBlogFeedModerationPayload,
+  getBlogAuthorNoticePayload,
+} from './store/memory.js';
 import { registerMatchmaking } from './socket/matchmaking.js';
 import { registerDebate } from './socket/debate.js';
 import { registerSpectator } from './socket/spectator.js';
@@ -57,6 +66,20 @@ app.use('/api/admin', adminRouter);
 
 app.get('/api/health', (_, res) =>
   res.json({ ok: true, provider: 'groq', version: 5 }));
+
+/** כללי הסתרה לבלוג הציבורי (ללא אימות — רשימות מזהים בלבד) */
+app.get('/api/blog-feed-moderation', (_req, res) => {
+  res.json(getBlogFeedModerationPayload());
+});
+
+/** התראת מודרציה לכותב — ללא אימות (רק טקסט + חותמת זמן) */
+app.get('/api/blog-author-notice/:username', (req, res) => {
+  const norm = normalizeUsername(req.params.username || '');
+  if (!norm || norm.length < 2 || norm.length > 64) {
+    return res.json({ text: '', ts: 0 });
+  }
+  res.json(getBlogAuthorNoticePayload(norm));
+});
 
 // Radio stream proxy — pipes audio from radio station to browser (solves CORS/ICY issues)
 app.get('/api/radio-proxy', async (req, res) => {
@@ -192,6 +215,120 @@ app.get('/api/stats', (_, res) => {
     registeredList,
     onlineList: [...onlineSet],
   });
+});
+
+const VOICE_CHAR_PROMPTS = {
+  1: `אתה קריין רדיו מקצועי גברי. דבר בעברית ברורה, שוטפת ומדודה כמו קריין בתחנת רדיו. קולך סמכותי ונעים.`,
+  2: `את קריינית מקצועית בעלת קול נשי חם ומזמין. דברי בעברית נעימה, ברורה ומקצועית.`,
+  3: `אתה הרב זמיר כהן, רב ומחבר ידוע. דבר בעברית עם עומק רוחני, תוך ציטוט תורני מדי פעם. הייה חם, מכבד ומלמד.`,
+  4: `אתה פרופ' יובל נוח הררי, היסטוריון ומחבר "ספיינס". דבר בעברית אינטלקטואלית, השתמש בדוגמאות היסטוריות ורעיונות גדולים. הייה ביקורתי ומחשבתי.`,
+  5: `אתה ראש ממשלת ישראל. דבר בעברית רשמית ומדינאית, עם ביטחון, פטריוטיות ואחריות לאומית.`,
+  6: `You are President Donald Trump. Speak only in English, boldly and confidently. Use phrases like "tremendous", "believe me", "nobody knows more about this than me", "HUGE", "the best". Be direct and assertive.`,
+  7: `You are a native English speaker. Speak only in English, naturally and fluently. Be friendly and clear.`,
+  8: `Eres un hablante nativo de español. Habla solo en español de manera natural y fluida. Sé amigable y claro.`,
+  9: `אתה דובר אידיש. ענה בשפה שמשלבת אידיש ועברית, כמו יהודי מסורתי מאשכנז. השתמש בביטויים כמו: "נו", "אַ גוטן", "ס'איז אַזוי".`,
+  10: `אתה אלוהים, יודע כל ובורא עולם. דבר בעברית מלכותית ועתיקה, עם חוכמה עמוקה, רגיעה מוחלטת ואהבה לכל הנבראים. אל תהיה ארוך — כל מילה שלך כבדה.`,
+};
+
+const FACT_CHECK_SUFFIX = `
+
+בנוסף, זהה טעויות עובדתיות בדברי המשתמש.
+החזר תמיד JSON תקני בלבד בפורמט זה:
+{"reply":"תשובה בסגנון הדמות (קצרה — משפט-שניים)","factErrors":["תיאור קצר של טעות עובדתית"]}
+אם אין טעויות — "factErrors":[]
+אל תמציא טעויות. אל תוסיף טקסט מחוץ ל-JSON.`;
+
+app.post('/api/ai-voice-chat', async (req, res) => {
+  const { userText, history, characterId } = req.body || {};
+  if (!userText) return res.status(400).json({ error: 'missing userText' });
+
+  const charBase = VOICE_CHAR_PROMPTS[characterId] || VOICE_CHAR_PROMPTS[1];
+  const systemPrompt = charBase + FACT_CHECK_SUFFIX;
+
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    ...(Array.isArray(history) ? history.slice(-8).map(m => ({
+      role: m.from === 'user' ? 'user' : 'assistant',
+      content: m.text,
+    })) : []),
+    { role: 'user', content: userText },
+  ];
+
+  try {
+    const response = await chatCompletionWithFallback(messages, { max_tokens: 200, temperature: 0.75 });
+    const raw = response.choices?.[0]?.message?.content?.trim() || '';
+
+    let reply = 'מצטער, לא הצלחתי לענות.';
+    let factErrors = [];
+    try {
+      // חיפוש JSON בתוך התגובה (למקרה שה-model הוסיף טקסט)
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (parsed.reply) reply = String(parsed.reply);
+        if (Array.isArray(parsed.factErrors)) factErrors = parsed.factErrors.filter(e => typeof e === 'string' && e.trim());
+      } else {
+        reply = raw || reply;
+      }
+    } catch {
+      reply = raw || reply;
+    }
+
+    res.json({ reply, factErrors });
+  } catch (e) {
+    res.status(500).json({ error: groqErrorForClient(e) });
+  }
+});
+
+// ElevenLabs voice IDs per character (eleven_multilingual_v2 — natural Hebrew/English/Spanish)
+const ELEVEN_VOICE_MAP = {
+  1:  { voiceId: 'pNInz6obpgDQGcFmaJgB', stability: 0.55, boost: 0.78 }, // Adam — קריין גברי
+  2:  { voiceId: '21m00Tcm4TlvDq8ikWAM', stability: 0.60, boost: 0.80 }, // Rachel — קריינית נשית
+  3:  { voiceId: 'ErXwobaYiN019PkySvjV', stability: 0.68, boost: 0.82 }, // Antoni — הרב זמיר כהן
+  4:  { voiceId: 'TxGEqnHWrfWFTfGW9XjX', stability: 0.50, boost: 0.75 }, // Josh — הררי
+  5:  { voiceId: 'VR6AewLTigWG4xSOukaG', stability: 0.62, boost: 0.78 }, // Arnold — ראש ממשלה
+  6:  { voiceId: 'ODq5zmih8GrVes37Dy39', stability: 0.44, boost: 0.72 }, // Patrick — טראמפ
+  7:  { voiceId: 'N2lVS1w4EtoT3dr4eOWO', stability: 0.55, boost: 0.75 }, // Callum — אנגלית
+  8:  { voiceId: 'ErXwobaYiN019PkySvjV', stability: 0.55, boost: 0.78 }, // Antoni — ספרדית
+  9:  { voiceId: 'yoZ06aMxZJJ28mfd3POQ', stability: 0.70, boost: 0.82 }, // Sam — אידיש
+  10: { voiceId: 'VR6AewLTigWG4xSOukaG', stability: 0.82, boost: 0.88 }, // Arnold deep — אלוהים
+};
+
+app.post('/api/tts', async (req, res) => {
+  const { text, characterId } = req.body || {};
+  if (!text || typeof text !== 'string') return res.status(400).json({ error: 'missing text' });
+
+  const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
+  if (!ELEVENLABS_API_KEY) return res.status(503).json({ error: 'TTS not configured' });
+
+  const cfg = ELEVEN_VOICE_MAP[characterId] || ELEVEN_VOICE_MAP[1];
+
+  try {
+    const upstream = await fetch(
+      `https://api.elevenlabs.io/v1/text-to-speech/${cfg.voiceId}`,
+      {
+        method: 'POST',
+        headers: { 'xi-api-key': ELEVENLABS_API_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: text.slice(0, 500),
+          model_id: 'eleven_multilingual_v2',
+          voice_settings: { stability: cfg.stability, similarity_boost: cfg.boost },
+        }),
+      },
+    );
+    if (!upstream.ok) {
+      const err = await upstream.text().catch(() => '');
+      console.error('[tts] ElevenLabs error', upstream.status, err.slice(0, 200));
+      return res.status(502).json({ error: 'TTS upstream error' });
+    }
+    const buf = await upstream.arrayBuffer();
+    res.set('Content-Type', 'audio/mpeg');
+    res.set('Cache-Control', 'no-store');
+    res.send(Buffer.from(buf));
+  } catch (e) {
+    console.error('[tts] error', e.message);
+    res.status(500).json({ error: 'TTS error' });
+  }
 });
 
 app.get('/api/users/:username/stats', (req, res) => {
