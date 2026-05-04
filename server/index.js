@@ -332,13 +332,14 @@ const ELEVENLABS_VOICE_MAP = {
 };
 
 app.post('/api/elevenlabs-tts', async (req, res) => {
-  const { text, characterId } = req.body || {};
+  const { text, characterId, lang } = req.body || {};
   if (!text || typeof text !== 'string') return res.status(400).json({ error: 'missing text' });
 
   const apiKey = process.env.ELEVENLABS_API_KEY;
   if (!apiKey) return res.status(503).json({ error: 'ElevenLabs not configured' });
 
   const voiceId = ELEVENLABS_VOICE_MAP[characterId] || 'pNInz6obpgDQGcFmaJgB';
+  const languageCode = lang ? String(lang).split('-')[0] : 'he';
 
   try {
     const upstream = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
@@ -347,6 +348,7 @@ app.post('/api/elevenlabs-tts', async (req, res) => {
       body: JSON.stringify({
         text: text.slice(0, 1000),
         model_id: 'eleven_multilingual_v2',
+        language_code: languageCode,
         voice_settings: { stability: 0.5, similarity_boost: 0.75, use_speaker_boost: true },
       }),
     });
