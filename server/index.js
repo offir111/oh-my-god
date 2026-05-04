@@ -65,20 +65,18 @@ app.use('/api/leaderboard', leaderboardRouter);
 app.use('/api/admin', adminRouter);
 
 app.get('/api/health', (_, res) =>
-  res.json({ ok: true, provider: 'groq', version: 6, tts: !!process.env.ELEVENLABS_API_KEY }));
+  res.json({ ok: true, provider: 'groq', version: 7, tts: !!process.env.OPENAI_API_KEY }));
 
 // Quick TTS connectivity check — returns JSON (not audio) for easy browser testing
 app.get('/api/tts-check', async (_req, res) => {
-  const key = process.env.ELEVENLABS_API_KEY;
-  if (!key) return res.json({ ok: false, reason: 'no ELEVENLABS_API_KEY' });
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) return res.json({ ok: false, reason: 'no OPENAI_API_KEY' });
   try {
-    const r = await fetch('https://api.elevenlabs.io/v1/voices', {
-      headers: { 'xi-api-key': key },
+    const r = await fetch('https://api.openai.com/v1/models', {
+      headers: { 'Authorization': `Bearer ${key}` },
     });
-    const body = await r.json().catch(() => ({}));
-    if (!r.ok) return res.json({ ok: false, status: r.status, body });
-    const count = Array.isArray(body.voices) ? body.voices.length : '?';
-    return res.json({ ok: true, voicesAvailable: count });
+    if (!r.ok) return res.json({ ok: false, status: r.status });
+    return res.json({ ok: true, provider: 'openai-tts-1-hd' });
   } catch (e) {
     return res.json({ ok: false, reason: e.message });
   }
@@ -297,45 +295,45 @@ app.post('/api/ai-voice-chat', async (req, res) => {
   }
 });
 
-// ElevenLabs voice IDs per character (eleven_multilingual_v2 — natural Hebrew/English/Spanish)
-const ELEVEN_VOICE_MAP = {
-  1:  { voiceId: 'pNInz6obpgDQGcFmaJgB', stability: 0.55, boost: 0.78 }, // Adam — קריין גברי
-  2:  { voiceId: '21m00Tcm4TlvDq8ikWAM', stability: 0.60, boost: 0.80 }, // Rachel — קריינית נשית
-  3:  { voiceId: 'ErXwobaYiN019PkySvjV', stability: 0.68, boost: 0.82 }, // Antoni — הרב זמיר כהן
-  4:  { voiceId: 'TxGEqnHWrfWFTfGW9XjX', stability: 0.50, boost: 0.75 }, // Josh — הררי
-  5:  { voiceId: 'VR6AewLTigWG4xSOukaG', stability: 0.62, boost: 0.78 }, // Arnold — ראש ממשלה
-  6:  { voiceId: 'ODq5zmih8GrVes37Dy39', stability: 0.44, boost: 0.72 }, // Patrick — טראמפ
-  7:  { voiceId: 'N2lVS1w4EtoT3dr4eOWO', stability: 0.55, boost: 0.75 }, // Callum — אנגלית
-  8:  { voiceId: 'ErXwobaYiN019PkySvjV', stability: 0.55, boost: 0.78 }, // Antoni — ספרדית
-  9:  { voiceId: 'yoZ06aMxZJJ28mfd3POQ', stability: 0.70, boost: 0.82 }, // Sam — אידיש
-  10: { voiceId: 'VR6AewLTigWG4xSOukaG', stability: 0.82, boost: 0.88 }, // Arnold deep — אלוהים
+// OpenAI TTS voice per character — onyx/echo/fable for males, nova/shimmer for females
+const OPENAI_VOICE_MAP = {
+  1:  'onyx',    // קריין גברי — עמוק ורהוט
+  2:  'nova',    // קריינית נשית
+  3:  'onyx',    // הרב זמיר כהן
+  4:  'fable',   // הררי — אנליטי
+  5:  'echo',    // ראש ממשלה
+  6:  'onyx',    // טראמפ — en-US
+  7:  'echo',    // דובר אנגלית
+  8:  'fable',   // דובר ספרדית
+  9:  'onyx',    // דובר אידיש
+  10: 'onyx',    // אלוהים — כבד ורציני
 };
 
 app.post('/api/tts', async (req, res) => {
   const { text, characterId } = req.body || {};
   if (!text || typeof text !== 'string') return res.status(400).json({ error: 'missing text' });
 
-  const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
-  if (!ELEVENLABS_API_KEY) return res.status(503).json({ error: 'TTS not configured' });
+  const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+  if (!OPENAI_API_KEY) return res.status(503).json({ error: 'TTS not configured' });
 
-  const cfg = ELEVEN_VOICE_MAP[characterId] || ELEVEN_VOICE_MAP[1];
+  const voice = OPENAI_VOICE_MAP[characterId] || 'onyx';
 
   try {
-    const upstream = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${cfg.voiceId}`,
-      {
-        method: 'POST',
-        headers: { 'xi-api-key': ELEVENLABS_API_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: text.slice(0, 500),
-          model_id: 'eleven_multilingual_v2',
-          voice_settings: { stability: cfg.stability, similarity_boost: cfg.boost },
-        }),
+    const upstream = await fetch('https://api.openai.com/v1/audio/speech', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
       },
-    );
+      body: JSON.stringify({
+        model: 'tts-1-hd',
+        input: text.slice(0, 500),
+        voice,
+      }),
+    });
     if (!upstream.ok) {
       const err = await upstream.text().catch(() => '');
-      console.error('[tts] ElevenLabs error', upstream.status, err.slice(0, 200));
+      console.error('[tts] OpenAI error', upstream.status, err.slice(0, 200));
       return res.status(502).json({ error: 'TTS upstream error' });
     }
     const buf = await upstream.arrayBuffer();
