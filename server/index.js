@@ -8,10 +8,11 @@ process.on('unhandledRejection', (reason) => {
   console.error('[FATAL] unhandledRejection:', reason);
 });
 
-console.log('[boot] starting server...');
+console.log('[boot] starting server v8...');
 console.log('[boot] node version:', process.version);
 console.log('[boot] cwd:', process.cwd());
 console.log('[boot] PORT env:', process.env.PORT);
+console.log('[boot] ElevenLabs configured:', !!process.env.ELEVENLABS_API_KEY);
 
 import express from 'express';
 import { createServer } from 'http';
