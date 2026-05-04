@@ -65,7 +65,24 @@ app.use('/api/leaderboard', leaderboardRouter);
 app.use('/api/admin', adminRouter);
 
 app.get('/api/health', (_, res) =>
-  res.json({ ok: true, provider: 'groq', version: 5 }));
+  res.json({ ok: true, provider: 'groq', version: 6, tts: !!process.env.ELEVENLABS_API_KEY }));
+
+// Quick TTS connectivity check — returns JSON (not audio) for easy browser testing
+app.get('/api/tts-check', async (_req, res) => {
+  const key = process.env.ELEVENLABS_API_KEY;
+  if (!key) return res.json({ ok: false, reason: 'no ELEVENLABS_API_KEY' });
+  try {
+    const r = await fetch('https://api.elevenlabs.io/v1/voices', {
+      headers: { 'xi-api-key': key },
+    });
+    const body = await r.json().catch(() => ({}));
+    if (!r.ok) return res.json({ ok: false, status: r.status, body });
+    const count = Array.isArray(body.voices) ? body.voices.length : '?';
+    return res.json({ ok: true, voicesAvailable: count });
+  } catch (e) {
+    return res.json({ ok: false, reason: e.message });
+  }
+});
 
 /** כללי הסתרה לבלוג הציבורי (ללא אימות — רשימות מזהים בלבד) */
 app.get('/api/blog-feed-moderation', (_req, res) => {
