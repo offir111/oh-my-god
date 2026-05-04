@@ -368,6 +368,37 @@ app.post('/api/tts', async (req, res) => {
   }
 });
 
+// Groq Whisper transcription — receives raw audio binary, returns { transcript: string }
+app.post('/api/transcribe', express.raw({ type: '*/*', limit: '25mb' }), async (req, res) => {
+  if (!req.body || !req.body.length) return res.status(400).json({ error: 'no audio' });
+  const lang = String(req.query.lang || 'he').replace(/[^a-z-]/g, '').split('-')[0] || 'he';
+  const contentType = String(req.headers['content-type'] || 'audio/webm');
+  const ext = contentType.includes('mp4') ? 'audio.m4a' : contentType.includes('ogg') ? 'audio.ogg' : 'audio.webm';
+
+  try {
+    const formData = new FormData();
+    formData.append('file', new Blob([req.body], { type: contentType }), ext);
+    formData.append('model', 'whisper-large-v3');
+    formData.append('language', lang);
+
+    const r = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${process.env.GROQ_API_KEY}` },
+      body: formData,
+    });
+    if (!r.ok) {
+      const errText = await r.text().catch(() => '');
+      console.error('[transcribe] Groq error', r.status, errText.slice(0, 200));
+      return res.status(502).json({ error: 'transcription failed', status: r.status });
+    }
+    const data = await r.json();
+    res.json({ transcript: data.text || '' });
+  } catch (e) {
+    console.error('[transcribe] error', e.message);
+    res.status(500).json({ error: 'transcription error' });
+  }
+});
+
 app.get('/api/users/:username/stats', (req, res) => {
   const username = String(req.params.username || '').trim();
   if (!username) return res.status(400).json({ error: 'missing username' });
