@@ -337,8 +337,8 @@ app.post('/api/elevenlabs-tts', async (req, res) => {
   const { text, characterId, lang } = req.body || {};
   if (!text || typeof text !== 'string') return res.status(400).json({ error: 'missing text' });
 
-  const apiKey = process.env.ELEVENLABS_API_KEY;
-  if (!apiKey) return res.status(503).json({ error: 'ElevenLabs not configured' });
+  const apiKey = process.env.ELEVENLABS_API_KEY || 'sk_82f7f6de950fcbcc9cc54e1108e7b330ebd2e88f4897dee9';
+
 
   const voiceId = ELEVENLABS_VOICE_MAP[characterId] || 'pNInz6obpgDQGcFmaJgB';
   const languageCode = lang ? String(lang).split('-')[0] : 'he';
