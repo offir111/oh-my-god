@@ -347,6 +347,7 @@ app.post('/api/elevenlabs-tts', async (req, res) => {
       body: JSON.stringify({
         text: text.slice(0, 1000),
         model_id: 'eleven_multilingual_v2',
+        language_code: 'he',
         voice_settings: { stability: 0.5, similarity_boost: 0.75, use_speaker_boost: true },
       }),
     });
