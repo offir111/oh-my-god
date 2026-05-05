@@ -445,22 +445,19 @@ export default function AiVoicePage() {
 
   const startCall = useCallback((char) => {
     abortRef.current = false;
-    // Don't invalidate the token when continuing an active preview greeting
-    if (!previewActiveRef.current) previewTokenRef.current++;
+    previewTokenRef.current++; // invalidate any in-flight preview
+    pendingCallRef.current = null;
+    // Stop preview audio cleanly
+    if (_currentSrc) { try { _currentSrc.stop(); } catch {} _currentSrc = null; }
+    synthRef.current.cancel();
+    if (currentAudioRef.current) { currentAudioRef.current.pause(); currentAudioRef.current = null; }
+    previewActiveRef.current = false;
     setPreviewCharId(null);
     setCallState('active');
     setError(null);
     setTranscript([{ from: 'ai', text: char.greeting }]);
     setFactErrors([]);
     setUserTurn(false);
-
-    // If preview greeting is still playing — let it finish, then give user turn
-    if (previewActiveRef.current) {
-      pendingCallRef.current = () => { if (!abortRef.current) setUserTurn(true); };
-      return;
-    }
-    // Otherwise speak greeting fresh
-    synthRef.current.cancel();
     speak(char.greeting, char, () => { if (!abortRef.current) setUserTurn(true); });
   }, [speak]);
 
