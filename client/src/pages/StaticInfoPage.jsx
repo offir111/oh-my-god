@@ -256,6 +256,7 @@ function ContactContent() {
         }
         .contact-omg-letter {
           display: inline-block;
+          font-family: var(--font-sans, 'Rubik', 'Segoe UI', system-ui, sans-serif);
           font-weight: 900;
           font-size: clamp(2rem, 8vw, 3.25rem);
           letter-spacing: 0.14em;
@@ -592,7 +593,21 @@ export default function StaticInfoPage({ pageId }) {
         >
           {isTerms ? 'תקנון שימוש' : c.title}
         </h1>
-        {isTerms ? <TermsContent /> : <ContactContent />}
+        {isTerms ? (
+          <TermsContent />
+        ) : (
+          <div
+            className="static-info-contact-frame"
+            style={{
+              padding: '22px 20px',
+              borderRadius: 16,
+              border: '1px solid var(--border-strong, rgba(255,255,255,0.14))',
+              background: 'rgba(0,0,0,0.2)',
+            }}
+          >
+            <ContactContent />
+          </div>
+        )}
       </div>
     </div>
   );

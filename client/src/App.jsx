@@ -24,6 +24,7 @@ import PhotosPage from './pages/PhotosPage.jsx';
 import PodcastPage from './pages/PodcastPage.jsx';
 import VideoLivePage from './pages/VideoLivePage.jsx';
 import RadioPage from './pages/RadioPage.jsx';
+import AiVoicePage from './pages/AiVoicePage.jsx';
 import { RadioAudioProvider } from './context/RadioAudioContext.jsx';
 import MiniRadioBar from './components/layout/MiniRadioBar.jsx';
 import HomeLivePodcastPanel from './components/HomeLivePodcastPanel.jsx';
@@ -156,9 +157,14 @@ export default function App() {
     <AppRouter>
       <RadioAudioProvider>
         <AppErrorBoundary>
+          {/*
+            סדר קבוע של השכבה הקבועה (למטה מלמעלה):
+            כותרת+לוגו + משפטים רצים → נגן רדיו/יוטיוב (כשפתוח) → פודקאסט LIVE (מתחת לנגן אם פתוח)
+            → תוכן #main-content (padding-top ב-globals לפי שילובי radio-bar / podcast)
+          */}
           <AppHeader />
-          <HomeLivePodcastPanel />
           <MiniRadioBar />
+          <HomeLivePodcastPanel />
           <main id="main-content" className="app-main" tabIndex={-1}>
             <Routes>
             <Route path="/" element={user ? <Navigate to="/lobby" replace /> : <Navigate to="/login" replace />} />
@@ -181,6 +187,7 @@ export default function App() {
             <Route path="/arguments" element={<Navigate to="/knowledge" replace />} />
             <Route path="/live-events" element={<RequireSession><LiveEventsPage /></RequireSession>} />
             <Route path="/radio" element={<RequireSession><RadioPage /></RequireSession>} />
+            <Route path="/ai-voice" element={<RequireSession><AiVoicePage /></RequireSession>} />
             <Route path="/livr" element={<RequireAuth><LivrPage /></RequireAuth>} />
             <Route path="/settings" element={<RequireSession><SettingsPage /></RequireSession>} />
             <Route path="/terms" element={<StaticInfoPage pageId="terms" />} />

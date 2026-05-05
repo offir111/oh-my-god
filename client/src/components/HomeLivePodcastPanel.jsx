@@ -41,8 +41,35 @@ export default function HomeLivePodcastPanel() {
   const [vsLinkVisible, setVsLinkVisible] = useState(false);
   const [vsFlashTick, setVsFlashTick] = useState(0);
   const vsLinkTimerRef = useRef(null);
+  const panelRef = useRef(null);
 
   const hasSession = Boolean(user || pendingUser);
+
+  /** דוחף את תוכן העמוד (#root) למטה בגובה הפאנל — שלא ייחפף מתחת לפאנל הקבוע */
+  useLayoutEffect(() => {
+    const root = document.getElementById('root');
+    if (!root) return undefined;
+    if (!hasSession || !panelOpen) {
+      root.classList.remove('header-podcast-panel-open');
+      root.style.removeProperty('--header-podcast-panel-reserved-h');
+      return undefined;
+    }
+    const el = panelRef.current;
+    if (!el) return undefined;
+    root.classList.add('header-podcast-panel-open');
+    const apply = () => {
+      const h = Math.ceil(el.getBoundingClientRect().height);
+      root.style.setProperty('--header-podcast-panel-reserved-h', `${h}px`);
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      root.classList.remove('header-podcast-panel-open');
+      root.style.removeProperty('--header-podcast-panel-reserved-h');
+    };
+  }, [hasSession, panelOpen]);
 
   useEffect(() => {
     if (!panelOpen) return undefined;
@@ -183,13 +210,7 @@ export default function HomeLivePodcastPanel() {
   if (!hasSession || !panelOpen) return null;
 
   return (
-    <div className="header-podcast-panel" style={{ top: topOffset }} role="region" aria-label="פודקאסט LIVE">
-      <div className="header-podcast-panel__head">
-        <span className="header-podcast-panel__title">פודקאסט LIVE — הקשבה</span>
-        <button type="button" className="header-podcast-panel__close" onClick={closePanel} aria-label="סגור פאנל">
-          ✕
-        </button>
-      </div>
+    <div ref={panelRef} className="header-podcast-panel" style={{ top: topOffset }} role="region" aria-label="פודקאסט LIVE">
       <div className="header-podcast-panel__inner">
         <div className="home-live-broadcast-block">
           {isOmgLiveEditor && homeLiveOmgEditorShellOpen ? (
@@ -343,6 +364,15 @@ export default function HomeLivePodcastPanel() {
                 );
               })}
             </div>
+            <button
+              type="button"
+              className="header-podcast-panel__close header-podcast-panel__close--in-tab-row"
+              onClick={closePanel}
+              aria-label="סגור פודקאסט LIVE"
+              title="סגור"
+            >
+              ×
+            </button>
           </div>
           {homeLivePlayingKey && (homeLiveTransport.direct || homeLiveTransport.youtubeVideoId) ? (
             <HomeLiveListenTransport

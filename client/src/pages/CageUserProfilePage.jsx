@@ -15,6 +15,7 @@ import {
 } from '../lib/cageUserProfile.js';
 import UserAvatarSlot from '../components/ui/UserAvatarSlot.jsx';
 import { getLikes, saveLikes, getComments, saveComments, getPositions, savePositions, fmtDate } from '../lib/blogReactions.js';
+import { getApiBaseUrl } from '../lib/apiBaseUrl.js';
 
 const AVATAR_EMOJI_GROUPS = [
   {
@@ -236,7 +237,7 @@ function safeFaithChatReturnHref(raw) {
 }
 
 /* ─── Blog post card with reactions (profile view) ──────────────────── */
-function ProfilePostCard({ post, username }) {
+function ProfilePostCard({ post, username, hideTitle = false }) {
   const [likes, setLikes] = useState(() => getLikes(post.id));
   const [comments, setComments] = useState(() => getComments(post.id));
   const [positions, setPositions] = useState(() => getPositions(post.id));
@@ -284,7 +285,9 @@ function ProfilePostCard({ post, username }) {
 
   return (
     <article style={{ padding: '14px 14px 0', borderBottom: '1px solid var(--border)', direction: 'rtl' }}>
-      <h3 style={{ margin: '0 0 6px', color: 'var(--gold)', fontSize: '1rem', fontWeight: 900 }}>{post.title}</h3>
+      {!hideTitle ? (
+        <h3 style={{ margin: '0 0 6px', color: 'var(--gold)', fontSize: '1rem', fontWeight: 900 }}>{post.title}</h3>
+      ) : null}
       <p style={{ margin: '0 0 8px', color: 'var(--text)', whiteSpace: 'pre-wrap', lineHeight: 1.65, fontSize: '0.88rem' }}>{post.body}</p>
       <span style={{ color: 'var(--muted)', fontSize: '0.68rem' }}>{fmtDate(post.ts)}</span>
 
@@ -388,6 +391,10 @@ export default function CageUserProfilePage() {
   const [blogBody, setBlogBody] = useState('');
   const [toast, setToast] = useState('');
   const [blogOpen, setBlogOpen] = useState(false);
+  /** התראת מודרציה מהשרת (בלוג) — מוצגת לבעל הפרופיל */
+  const [blogModNotice, setBlogModNotice] = useState(null);
+  /** במסך כתיבת בלוג — פוסט שנפתח באקורדיון (כותרת בלבד עד לחיצה) */
+  const [blogAccordionOpenId, setBlogAccordionOpenId] = useState(null);
   const [liveOpen, setLiveOpen] = useState(false);
   const [liveTitle, setLiveTitle] = useState('');
   const [liveType, setLiveType] = useState('audio');
@@ -397,6 +404,8 @@ export default function CageUserProfilePage() {
   const [msgBody, setMsgBody] = useState('');
   const [inbox, setInbox] = useState([]);
   const [outbox, setOutbox] = useState([]);
+  /** שמות מחוברים לשרת (מ־/api/stats) — לנקודה הירוקה ליד התמונה */
+  const [serverOnlineList, setServerOnlineList] = useState([]);
 
   useEffect(() => {
     setProfile(getMergedCageProfile(displayName));
@@ -407,6 +416,10 @@ export default function CageUserProfilePage() {
   useEffect(() => {
     if (!canEditProfile) setEditOpen(false);
   }, [canEditProfile]);
+
+  useEffect(() => {
+    if (!blogOpen) setBlogAccordionOpenId(null);
+  }, [blogOpen]);
 
   useEffect(() => {
     if (searchParams.get('compose') !== '1') return;
@@ -423,6 +436,56 @@ export default function CageUserProfilePage() {
     setMsgOpen(true);
     strip();
   }, [searchParams, setSearchParams, viewerNorm, isOwner]);
+
+  /** פתיחת מסך הבלוג מהתפריט הראשי (?blog=1) */
+  useEffect(() => {
+    if (searchParams.get('blog') !== '1') return;
+    const strip = () => {
+      const next = new URLSearchParams(searchParams);
+      next.delete('blog');
+      if (next.toString() !== searchParams.toString()) setSearchParams(next, { replace: true });
+    };
+    if (!canEditProfile) {
+      strip();
+      return;
+    }
+    setBlogOpen(true);
+    strip();
+  }, [searchParams, setSearchParams, canEditProfile]);
+
+  useEffect(() => {
+    if (!isOwner || !subjectNorm) {
+      setBlogModNotice(null);
+      return;
+    }
+    let cancelled = false;
+    const BASE = getApiBaseUrl();
+    const u = encodeURIComponent(displayName);
+    fetch(`${BASE}/api/blog-author-notice/${u}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        if (cancelled) return;
+        const text = String(d?.text || '').trim();
+        const ts = Number(d?.ts) || 0;
+        if (!text || !ts) {
+          setBlogModNotice(null);
+          return;
+        }
+        let dismissed = 0;
+        try {
+          dismissed = Number(localStorage.getItem(`omg_dismissed_blog_notice_ts_${subjectNorm}`) || 0);
+        } catch { /* ignore */ }
+        if (ts <= dismissed) {
+          setBlogModNotice(null);
+          return;
+        }
+        setBlogModNotice({ text, ts });
+      })
+      .catch(() => {
+        if (!cancelled) setBlogModNotice(null);
+      });
+    return () => { cancelled = true; };
+  }, [isOwner, subjectNorm, displayName]);
 
   const personalEditPanelRef = useRef(null);
   useEffect(() => {
@@ -457,6 +520,13 @@ export default function CageUserProfilePage() {
     setToast('ההודעה נשלחה!');
     window.setTimeout(() => setToast(''), 2000);
   };
+
+  const handleProfileLogout = useCallback(() => {
+    disconnectSocket();
+    setUser(null);
+    resetDebate();
+    navigate('/login');
+  }, [setUser, resetDebate, navigate]);
 
   // Auto-save on page exit when there are unsaved changes
   useEffect(() => {
@@ -560,17 +630,47 @@ export default function CageUserProfilePage() {
     window.setTimeout(() => setToast(''), 2200);
   };
 
+  useEffect(() => {
+    if (!subjectNorm) return;
+    const BASE = getApiBaseUrl();
+    let cancelled = false;
+    const load = () => {
+      fetch(`${BASE}/api/stats`)
+        .then(r => (r.ok ? r.json() : null))
+        .then(d => {
+          if (cancelled || !d) return;
+          setServerOnlineList(Array.isArray(d.onlineList) ? d.onlineList : []);
+        })
+        .catch(() => {});
+    };
+    load();
+    const t = window.setInterval(load, 15000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(t);
+    };
+  }, [subjectNorm]);
+
+  const isOnline = useMemo(() => {
+    if (!subjectNorm) return false;
+    if (isOwner && viewerNorm) return true;
+    return serverOnlineList.some(n => normalizeProfileUsername(n) === subjectNorm);
+  }, [serverOnlineList, subjectNorm, isOwner, viewerNorm]);
+
+  /** ליד התמונה: רק שני מצבים — מחובר לשרת / לא (גם כשצופה אחר בפרופיל שלו) */
+  const onlineStatusLabel = isOnline ? 'מחובר/ת כרגע' : 'לא מחובר/ת כרגע';
+
+  /** שורת «נראה לאחרונה» — תואם לנורה (מחובר לשרת / לא) */
   const lastSeenDisplay = useMemo(() => {
-    if (isOwner) return 'נמצא כרגע 🟢';
+    if (isOnline) return 'מחובר כרגע';
+    if (isOwner && !isOnline) return 'לא מחובר כרגע';
     if (!profile.lastSeenTs) return '';
     const d = new Date(profile.lastSeenTs);
     const day = d.getDate();
     const month = d.getMonth() + 1;
     const year = String(d.getFullYear()).slice(2);
     return `נראה בתאריך ${day}.${month}.${year}`;
-  }, [isOwner, hasFullLogin, profile.lastSeenTs]);
-
-  const isOnline = isOwner;
+  }, [isOnline, isOwner, profile.lastSeenTs]);
 
   const infoStripes = useMemo(() => [
     ['מין / מגדר', profile.gender],
@@ -589,14 +689,17 @@ export default function CageUserProfilePage() {
 
   if (!displayName) {
     return (
-      <div style={{ padding: 24, textAlign: 'center', color: 'var(--muted)' }}>
+      <div className="cage-prof-root" style={{ padding: 24, textAlign: 'center', color: 'var(--muted)' }}>
         <p>לא צוין שם פרופיל</p>
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: 560, margin: '0 auto', background: 'var(--bg)', minHeight: 'calc(100vh - var(--shell-top, 0px))', direction: 'rtl' }}>
+    <div
+      className="cage-prof-root"
+      style={{ maxWidth: 560, margin: '0 auto', background: 'var(--bg)', minHeight: 'calc(100vh - var(--shell-top, 0px))', direction: 'rtl' }}
+    >
 
       {/* ── Styles ── */}
       <style>{`
@@ -655,6 +758,24 @@ export default function CageUserProfilePage() {
         }
         .cage-msg-btn:hover { opacity: 0.9; }
         .cage-msg-btn:active { transform: scale(0.99); }
+
+        .cage-prof-logout {
+          width: 100%;
+          padding: 10px;
+          border-radius: var(--radius-sm);
+          border: 1px solid rgba(254, 202, 202, 0.35);
+          background: linear-gradient(180deg, #b91c1c 0%, #991b1b 100%);
+          color: #fff;
+          font-weight: 800;
+          font-size: 0.86rem;
+          cursor: pointer;
+          font-family: inherit;
+          text-align: center;
+          box-shadow: var(--shadow-xs), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+          transition: filter 0.12s, transform 0.1s;
+        }
+        .cage-prof-logout:hover { filter: brightness(1.06); }
+        .cage-prof-logout:active { transform: scale(0.99); filter: brightness(0.96); }
 
         .cage-edit-input {
           width: 100%; padding: 8px 10px; box-sizing: border-box;
@@ -721,13 +842,15 @@ export default function CageUserProfilePage() {
         alignItems: 'flex-start',
       }}>
         {/* Avatar (right in RTL = first DOM element) */}
+        <div style={{ position: 'relative', flexShrink: 0 }}>
         <div style={{
-          width: 92, height: 92, flexShrink: 0,
+          width: 92, height: 92,
           borderRadius: 'var(--radius-sm)',
           overflow: 'hidden',
           background: 'var(--card-hover)',
-          border: '1px solid var(--border-strong)',
+          border: isOnline ? '2px solid #22c55e' : '1px solid var(--border-strong)',
           cursor: canEditProfile ? 'pointer' : 'default',
+          transition: 'border-color 0.25s',
         }}
           onClick={() => canEditProfile && setEditOpen(true)}
           title={canEditProfile ? 'לחץ לעריכת פרופיל' : undefined}
@@ -744,6 +867,21 @@ export default function CageUserProfilePage() {
             </div>
           )}
         </div>
+        {isOnline && (
+          <span aria-hidden style={{
+            position: 'absolute',
+            bottom: -4,
+            right: -4,
+            width: 16,
+            height: 16,
+            borderRadius: '50%',
+            background: '#22c55e',
+            border: '2.5px solid var(--card)',
+            boxShadow: '0 0 8px rgba(34,197,94,0.75)',
+            zIndex: 1,
+          }} />
+        )}
+        </div>
 
         {/* Text section (left in RTL = second DOM element) */}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -751,16 +889,34 @@ export default function CageUserProfilePage() {
             {displayName}
           </h1>
 
-          {/* Online status */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7, direction: 'rtl' }}>
-            <span style={{
-              width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-              background: isOnline ? '#22c55e' : 'var(--muted)',
-              boxShadow: isOnline ? '0 0 6px rgba(34,197,94,0.6)' : 'none',
-            }} />
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
-              {profile.lastSeenLabel || 'לא מחובר כרגע'}
+          {/* Online status — טקסט משמאל לנורה (ציר LTR בתוך עמוד RTL) */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 7,
+              flexDirection: 'row',
+              direction: 'ltr',
+              justifyContent: 'flex-end',
+            }}
+          >
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500, unicodeBidi: 'plaintext' }}>
+              {onlineStatusLabel}
             </span>
+            <span
+              aria-hidden
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                flexShrink: 0,
+                background: isOnline ? '#22c55e' : '#3f3f46',
+                boxShadow: isOnline
+                  ? '0 0 6px rgba(34,197,94,0.65)'
+                  : 'inset 0 1px 2px rgba(0,0,0,0.45)',
+                opacity: isOnline ? 1 : 0.72,
+              }}
+            />
           </div>
 
           {/* Action buttons row */}
@@ -793,6 +949,49 @@ export default function CageUserProfilePage() {
           </div>
         </div>
       </div>
+
+      {isOwner && blogModNotice?.text ? (
+        <div
+          role="alert"
+          style={{
+            direction: 'rtl',
+            margin: 0,
+            padding: '12px 14px',
+            background: 'rgba(234,179,8,0.14)',
+            borderBottom: '1px solid rgba(234,179,8,0.45)',
+            color: 'var(--text)',
+          }}
+        >
+          <p style={{ margin: '0 0 8px', fontWeight: 900, fontSize: '0.8rem', color: '#ca8a04' }}>
+            התראת עורך לגבי בלוג / תוכן
+          </p>
+          <p style={{ margin: 0, fontSize: '0.78rem', lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+            {blogModNotice.text}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              try {
+                localStorage.setItem(`omg_dismissed_blog_notice_ts_${subjectNorm}`, String(blogModNotice.ts));
+              } catch { /* ignore */ }
+              setBlogModNotice(null);
+            }}
+            style={{
+              marginTop: 10,
+              padding: '6px 14px',
+              borderRadius: 6,
+              fontWeight: 800,
+              fontSize: '0.76rem',
+              border: '1px solid var(--border-strong)',
+              background: 'var(--card2)',
+              color: 'var(--text)',
+              cursor: 'pointer',
+            }}
+          >
+            הבנתי, הסתר
+          </button>
+        </div>
+      ) : null}
 
       {/* ── Message panel (inline, replaces content sections) ── */}
       {msgOpen && viewerNorm ? (
@@ -912,7 +1111,7 @@ export default function CageUserProfilePage() {
           ) : null}
         </div>
       ) : blogOpen ? (
-        <div style={{ direction: 'rtl', display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 160px)', background: 'var(--bg)' }}>
+        <div style={{ direction: 'rtl', display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 160px)', background: 'var(--bg)', flex: 1 }}>
 
           {/* Header */}
           <div style={{
@@ -920,6 +1119,7 @@ export default function CageUserProfilePage() {
             background: 'var(--surface)', color: 'var(--text)',
             padding: '9px 14px', fontWeight: 800, fontSize: '0.82rem',
             borderBottom: '1px solid var(--border-strong)',
+            flexShrink: 0,
           }}>
             <span>הבלוג של {displayName}</span>
             <button
@@ -940,70 +1140,132 @@ export default function CageUserProfilePage() {
             </button>
           </div>
 
-          {/* Post list */}
-          <div style={{ flex: 1, overflowY: 'auto' }}>
-            {!profile.blogPosts?.length ? (
-              <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)', fontSize: '0.9rem' }}>
-                📝 עדיין אין פוסטים בבלוג
-              </div>
-            ) : (
-              profile.blogPosts
-                .slice()
-                .sort((a, b) => b.ts - a.ts)
-                .map(p => (
-                  <ProfilePostCard key={p.id} post={p} username={viewerName || null} />
-                ))
-            )}
-          </div>
-
-          {/* Write new post — owner only */}
           {isOwner ? (
-            <div style={{
-              borderTop: '1px solid var(--border-strong)',
-              background: 'var(--surface)',
-              padding: '12px 14px',
-              display: 'flex', flexDirection: 'column', gap: 8,
-            }}>
-              <p style={{ margin: 0, fontWeight: 800, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>פוסט חדש</p>
-              <input
-                type="text"
-                placeholder="כותרת…"
-                value={blogTitle}
-                onChange={e => setBlogTitle(e.target.value.slice(0, 200))}
-                className="cage-edit-input"
-              />
-              <textarea
-                placeholder="תוכן הפוסט…"
-                value={blogBody}
-                onChange={e => setBlogBody(e.target.value.slice(0, 20000))}
-                rows={4}
-                className="cage-edit-textarea"
-                style={{ resize: 'none' }}
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  const title = blogTitle.trim();
-                  const body = blogBody.trim();
-                  if (!title || !body || !subjectNorm || !isOwner || !hasFullLogin) return;
-                  const post = { id: `b-${Date.now()}-${Math.random().toString(36).slice(2,9)}`, title: title.slice(0,200), body: body.slice(0,20000), ts: Date.now() };
-                  const next = { ...profile, blogPosts: [post, ...(profile.blogPosts||[])].slice(0,80) };
-                  const saved = saveCageProfile(subjectNorm, next);
-                  if (saved) { setProfile(saved); setBlogTitle(''); setBlogBody(''); setToast('פוסט פורסם!'); window.setTimeout(() => setToast(''), 2000); }
-                }}
-                disabled={!blogTitle.trim() || !blogBody.trim()}
-                style={{
-                  padding: '10px 0', borderRadius: 'var(--radius-sm)',
-                  border: '1px solid rgba(99,102,241,0.4)',
-                  background: blogTitle.trim() && blogBody.trim() ? PROF_BTN_PRIMARY : 'var(--card-hover)',
-                  color: '#fff', fontWeight: 900, fontSize: '0.85rem',
-                  cursor: blogTitle.trim() && blogBody.trim() ? 'pointer' : 'not-allowed',
-                }}
-              >
-                פרסם לבלוג ✓
-              </button>
+            <>
+              {/* כתיבת פוסט → פרסם פוסט → התנתק → רשימת כותרות (נפתח בלחיצה) */}
+              <div style={{
+                borderBottom: '1px solid var(--border-strong)',
+                background: 'var(--surface)',
+                padding: '12px 14px',
+                display: 'flex', flexDirection: 'column', gap: 8,
+                flexShrink: 0,
+              }}>
+                <p style={{ margin: 0, fontWeight: 800, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>פוסט חדש</p>
+                <input
+                  type="text"
+                  placeholder="כותרת…"
+                  value={blogTitle}
+                  onChange={e => setBlogTitle(e.target.value.slice(0, 200))}
+                  className="cage-edit-input"
+                />
+                <textarea
+                  placeholder="תוכן הפוסט…"
+                  value={blogBody}
+                  onChange={e => setBlogBody(e.target.value.slice(0, 20000))}
+                  rows={4}
+                  className="cage-edit-textarea"
+                  style={{ resize: 'none' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const title = blogTitle.trim();
+                    const body = blogBody.trim();
+                    if (!title || !body || !subjectNorm || !isOwner) return;
+                    const post = { id: `b-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`, title: title.slice(0, 200), body: body.slice(0, 20000), ts: Date.now() };
+                    const next = { ...profile, blogPosts: [post, ...(profile.blogPosts || [])].slice(0, 80) };
+                    const saved = saveCageProfile(subjectNorm, next);
+                    if (saved) {
+                      setProfile(saved);
+                      setBlogTitle('');
+                      setBlogBody('');
+                      setBlogAccordionOpenId(post.id);
+                      setToast('הפוסט נשלח בהצלחה ומפורסם כעת בבלוגים בתפריט ראשי');
+                      window.setTimeout(() => setToast(''), 4500);
+                    }
+                  }}
+                  disabled={!blogTitle.trim() || !blogBody.trim()}
+                  style={{
+                    padding: '10px 0', borderRadius: 'var(--radius-sm)',
+                    border: '1px solid rgba(99,102,241,0.4)',
+                    background: blogTitle.trim() && blogBody.trim() ? PROF_BTN_PRIMARY : 'var(--card-hover)',
+                    color: '#fff', fontWeight: 900, fontSize: '0.85rem',
+                    cursor: blogTitle.trim() && blogBody.trim() ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  פרסם פוסט
+                </button>
+              </div>
+
+              {canEditProfile ? (
+                <div style={{ padding: '10px 14px', background: 'var(--surface)', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+                  <button type="button" className="cage-prof-logout" onClick={handleProfileLogout}>
+                    התנתק
+                  </button>
+                </div>
+              ) : null}
+
+              <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+                {!profile.blogPosts?.length ? (
+                  <div style={{ padding: 28, textAlign: 'center', color: 'var(--muted)', fontSize: '0.9rem' }}>
+                    📝 עדיין אין פוסטים בבלוג
+                  </div>
+                ) : (
+                  profile.blogPosts
+                    .slice()
+                    .sort((a, b) => b.ts - a.ts)
+                    .map(p => {
+                      const open = blogAccordionOpenId === p.id;
+                      return (
+                        <div key={p.id} style={{ borderBottom: '1px solid var(--border)', background: 'var(--card)' }}>
+                          <button
+                            type="button"
+                            onClick={() => setBlogAccordionOpenId(open ? null : p.id)}
+                            aria-expanded={open}
+                            style={{
+                              width: '100%',
+                              textAlign: 'right',
+                              padding: '12px 14px',
+                              border: 'none',
+                              background: open ? 'rgba(99,102,241,0.08)' : 'transparent',
+                              color: 'var(--gold)',
+                              fontWeight: 800,
+                              fontSize: '0.9rem',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: 10,
+                              fontFamily: 'inherit',
+                              direction: 'rtl',
+                            }}
+                          >
+                            <span style={{ flex: 1, minWidth: 0, wordBreak: 'break-word' }}>{p.title}</span>
+                            <span aria-hidden style={{ flexShrink: 0, color: 'var(--muted)', fontSize: '0.75rem' }}>{open ? '▲' : '▼'}</span>
+                          </button>
+                          {open ? <ProfilePostCard post={p} username={viewerName || null} hideTitle /> : null}
+                        </div>
+                      );
+                    })
+                )}
+              </div>
+            </>
+          ) : (
+            <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+              {!profile.blogPosts?.length ? (
+                <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)', fontSize: '0.9rem' }}>
+                  📝 עדיין אין פוסטים בבלוג
+                </div>
+              ) : (
+                profile.blogPosts
+                  .slice()
+                  .sort((a, b) => b.ts - a.ts)
+                  .map(p => (
+                    <ProfilePostCard key={p.id} post={p} username={viewerName || null} />
+                  ))
+              )}
             </div>
-          ) : null}
+          )}
         </div>
       ) : liveOpen ? (
         <div style={{ direction: 'rtl', display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 160px)', background: 'var(--bg)' }}>
@@ -1305,7 +1567,7 @@ export default function CageUserProfilePage() {
                 cursor: 'pointer',
               }}
             >
-              {editOpen ? 'סגור עריכה ✕' : 'עריכת פרופיל ✎'}
+              {editOpen ? 'שמור עריכה ✕' : 'עריכת פרופיל ✎'}
             </button>
           )}
         </div>
@@ -1320,18 +1582,6 @@ export default function CageUserProfilePage() {
               scrollMarginTop: 'calc(var(--shell-top, 122px) + 10px)',
             }}
           >
-            <button
-              type="button"
-              onClick={() => {
-                disconnectSocket();
-                setUser(null);
-                resetDebate();
-                navigate('/login');
-              }}
-              style={{ width: '100%', padding: 10, borderRadius: 'var(--radius-sm)', border: '1px solid rgba(244,63,94,0.4)', background: 'rgba(244,63,94,0.1)', color: '#f87171', fontWeight: 800, cursor: 'pointer', marginBottom: 14 }}
-            >
-              התנתק
-            </button>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {/* Avatar: image upload + icon picker side by side */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -1481,7 +1731,7 @@ export default function CageUserProfilePage() {
                   onClick={addBlogPost}
                   style={{ marginTop: 8, padding: '9px 18px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(255,255,255,0.18)', background: PROF_BTN_PRIMARY, color: '#fff', fontWeight: 800, cursor: 'pointer' }}
                 >
-                  פרסום לבלוג
+                  פרסם פוסט
                 </button>
               </div>
 
@@ -1562,6 +1812,11 @@ export default function CageUserProfilePage() {
           >
             {`הבלוג של ${displayName}`}
           </button>
+          {canEditProfile ? (
+            <button type="button" className="cage-prof-logout" onClick={handleProfileLogout}>
+              התנתק
+            </button>
+          ) : null}
           <button
             type="button"
             className="cage-blog-btn"
@@ -1627,21 +1882,9 @@ export default function CageUserProfilePage() {
       ) : null}
 
 
-      {/* ── התנתק + עריכת פרופיל/סגור (תמיד בתחתית כשאפשר לערוך; תיבת השדות מתחת ל״פרטים אישיים״) ── */}
+      {/* ── עריכת פרופיל / שמור עריכה (תחתית; התנתק — מתחת לכפתור הבלוג בלבד) ── */}
       {canEditProfile ? (
         <div style={{ padding: 14, background: 'var(--surface)', borderTop: '2px solid var(--border-strong)', marginTop: 2 }}>
-          <button
-            type="button"
-            onClick={() => {
-              disconnectSocket();
-              setUser(null);
-              resetDebate();
-              navigate('/login');
-            }}
-            style={{ width: '100%', padding: 10, borderRadius: 'var(--radius-sm)', border: '1px solid rgba(244,63,94,0.4)', background: 'rgba(244,63,94,0.1)', color: '#f87171', fontWeight: 800, cursor: 'pointer', marginBottom: 10 }}
-          >
-            התנתק
-          </button>
           <button
             type="button"
             onClick={() => {
@@ -1662,7 +1905,7 @@ export default function CageUserProfilePage() {
               marginBottom: editOpen ? 14 : 0,
             }}
           >
-            {editOpen ? 'סגור עריכה ✕' : 'עריכת פרופיל ✎'}
+            {editOpen ? 'שמור עריכה ✕' : 'עריכת פרופיל ✎'}
           </button>
         </div>
       ) : null}

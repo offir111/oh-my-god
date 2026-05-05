@@ -29,6 +29,14 @@ export const store = {
   adminNotesByNorm: new Map(), // נירמול → הערת מנהל (אזהרה / פנימי)
   topicCounts: new Map(),   // topicId → מספר אזכורים בהודעות טקסט (אדם + AI)
   permanentOnlineUsernames: new Set(), // יוזרים שתמיד מוצגים כמחוברים (demo)
+  /** מפתח: authorNorm|postId — הסתרה מהבלוג הציבורי (ללא מחיקה ממכשירי המשתמשים) */
+  blogFeedHiddenPostKeys: new Set(),
+  /** מפתח זהה — מוסתר מהפיד עד «ברור» (מודרציה זמנית) */
+  blogFeedPendingReviewKeys: new Set(),
+  /** כותבים שכל הפוסטים שלהם מוסתרים מהבלוג הציבורי */
+  blogFeedBlockedAuthors: new Set(),
+  /** נירמול שם → { text, ts } — התראת עורך על תוכן פוגעני (מוצג בפרופיל של הכותב) */
+  blogAuthorNoticesByNorm: new Map(),
 };
 
 export function createDebateState(debateId, believer, atheist, isAI = false, aiSide = null) {
@@ -108,6 +116,75 @@ export function setAdminNote(username, note) {
   else store.adminNotesByNorm.delete(norm);
   saveSnapshot();
   return true;
+}
+
+function blogFeedModerationPostKey(authorNorm, postId) {
+  return `${normalizeUsername(authorNorm)}|${String(postId || '').trim()}`;
+}
+
+export function getBlogFeedModerationPayload() {
+  return {
+    hiddenKeys: [...store.blogFeedHiddenPostKeys],
+    pendingKeys: [...store.blogFeedPendingReviewKeys],
+    blockedAuthors: [...store.blogFeedBlockedAuthors],
+  };
+}
+
+export function hideBlogPostFromPublicFeed(author, postId) {
+  const k = blogFeedModerationPostKey(author, postId);
+  store.blogFeedHiddenPostKeys.add(k);
+  store.blogFeedPendingReviewKeys.delete(k);
+  saveSnapshot();
+}
+
+export function hideBlogPostPendingReview(author, postId) {
+  store.blogFeedPendingReviewKeys.add(blogFeedModerationPostKey(author, postId));
+  saveSnapshot();
+}
+
+export function clearBlogPostPendingReview(author, postId) {
+  store.blogFeedPendingReviewKeys.delete(blogFeedModerationPostKey(author, postId));
+  saveSnapshot();
+}
+
+export function unhideBlogPostFromPublicFeed(author, postId) {
+  store.blogFeedHiddenPostKeys.delete(blogFeedModerationPostKey(author, postId));
+  saveSnapshot();
+}
+
+export function blockBlogAuthorFromPublicFeed(author) {
+  const n = normalizeUsername(author);
+  if (!n || n === RESERVED_ADMIN_NORM) return false;
+  store.blogFeedBlockedAuthors.add(n);
+  saveSnapshot();
+  return true;
+}
+
+export function unblockBlogAuthorFromPublicFeed(author) {
+  store.blogFeedBlockedAuthors.delete(normalizeUsername(author));
+  saveSnapshot();
+  return true;
+}
+
+export function setBlogAuthorModerationNotice(author, text) {
+  const norm = normalizeUsername(author);
+  if (!norm || norm === RESERVED_ADMIN_NORM) return false;
+  const t = String(text || '').trim().slice(0, 800);
+  if (!t) {
+    store.blogAuthorNoticesByNorm.delete(norm);
+    saveSnapshot();
+    return true;
+  }
+  store.blogAuthorNoticesByNorm.set(norm, { text: t, ts: Date.now() });
+  saveSnapshot();
+  return true;
+}
+
+export function getBlogAuthorNoticePayload(username) {
+  const norm = normalizeUsername(username);
+  const row = store.blogAuthorNoticesByNorm.get(norm);
+  if (!row || !row.text) return { text: '', ts: 0 };
+  return { text: String(row.text), ts: Number(row.ts) || 0 };
 }
 
 /**
@@ -221,6 +298,32 @@ export function registerUser(username, password = null, options = {}) {
   return { ok: true, registered: store.registeredCount };
 }
 
+/** יוזרי דמו שהוסרו מהמוצר — נמחקים מסנאפשוט בכל עליית שרת */
+const RETIRED_VIRTUAL_USER_NORMS = [normalizeUsername('דוד_אמסלם')].filter(Boolean);
+
+export function purgeRetiredVirtualUsers() {
+  let changed = false;
+  for (const norm of RETIRED_VIRTUAL_USER_NORMS) {
+    if (!norm || norm === RESERVED_ADMIN_NORM) continue;
+    if (store.permanentOnlineUsernames.delete(norm)) changed = true;
+    if (store.registeredUsernames.delete(norm)) changed = true;
+    if (store.registeredPasswords.delete(norm)) changed = true;
+    if (store.userScores.delete(norm)) changed = true;
+    if (store.adminNotesByNorm.delete(norm)) changed = true;
+    for (const k of [...store.userScores.keys()]) {
+      if (normalizeUsername(k) === norm) {
+        store.userScores.delete(k);
+        changed = true;
+      }
+    }
+  }
+  if (changed) {
+    store.registeredCount = Math.max(store.registeredUsernames.size, store.registeredPasswords.size);
+    saveSnapshot();
+    console.log('[store] purgeRetiredVirtualUsers: removed retired demo user(s) from snapshot');
+  }
+}
+
 export function getRegisteredStats() {
   const all = allRegisteredNorms();
   const registeredList = [...all]
@@ -250,6 +353,10 @@ export function saveSnapshot() {
       adminNotesByNorm: Object.fromEntries(store.adminNotesByNorm),
       topicCounts: Object.fromEntries(store.topicCounts),
       permanentOnlineUsernames: [...store.permanentOnlineUsernames],
+      blogFeedHiddenPostKeys: [...store.blogFeedHiddenPostKeys],
+      blogFeedPendingReviewKeys: [...store.blogFeedPendingReviewKeys],
+      blogFeedBlockedAuthors: [...store.blogFeedBlockedAuthors],
+      blogAuthorNoticesByNorm: Object.fromEntries(store.blogAuthorNoticesByNorm),
       savedAt: new Date().toISOString(),
     };
     fs.writeFileSync(SNAPSHOT_PATH, JSON.stringify(data, null, 2), 'utf8');
@@ -288,6 +395,28 @@ export function loadSnapshot() {
     }
     if (Array.isArray(data.permanentOnlineUsernames)) {
       store.permanentOnlineUsernames = new Set(data.permanentOnlineUsernames.map(normalizeUsername).filter(Boolean));
+    }
+    if (Array.isArray(data.blogFeedHiddenPostKeys)) {
+      store.blogFeedHiddenPostKeys = new Set(data.blogFeedHiddenPostKeys.filter(x => typeof x === 'string' && x.includes('|')));
+    }
+    if (Array.isArray(data.blogFeedPendingReviewKeys)) {
+      store.blogFeedPendingReviewKeys = new Set(data.blogFeedPendingReviewKeys.filter(x => typeof x === 'string' && x.includes('|')));
+    }
+    if (Array.isArray(data.blogFeedBlockedAuthors)) {
+      store.blogFeedBlockedAuthors = new Set(data.blogFeedBlockedAuthors.map(normalizeUsername).filter(Boolean));
+    }
+    if (data.blogAuthorNoticesByNorm && typeof data.blogAuthorNoticesByNorm === 'object') {
+      const m = new Map();
+      for (const [k, v] of Object.entries(data.blogAuthorNoticesByNorm)) {
+        const norm = normalizeUsername(k);
+        if (!norm) continue;
+        if (v && typeof v === 'object' && typeof v.text === 'string') {
+          m.set(norm, { text: String(v.text).slice(0, 800), ts: Number(v.ts) || 0 });
+        } else if (typeof v === 'string') {
+          m.set(norm, { text: String(v).slice(0, 800), ts: 0 });
+        }
+      }
+      store.blogAuthorNoticesByNorm = m;
     }
 
     const nu = new Set(

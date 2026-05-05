@@ -17,10 +17,9 @@ const MENU_DOCK_EXTRA_DOWN_MM_PX = 3 * MENU_RECT_SHRINK_1MM_PX;
 /** הזזה שמאלה — חצי ס״מ + 1mm (ב־96dpi) */
 const MENU_DOCK_SHIFT_LEFT_PX = 0.5 * (96 / 2.54) + MENU_RECT_SHRINK_1MM_PX;
 
-/** כפול מהירות מול טיקר המשפטים (60s ל־50%) — כאן 30s ל־50% מאותו אורך מסלול */
-const HEADER_NAV_MARQUEE_DURATION_S = 30;
-
 const STATS_CACHE_KEY = 'omg_stats_cache';
+/** נתיב לחזרה כשסוגרים צ׳אט קולי בלחיצה שנייה על אותו כפתור */
+const AI_VOICE_RETURN_KEY = 'omg_ai_voice_return';
 function readCachedStats() {
   try {
     const cached = JSON.parse(localStorage.getItem(STATS_CACHE_KEY) || 'null');
@@ -53,11 +52,12 @@ export default function AppHeader() {
   const user = useAppStore(s => s.user);
   const pendingUser = useAppStore(s => s.pendingUser);
   const ytTvUrl = useAppStore(s => s.ytTvUrl);
+  const setYtTvUrl = useAppStore(s => s.setYtTvUrl);
   const miniMediaBarOpen = useAppStore(s => s.miniMediaBarOpen);
   const miniMediaBarFocus = useAppStore(s => s.miniMediaBarFocus);
   const openMiniMediaBar = useAppStore(s => s.openMiniMediaBar);
   const headerPodcastPanelOpen = useAppStore(s => s.headerPodcastPanelOpen);
-  const openHeaderPodcastPanel = useAppStore(s => s.openHeaderPodcastPanel);
+  const toggleHeaderPodcastPanel = useAppStore(s => s.toggleHeaderPodcastPanel);
   const debate = useAppStore(s => s.debate);
   const setUser = useAppStore(s => s.setUser);
   const setPendingUser = useAppStore(s => s.setPendingUser);
@@ -418,88 +418,29 @@ export default function AppHeader() {
     (location.pathname === '/video-live' && Boolean(ytTvUrl));
   const menuProfileCellActive = location.pathname.startsWith('/profile/');
   const menuRegisteredActive = location.pathname === '/registered';
+  const aiVoicePageActive = location.pathname === '/ai-voice';
+
+  const toggleAiVoice = useCallback(() => {
+    if (location.pathname === '/ai-voice') {
+      let back = '';
+      try {
+        back = sessionStorage.getItem(AI_VOICE_RETURN_KEY) || '';
+        sessionStorage.removeItem(AI_VOICE_RETURN_KEY);
+      } catch { /* ignore */ }
+      if (back) navigate(back);
+      else navigate(-1);
+    } else {
+      const here = `${location.pathname}${location.search}${location.hash}`;
+      try {
+        sessionStorage.setItem(AI_VOICE_RETURN_KEY, here);
+      } catch { /* ignore */ }
+      navigate('/ai-voice');
+    }
+  }, [location.pathname, location.search, location.hash, navigate]);
+
   const profileMenuPath = canOpenHeaderProfile
     ? `/profile/${encodeURIComponent(profileNavUsername)}`
     : null;
-
-  const headerNavStripCells = useMemo(() => {
-    const cells = headerGridNavItems.map((it) => ({ ...it, stripKey: it.key }));
-    cells.push(
-      {
-        stripKey: 'prof',
-        label: 'פרופיל',
-        kind: profileMenuPath ? 'link' : 'disabled',
-        to: profileMenuPath || '/login',
-        active: menuProfileCellActive,
-      },
-      { stripKey: 'reg', label: 'רשומים', kind: 'link', to: '/registered', active: menuRegisteredActive },
-      { stripKey: 'contact', label: 'צור קשר', kind: 'link', to: '/contact', active: location.pathname === '/contact' },
-      { stripKey: 'settings', label: 'הגדרות', kind: 'link', to: '/settings', active: location.pathname === '/settings' },
-      { stripKey: 'terms', label: 'תקנון', kind: 'link', to: '/terms', active: location.pathname === '/terms' },
-      { stripKey: 'tanakh', label: 'תנ״ך', kind: 'bible-open', active: false },
-      { stripKey: 'radio', label: 'רדיו', kind: 'mini-radio', active: menuRadioSectionActive },
-      { stripKey: 'yt', label: 'נגן YouTube', kind: 'mini-yt', active: menuYtSectionActive },
-    );
-    return cells;
-  }, [
-    headerGridNavItems,
-    profileMenuPath,
-    menuProfileCellActive,
-    menuRegisteredActive,
-    location.pathname,
-    menuRadioSectionActive,
-    menuYtSectionActive,
-  ]);
-
-  function renderHeaderNavStripItem(item, reactKey) {
-    const cls =
-      'app-header-nav-strip__link'
-      + (item.active ? ' app-header-nav-strip__link--active' : '')
-      + (item.kind === 'disabled' ? ' app-header-nav-strip__link--disabled' : '');
-    if (item.kind === 'disabled') {
-      return <span key={reactKey} className={cls}>{item.label}</span>;
-    }
-    if (item.kind === 'podcast-toggle') {
-      return (
-        <button key={reactKey} type="button" className={cls} onClick={() => openHeaderPodcastPanel()}>
-          {item.label}
-        </button>
-      );
-    }
-    if (item.kind === 'bible-open') {
-      return (
-        <button key={reactKey} type="button" className={cls} onClick={() => setBibleOpen(true)}>
-          {item.label}
-        </button>
-      );
-    }
-    if (item.kind === 'mini-radio') {
-      return (
-        <button key={reactKey} type="button" className={cls} onClick={() => openMiniMediaBar('radio', { play: true })}>
-          {item.label}
-        </button>
-      );
-    }
-    if (item.kind === 'mini-yt') {
-      return (
-        <button key={reactKey} type="button" className={cls} onClick={() => openMiniMediaBar('youtube', { play: true })}>
-          {item.label}
-        </button>
-      );
-    }
-    if (item.kind === 'ai-pending') {
-      return (
-        <Link key={reactKey} className={cls} to="/login" state={{ autoAI: true }}>
-          {item.label}
-        </Link>
-      );
-    }
-    return (
-      <Link key={reactKey} className={cls} to={item.to}>
-        {item.label}
-      </Link>
-    );
-  }
 
   return (
     <>
@@ -566,6 +507,8 @@ export default function AppHeader() {
           width: 100%;
           padding: 0 2px;
           line-height: 1.2;
+          font-family: var(--font-sans, 'Rubik', 'Segoe UI', system-ui, sans-serif);
+          font-size: 0.78rem;
         }
         .app-header-ticker-inner {
           display: inline-block;
@@ -573,10 +516,7 @@ export default function AppHeader() {
           animation: app-header-ticker-scroll 60s linear infinite;
           will-change: transform;
         }
-        .app-header-ticker-strip:hover .app-header-ticker-inner,
-        .app-header-ticker-strip__inner:hover .app-header-ticker-inner {
-          animation-play-state: paused;
-        }
+        /* גלילה רציפה — ללא עצירה במעבר עכבר (נשמרת הפחתת תנועה ב-globals עבור data-reduce-motion) */
         @keyframes app-header-ticker-scroll {
           0% { transform: translateX(0); }
           100% { transform: translateX(-50%); }
@@ -585,8 +525,6 @@ export default function AppHeader() {
           display: inline-block;
           color: var(--text-secondary, #b4b4c0);
           font-weight: 600;
-          font-size: clamp(0.62rem, 2.2vw, 0.74rem);
-          font-family: var(--font-sans, Rubik, sans-serif);
           padding: 0 18px;
           line-height: 1.2;
           vertical-align: baseline;
@@ -595,121 +533,9 @@ export default function AppHeader() {
         }
         .app-header-ticker-sep {
           color: var(--muted, #8a8a9a);
-          font-size: 0.55rem;
+          font-size: 0.65rem;
           opacity: 0.7;
-        }
-        .app-header-nav-strip {
-          flex-shrink: 0;
-          margin-top: var(--app-header-ticker-nav-gap, 0px);
-          display: flex;
-          justify-content: center;
-          align-items: stretch;
-          padding-inline: var(--app-shell-gutter);
-          box-sizing: border-box;
-          background: transparent;
-        }
-        .app-header-nav-strip--masthead {
-          flex: 1;
-          min-width: 0;
-          margin-top: 0;
-          padding-inline: 6px;
-          align-self: stretch;
-          z-index: 5;
-        }
-        .app-header-nav-strip--masthead .app-header-nav-strip__inner {
-          width: 100%;
-          max-width: 100%;
-          padding: 0 4px;
-        }
-        .app-header-nav-strip__inner {
-          width: 100%;
-          max-width: calc(var(--login-entry-panels-max, 430px) + var(--app-header-strips-width-extra, 2cm));
-          box-sizing: border-box;
-          border-radius: var(--radius-sm, 10px);
-          border-bottom: 1px solid var(--border, rgba(255,255,255,0.1));
-          background: rgba(7, 7, 12, 0.88);
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
-          padding: 0 6px;
-          display: flex;
-          align-items: center;
-        }
-        .app-header-nav-strip__viewport {
-          direction: ltr;
-          overflow: hidden;
-          width: 100%;
-          min-height: 0;
-          flex: 1;
-        }
-        .app-header-nav-strip__track {
-          display: inline-flex;
-          flex-direction: row;
-          direction: rtl;
-          align-items: center;
-          flex-wrap: nowrap;
-          gap: 0;
-          will-change: transform;
-          white-space: nowrap;
-        }
-        .app-header-nav-strip__track--marquee {
-          animation: app-header-nav-marquee ${HEADER_NAV_MARQUEE_DURATION_S}s linear infinite;
-        }
-        .app-header-nav-strip:hover .app-header-nav-strip__track--marquee,
-        .app-header-nav-strip__inner:hover .app-header-nav-strip__track--marquee,
-        .app-header-nav-strip__viewport:hover .app-header-nav-strip__track--marquee {
-          animation-play-state: paused;
-        }
-        @keyframes app-header-nav-marquee {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
-        }
-        .app-header-nav-strip__link {
-          flex-shrink: 0;
-          position: relative;
-          display: inline-flex;
-          align-items: center;
-          box-sizing: border-box;
-          font-family: var(--font-sans, Rubik, sans-serif);
-          font-size: clamp(0.62rem, 2.2vw, 0.74rem);
-          font-weight: 600;
-          color: var(--text-secondary, #b4b4c0);
-          text-decoration: none;
-          background: none;
-          border: none;
-          cursor: pointer;
-          padding: 0 4px;
-          border-radius: 3px;
-          transition: color 0.15s ease, transform 0.15s ease, text-shadow 0.15s ease;
-          white-space: nowrap;
-          line-height: 1.15;
-        }
-        .app-header-nav-strip__link:not(:first-child) {
-          padding-inline-start: 7px;
-        }
-        .app-header-nav-strip__link:not(:first-child)::before {
-          content: '';
-          position: absolute;
-          inset-block: 0;
-          inset-inline-start: 0;
-          width: 1px;
-          background: #5c3d2e;
-          pointer-events: none;
-        }
-        .app-header-nav-strip__link:hover:not(:disabled):not(.app-header-nav-strip__link--disabled) {
-          color: var(--gold, #fbbf24);
-          transform: scale(1.06);
-          text-shadow: 0 0 14px rgba(251, 191, 36, 0.38);
-        }
-        .app-header-nav-strip__link--active {
-          color: #e0e7ff;
-        }
-        .app-header-nav-strip__link--active:hover:not(.app-header-nav-strip__link--disabled) {
-          color: var(--gold, #fbbf24);
-        }
-        .app-header-nav-strip__link--disabled {
-          opacity: 0.38;
-          cursor: default;
-          pointer-events: none;
+          font-family: inherit;
         }
         .app-header__inner {
           flex: 1;
@@ -1203,12 +1029,10 @@ export default function AppHeader() {
         .header-grid-menu__scroll {
           flex: 1 1 auto;
           min-height: 0;
-          overflow-x: hidden;
-          overflow-y: auto;
-          -webkit-overflow-scrolling: touch;
+          overflow: visible;
           display: flex;
           flex-direction: column;
-          padding: 6px 0 4px;
+          padding: 4px 0 2px;
           box-sizing: border-box;
         }
         /* שורה עליונה: שתי משבצות ריקות + אונליין (ימין במסך — עמודה ראשונה ב־RTL) */
@@ -1226,17 +1050,81 @@ export default function AppHeader() {
           cursor: default;
           pointer-events: none;
         }
-        .header-grid-menu__cell--online {
-          flex-direction: column;
-          align-items: flex-end;
+        /* צ׳אט קולי בתפריט — עיגול + «סימולטור» מימין (ltr); עיגול מוזז קצת שמאלה */
+        .header-grid-menu__top-row .header-grid-menu__cell--menu-ai-call-wrap {
+          align-self: center;
+          justify-self: stretch;
+          width: 100%;
+          min-height: 0 !important;
+          box-sizing: border-box !important;
+          display: flex !important;
+          flex-direction: row;
+          direction: ltr;
+          align-items: center;
           justify-content: center;
-          gap: 2px;
+          gap: 8px;
+          padding: 4px 6px !important;
+        }
+        .header-menu-ai-call-circle {
+          position: relative;
+          min-height: 0 !important;
+          padding: 0 !important;
+          margin: 0;
+          display: flex !important;
+          flex-direction: column !important;
+          justify-content: center !important;
+          align-items: center !important;
+          text-align: center !important;
+          box-sizing: border-box !important;
+          width: calc(38px * 0.9 * 0.9 * 0.8 * 1.1) !important;
+          height: calc(38px * 0.9 * 0.9 * 0.8 * 1.1) !important;
+          max-width: calc(38px * 0.9 * 0.9 * 0.8 * 1.1) !important;
+          max-height: calc(38px * 0.9 * 0.9 * 0.8 * 1.1) !important;
+          aspect-ratio: 1 / 1;
+          border-radius: 50% !important;
+          flex-shrink: 0;
+          transform: translateX(-6px);
+        }
+        .header-menu-ai-call-circle > svg {
+          width: calc(1rem * 0.9 * 0.9 * 0.8 * 1.1) !important;
+          height: calc(1rem * 0.9 * 0.9 * 0.8 * 1.1) !important;
+        }
+        .header-menu-ai-call-circle .header-ai-call-btn__label {
+          font-size: 0.328rem !important;
+        }
+        .header-menu-ai-call-sim-text {
+          font-family: var(--font-sans, Rubik, sans-serif);
+          font-size: 0.72rem;
+          font-weight: 800;
+          color: rgba(244, 244, 248, 0.9);
+          letter-spacing: 0.03em;
+          white-space: nowrap;
+          line-height: 1.1;
+        }
+        .header-grid-menu__cell--online {
           font: inherit;
           color: inherit;
           background: #000;
+          justify-content: center !important;
+          align-items: center !important;
+          gap: 8px;
+          direction: ltr;
         }
         .header-grid-menu__cell--online:hover {
           background: rgba(255, 255, 255, 0.06);
+        }
+        .online-led {
+          display: inline-block;
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: #22c55e;
+          flex-shrink: 0;
+          animation: onlineLedPulse 1.8s ease-in-out infinite;
+        }
+        @keyframes onlineLedPulse {
+          0%, 100% { opacity: 1; box-shadow: 0 0 5px 1px rgba(34,197,94,0.7); }
+          50%       { opacity: 0.3; box-shadow: 0 0 2px 0   rgba(34,197,94,0.2); }
         }
         .header-grid-menu__nav {
           display: grid;
@@ -1639,6 +1527,7 @@ export default function AppHeader() {
           font-size: 0.92rem;
         }
         .header-stat-num {
+          font-family: var(--font-sans, 'Rubik', 'Segoe UI', system-ui, sans-serif);
           font-weight: 800;
           font-size: 0.85rem;
           color: var(--text, #fff);
@@ -1651,13 +1540,86 @@ export default function AppHeader() {
           text-transform: uppercase;
           letter-spacing: 0.06em;
         }
+
+        /* עיגול צ׳אט קולי — לבן חזק (מסגרת/זוהר/טלפון/AI); ירוק במעבר עכבר / פוקוס / בעמוד השיחה */
+        .header-ai-call-btn {
+          flex-direction: column !important;
+          gap: 1px !important;
+          color: #ffffff !important;
+          border-color: rgba(255, 255, 255, 0.55) !important;
+          background: var(--bg, #07070c) !important;
+          box-shadow:
+            0 0 14px rgba(255, 255, 255, 0.22),
+            0 2px 10px rgba(0, 0, 0, 0.4),
+            inset 0 0 0 1px rgba(255, 255, 255, 0.14) !important;
+          cursor: pointer !important;
+          transition: border-color 0.18s, background 0.18s, box-shadow 0.18s, transform 0.12s, color 0.18s !important;
+        }
+        .header-ai-call-btn:hover,
+        .header-ai-call-btn--active,
+        .header-ai-call-btn:focus-visible {
+          color: #22c55e !important;
+          border-color: rgba(34, 197, 94, 0.85) !important;
+          background: rgba(34, 197, 94, 0.14) !important;
+          box-shadow: 0 0 10px rgba(34, 197, 94, 0.45), inset 0 0 6px rgba(34, 197, 94, 0.12) !important;
+        }
+        .header-ai-call-btn:hover {
+          border-color: #22c55e !important;
+          background: rgba(34, 197, 94, 0.22) !important;
+          box-shadow: 0 0 18px rgba(34, 197, 94, 0.7), inset 0 0 8px rgba(34, 197, 94, 0.18) !important;
+          transform: scale(1.06) !important;
+        }
+        .header-ai-call-btn--active:not(:hover) {
+          transform: none !important;
+        }
+        .header-ai-call-btn:active { transform: scale(0.96) !important; }
+        .header-ai-call-btn__icon {
+          font-size: 1rem;
+          line-height: 1;
+          display: block;
+        }
+        .header-ai-call-btn > svg {
+          filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.5));
+        }
+        .header-ai-call-btn:hover > svg,
+        .header-ai-call-btn--active > svg,
+        .header-ai-call-btn:focus-visible > svg {
+          filter: drop-shadow(0 0 7px rgba(34, 197, 94, 0.65));
+        }
+        .header-ai-call-btn__label {
+          font-size: 0.46rem;
+          font-weight: 900;
+          letter-spacing: 0.1em;
+          color: #ffffff;
+          line-height: 1;
+          display: block;
+          text-shadow: 0 0 6px rgba(255, 255, 255, 0.35);
+        }
+        .header-ai-call-btn:hover .header-ai-call-btn__label,
+        .header-ai-call-btn--active .header-ai-call-btn__label,
+        .header-ai-call-btn:focus-visible .header-ai-call-btn__label {
+          color: #ffffff !important;
+        }
       `}</style>
 
       <div className="app-header-shell">
       <div className="app-header">
         <div className="app-header__inner">
-        {/* Right side: avatar */}
+        {/* Right side: avatar + AI call button */}
         <div className="header-zone header-zone--user">
+          {/* כפתור שיחה קולית עם AI — שמאל לאוואטר */}
+          <button
+            type="button"
+            className={`header-avatar header-ai-call-btn${aiVoicePageActive ? ' header-ai-call-btn--active' : ''}`}
+            onClick={toggleAiVoice}
+            aria-label={aiVoicePageActive ? 'סגור צ׳אט קולי' : 'צ׳אט קולי עם AI'}
+            title={aiVoicePageActive ? 'סגור את צ׳אט קולי' : 'שיחה קולית עם AI'}
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor" style={{ width: '1rem', height: '1rem', display: 'block' }}>
+              <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" />
+            </svg>
+            <span className="header-ai-call-btn__label" aria-hidden="true">AI</span>
+          </button>
           <div className="header-avatar-wrap" ref={avatarWrapRef}>
             {activeUser ? (
               canOpenHeaderProfile ? (
@@ -1769,23 +1731,6 @@ export default function AppHeader() {
           </div>
         </div>
 
-        <nav className="app-header-nav-strip app-header-nav-strip--masthead" aria-label="קיצורי דרך מתפריט">
-          <div className="app-header-nav-strip__inner">
-            <div className="app-header-nav-strip__viewport">
-              <div className="app-header-nav-strip__track app-header-nav-strip__track--marquee">
-                {[0, 1].flatMap((rep) =>
-                  headerNavStripCells.map((item, i) =>
-                    renderHeaderNavStripItem(
-                      item,
-                      `nav-mq-${rep}-${item.stripKey ?? item.key}-${i}`,
-                    ),
-                  ),
-                )}
-              </div>
-            </div>
-          </div>
-        </nav>
-
         {/* RTL: אזור לוגו + תפריט — בקצה הנגדי לאווטאר */}
         <div className="header-zone header-zone--brand">
           <button type="button" className="header-app-brand" onClick={goAppHome} aria-label="דף הבית">
@@ -1891,11 +1836,37 @@ export default function AppHeader() {
                     setMenuOpen(false);
                   }}
                 >
+                  <span className="online-led" aria-hidden="true" />
                   <span className="header-stat-num">{stats.online}</span>
-                  <span className="header-stat-label">אונליין</span>
                 </button>
-                <span className="header-grid-menu__cell header-grid-menu__cell--placeholder" aria-hidden="true" />
-                <span className="header-grid-menu__cell header-grid-menu__cell--placeholder" aria-hidden="true" />
+                <Link
+                  className="header-grid-menu__cell header-grid-menu__cell--online"
+                  to="/registered"
+                  aria-label={`סה״כ רשומים: ${stats.registered}`}
+                  onClick={() => setMenuOpen(false)}
+                  style={{ textDecoration: 'none' }}
+                >
+                  <span className="header-stat-num">{stats.registered}</span>
+                  <span className="header-stat-label" style={{ marginRight: 4 }}>רשומים</span>
+                </Link>
+                <div className="header-grid-menu__cell header-grid-menu__cell--menu-ai-call-wrap">
+                  <button
+                    type="button"
+                    className={`header-menu-ai-call-circle header-avatar header-ai-call-btn${aiVoicePageActive ? ' header-ai-call-btn--active' : ''}`}
+                    onClick={() => {
+                      toggleAiVoice();
+                      setMenuOpen(false);
+                    }}
+                    aria-label={aiVoicePageActive ? 'סגור צ׳אט קולי' : 'צ׳אט קולי עם AI'}
+                    title={aiVoicePageActive ? 'סגור את צ׳אט קולי' : 'שיחה קולית עם AI'}
+                  >
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor" style={{ display: 'block' }}>
+                      <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" />
+                    </svg>
+                    <span className="header-ai-call-btn__label" aria-hidden="true">AI</span>
+                  </button>
+                  <span className="header-menu-ai-call-sim-text" aria-hidden="true">סימולטור</span>
+                </div>
               </div>
               <div className="header-grid-menu__nav">
                 {headerGridNavItems.map(item => {
@@ -1928,7 +1899,7 @@ export default function AppHeader() {
                         type="button"
                         className={cls}
                         onClick={() => {
-                          openHeaderPodcastPanel();
+                          toggleHeaderPodcastPanel();
                           setMenuOpen(false);
                         }}
                       >
@@ -1941,7 +1912,11 @@ export default function AppHeader() {
                       key={item.key}
                       className={cls}
                       to={item.to}
-                      onClick={() => setMenuOpen(false)}
+                      state={item.key === 'vid' ? { tvLiveDefault: true } : undefined}
+                      onClick={() => {
+                        if (item.key === 'vid') setYtTvUrl(null);
+                        setMenuOpen(false);
+                      }}
                     >
                       {item.label}
                     </Link>

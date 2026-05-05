@@ -34,11 +34,11 @@
   --radius-sm: 10px;
   --radius-pill: 999px;
   --app-header-main-h: 58px;
-  /* שורת טיקר (משפטים נעים); שורת הניווט הנעה נמצאת בתוך שורת המסטהד */
-  --app-header-ticker-h: 18px;
+  /* שורת טיקר (משפטים נעים) — צמוד מתחת לשורת המסטהד; תואם Rubik 0.78rem */
+  --app-header-ticker-h: 22px;
   --app-header-navstrip-h: 0px;
-  /* רווח בין שורת המסטהד (עם קיצורי הדרך) לטיקר המשפטים */
-  --app-header-strips-gap: 3cm;
+  /* רווח בין שורת המסטהד לטיקר (0 = הצמדה למעלה) */
+  --app-header-strips-gap: 0px;
   --app-header-ticker-nav-gap: 0px;
   --appheader-h: calc(
     var(--app-header-main-h) + var(--app-header-ticker-h) +
@@ -76,6 +76,19 @@
   --ring: 0 0 0 3px var(--accent-soft);
 }
 
+/* דף פרופיל הכלוב — כל הכיתוב כולל כותרות: Rubik 0.78rem, משקל רגיל בלבד */
+.cage-prof-root,
+.cage-prof-root * {
+  font-family: var(--font-sans) !important;
+  font-size: 0.78rem !important;
+  font-weight: 400 !important;
+  font-style: normal !important;
+}
+.cage-prof-root b,
+.cage-prof-root strong {
+  font-weight: 400 !important;
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -97,6 +110,11 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
+/*
+  #root padding-top = גובה אזור קבוע מעל התוכן, לפי הסדר:
+  --shell-top (כותרת+לוגו + טיקר) → + נגן מיני כשפתוח → + פאנל פודקאסט כשפתוח.
+  סגירת נגן/פודקאסט מקטינה את ה-padding והתוכן עולה עד לקו הבא (טיקר או מתחת לנגן).
+*/
 #root {
   min-height: 100%;
   padding-top: var(--shell-top);
@@ -104,6 +122,18 @@ html, body {
 
 #root.radio-bar-shown {
   padding-top: calc(var(--shell-top) + var(--mini-media-bar-top-gap) + var(--mini-radio-h));
+}
+
+/* פודקאסט LIVE פתוח — מתחת לטיקר; אם נגן פתוח הפאנל ממוקם מתחתיו (HomeLivePodcastPanel top) */
+#root.header-podcast-panel-open {
+  padding-top: calc(var(--shell-top) + var(--header-podcast-panel-reserved-h, 0px));
+}
+
+#root.radio-bar-shown.header-podcast-panel-open {
+  padding-top: calc(
+    var(--shell-top) + var(--mini-media-bar-top-gap) + var(--mini-radio-h) +
+    var(--header-podcast-panel-reserved-h, 0px)
+  );
 }
 
 /* —— שורת נגן יחידה (רדיו או יוטיוב לפי התפריט) —— */
@@ -220,7 +250,7 @@ html, body {
   flex-shrink: 0;
 }
 .mini-radio-bar__dot--live {
-  background: #ef4444;
+  background: #22c55e;
   animation: miniRadioPulse 1.4s ease-in-out infinite;
 }
 @keyframes miniRadioPulse {
@@ -1082,7 +1112,6 @@ html[data-reduce-motion="on"] .pulse-anim,
 html[data-reduce-motion="on"] .phase-transition,
 html[data-reduce-motion="on"] .score-pop,
 html[data-reduce-motion="on"] .app-header-ticker-inner,
-html[data-reduce-motion="on"] .app-header-nav-strip__track--marquee,
 html[data-reduce-motion="on"] [class*="login-title-ch--"] {
   animation: none !important;
   transition-duration: 0.01ms !important;

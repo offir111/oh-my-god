@@ -14,6 +14,7 @@ export default function SiteQuickNav() {
   const pendingUser = useAppStore(s => s.pendingUser);
   const headerPodcastPanelOpen = useAppStore(s => s.headerPodcastPanelOpen);
   const toggleHeaderPodcastPanel = useAppStore(s => s.toggleHeaderPodcastPanel);
+  const setYtTvUrl = useAppStore(s => s.setYtTvUrl);
 
   if (!user && !pendingUser) return null;
 
@@ -100,7 +101,12 @@ export default function SiteQuickNav() {
           >
             פודקאסט LIVE
           </button>
-          <NavLink to="/video-live" className={linkClass}>
+          <NavLink
+            to="/video-live"
+            state={{ tvLiveDefault: true }}
+            className={linkClass}
+            onClick={() => setYtTvUrl(null)}
+          >
             וידיאו+LIVE TV
           </NavLink>
           <NavLink to="/photos" className={linkClass}>

@@ -710,6 +710,8 @@ export default function ArgumentsPage({
   showSearch = false,
   showKnowledgeAiAssistant = false,
   showBack = true,
+  /** כפתור ✕ בפינה — למאגר ידע וכו׳ */
+  showPageCloseX = false,
   editorsPlacement = 'bottom',
 }) {
   const user = useAppStore(s => s.user);
@@ -1313,6 +1315,33 @@ export default function ArgumentsPage({
           transition: background 0.2s, color 0.2s, border-color 0.2s;
         }
         .args-back:hover {
+          color: var(--text);
+          background: rgba(255,255,255,0.1);
+          border-color: var(--border-strong);
+        }
+        .args-page-close-x {
+          position: absolute;
+          top: 14px;
+          left: 12px;
+          right: auto;
+          z-index: 3;
+          width: 36px;
+          height: 36px;
+          border-radius: 10px;
+          border: 1px solid var(--border);
+          background: rgba(255,255,255,0.06);
+          color: var(--muted);
+          font-size: 1.15rem;
+          line-height: 1;
+          font-weight: 700;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0;
+          transition: background 0.2s, color 0.2s, border-color 0.2s;
+        }
+        .args-page-close-x:hover {
           color: var(--text);
           background: rgba(255,255,255,0.1);
           border-color: var(--border-strong);
@@ -2015,6 +2044,13 @@ export default function ArgumentsPage({
         }
         @media (max-width: 560px) {
           .args-back { position: static; margin: 0 auto 12px; display: block; }
+          .args-page-close-x {
+            top: 10px;
+            left: 8px;
+            right: auto;
+            width: 34px;
+            height: 34px;
+          }
           .args-knowledge-composer-wrap {
             padding: 0;
             max-width: 100%;
@@ -2050,6 +2086,16 @@ export default function ArgumentsPage({
       <div className="args-page">
         <div className="args-header">
           {showBack && <button type="button" className="args-back" onClick={() => navigate('/')}>← חזרה</button>}
+          {showPageCloseX && (
+            <button
+              type="button"
+              className="args-page-close-x"
+              onClick={() => navigate('/lobby')}
+              aria-label="סגירת מאגר הידע וחזרה ללובי"
+            >
+              ✕
+            </button>
+          )}
           {editorsPlacement === 'top' && (
             <div className={`editors-top${editorsOpen ? '' : ' collapsed'}`} aria-label="עורכים מורשים">
               {editorsOpen && (

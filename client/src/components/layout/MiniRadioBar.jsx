@@ -5,6 +5,7 @@ import {
   readYtStations,
   saveYtStations,
   ytEmbedUrl,
+  applyYoutubeEmbedPlaybackParams,
   readYtSelectedStationId,
   writeYtSelectedStationId,
 } from '../../lib/ytStationsLocal.js';
@@ -118,8 +119,7 @@ export default function MiniBarRow() {
         openConfig();
         return;
       }
-      const vol = Math.round(sharedVol * 100);
-      setYtTvUrl(url.replace('?autoplay=1', `?autoplay=1&volume=${vol}`));
+      setYtTvUrl(applyYoutubeEmbedPlaybackParams(url));
     }
   }, [
     miniMediaBarOpen,
@@ -128,7 +128,6 @@ export default function MiniBarRow() {
     pauseRadioPlayback,
     ytStations,
     ytSelectedId,
-    sharedVol,
     setYtTvUrl,
     setRadioActive,
     openConfig,
@@ -154,8 +153,7 @@ export default function MiniBarRow() {
   const playYt = () => {
     pauseRadioPlayback?.();
     if (!embedUrl) { openConfig(); return; }
-    const vol = Math.round(sharedVol * 100);
-    setYtTvUrl(embedUrl.replace('?autoplay=1', `?autoplay=1&volume=${vol}`));
+    setYtTvUrl(applyYoutubeEmbedPlaybackParams(embedUrl));
   };
 
   const toggleYoutubePlayback = () => {

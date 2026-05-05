@@ -2,8 +2,10 @@
 
 export const LS_YT = 'omg_yt_stations_v1';
 
+const DEFAULT_ATHEIST_LINE_URL = 'https://www.youtube.com/watch?v=9MOoGH_JCyY';
+
 export const DEFAULT_YT = [
-  { id: 1, name: 'הקו האתאיסטי', url: '' },
+  { id: 1, name: 'הקו האתאיסטי', url: DEFAULT_ATHEIST_LINE_URL },
   { id: 2, name: 'אמנון יצחק', url: '' },
   { id: 3, name: 'הרב זמיר כהן', url: '' },
   { id: 4, name: 'שידור 4', url: '' },
@@ -18,7 +20,15 @@ export const DEFAULT_YT = [
 export function readYtStations() {
   try {
     const r = localStorage.getItem(LS_YT);
-    if (r) return JSON.parse(r);
+    if (r) {
+      const list = JSON.parse(r);
+      if (Array.isArray(list) && list[0]?.id === 1 && !String(list[0]?.url || '').trim()) {
+        return list.map((row, i) =>
+          i === 0 ? { ...row, url: DEFAULT_ATHEIST_LINE_URL } : row,
+        );
+      }
+      return list;
+    }
   } catch {
     /* ignore */
   }
@@ -30,6 +40,28 @@ export function saveYtStations(list) {
     localStorage.setItem(LS_YT, JSON.stringify(list));
   } catch {
     /* ignore */
+  }
+}
+
+/**
+ * לאחר לחיצת משתמש (▶ / תפריט): ביטול השתקה וסאונד בנגן המוטמע.
+ * פרמטר volume ב-query אינו נתמך ב-iframe של YouTube — הוסר כאן אם היה.
+ */
+export function applyYoutubeEmbedPlaybackParams(embedUrl) {
+  if (!embedUrl || typeof embedUrl !== 'string') return embedUrl;
+  try {
+    const u = new URL(embedUrl);
+    u.searchParams.delete('volume');
+    u.searchParams.set('mute', '0');
+    u.searchParams.set('playsinline', '1');
+    if (!u.searchParams.has('autoplay')) u.searchParams.set('autoplay', '1');
+    if (!u.searchParams.has('enablejsapi')) u.searchParams.set('enablejsapi', '1');
+    if (typeof window !== 'undefined' && window.location?.origin) {
+      u.searchParams.set('origin', window.location.origin);
+    }
+    return u.toString();
+  } catch {
+    return embedUrl;
   }
 }
 
@@ -74,14 +106,13 @@ export function writeYtSelectedStationId(id) {
  * כמו לחיצת ▶ יוטיוב בשורת המיני — מעדכן את ה־URL ב־store לדף וידיאו+LIVE.
  * @returns {boolean} האם נמצא קישור תקין והוגדר נגן
  */
-export function launchYoutubeTvFromStoredStations(setYtTvUrl, volume01 = 0.85) {
+export function launchYoutubeTvFromStoredStations(setYtTvUrl, _volume01 = 0.85) {
   const stations = readYtStations();
   const selId = readYtSelectedStationId();
   const activeYt = stations.find(s => s.id === selId) ?? stations[0];
   if (!activeYt) return false;
   const embedUrl = ytEmbedUrl(activeYt.url);
   if (!embedUrl) return false;
-  const vol = Math.round(Number(volume01) * 100);
-  setYtTvUrl(embedUrl.replace('?autoplay=1', `?autoplay=1&volume=${vol}`));
+  setYtTvUrl(applyYoutubeEmbedPlaybackParams(embedUrl));
   return true;
 }

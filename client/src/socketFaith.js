@@ -3,7 +3,13 @@ import { io } from 'socket.io-client';
 const SERVER_URL = import.meta.env.VITE_API_URL || 'https://oh-my-god-production.up.railway.app';
 
 /** חיבור נפרד מדיונים — לצרכי צ'אט ציבורי בדף דת ואמונה */
-export const faithSocket = io(SERVER_URL, { autoConnect: false, transports: ['polling', 'websocket'] });
+export const faithSocket = io(SERVER_URL, {
+  autoConnect: false,
+  transports: ['websocket', 'polling'],
+  reconnectionDelay: 1000,
+  reconnectionDelayMax: 8000,
+  reconnectionAttempts: Infinity,
+});
 
 let joinRefCount = 0;
 

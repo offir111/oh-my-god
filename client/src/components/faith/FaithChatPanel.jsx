@@ -19,6 +19,41 @@ const FAITH_MUTED_NORMS_KEY = 'faith_chat_muted_norms_v1';
 const PUBLIC_MESSAGES_STORAGE_KEY = 'faith_chat_public_messages_v1';
 const MAX_STORED_PUBLIC = 300;
 const DM_SLOT_COUNT = 6;
+
+/* ── שמירת מצב שיחות פרטיות — שחזור תוך 5 דקות ── */
+const DM_SESSION_KEY = 'faith_chat_dm_session_v1';
+const DM_SESSION_TTL = 5 * 60 * 1000;
+
+function saveDmSession(dmSlots) {
+  try {
+    const slots = dmSlots.map(s =>
+      s.partner && s.messages.length
+        ? { name: s.partner.name, messages: s.messages.slice(-100) }
+        : null,
+    );
+    if (slots.every(s => !s)) { localStorage.removeItem(DM_SESSION_KEY); return; }
+    localStorage.setItem(DM_SESSION_KEY, JSON.stringify({ savedAt: Date.now(), slots }));
+  } catch { /* quota */ }
+}
+
+function loadDmSession() {
+  try {
+    const raw = localStorage.getItem(DM_SESSION_KEY);
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    if (!d?.savedAt || Date.now() - d.savedAt > DM_SESSION_TTL) return null;
+    return d;
+  } catch { return null; }
+}
+
+function emptyDmSlotsFromSession() {
+  const session = loadDmSession();
+  if (!session) return emptyDmSlots();
+  return (session.slots || []).map((s, i) => {
+    if (!s || i >= DM_SLOT_COUNT) return { partner: null, messages: [], roomId: null, roomReady: false };
+    return { partner: { socketId: `hist:${s.name}`, name: s.name }, messages: s.messages || [], roomId: null, roomReady: false, restored: true };
+  }).slice(0, DM_SLOT_COUNT);
+}
 /** כותרת חדר כללי — כמו «הכלוב» */
 const GENERAL_ROOM_LABEL = 'כללי';
 
@@ -328,6 +363,7 @@ export default function FaithChatPanel() {
   const [presenceMenu, setPresenceMenu] = useState(null);
   const presenceSheetLeaveTimerRef = useRef(null);
   const presenceSheetPointerInsideRef = useRef(false);
+  const presenceMenuPinnedRef = useRef(false);
 
   const blockedNormsRef = useRef(blockedNorms);
   blockedNormsRef.current = blockedNorms;
@@ -345,7 +381,7 @@ export default function FaithChatPanel() {
 
   const [publicMessages, setPublicMessages] = useState(readCachedPublicMessages);
   /** אינדקס החריץ (0..DM_SLOT_COUNT-1) עם שיחת DM לשרת; כלחריץ מחזיק רשומה */
-  const [dmSlots, setDmSlots] = useState(emptyDmSlots);
+  const [dmSlots, setDmSlots] = useState(emptyDmSlotsFromSession);
   /** 'public' | slotIndex — «כללי» או טאב פרטי */
   const [activePanel, setActivePanel] = useState('public');
 
@@ -453,6 +489,7 @@ export default function FaithChatPanel() {
     }
 
     function onSocketDisconnect() {
+      saveDmSession(dmSlotsLatestRef.current);
       if (faithPendingJoinOnConnectRef.current) {
         faithSocket.off('connect', faithPendingJoinOnConnectRef.current);
         faithPendingJoinOnConnectRef.current = null;
@@ -475,7 +512,7 @@ export default function FaithChatPanel() {
       setTypingPartners({});
       setBlockIncomingPm(false);
       pendingPrivateDmOpenRef.current = null;
-      setDmSlots(emptyDmSlots());
+      setDmSlots(emptyDmSlotsFromSession());
     }
 
     function onSocketId({ socketId }) {
@@ -618,9 +655,10 @@ export default function FaithChatPanel() {
         const next = [...prev];
         const existing = next[ix];
         const samePartner = existing.partner?.socketId === partnerSocketId;
+        const restoredSameName = existing.restored && existing.partner?.name === partnerName;
         next[ix] = {
           partner: { socketId: partnerSocketId, name: partnerName },
-          messages: samePartner ? existing.messages : [],
+          messages: (samePartner || restoredSameName) ? existing.messages : [],
           roomId: rid ?? existing.roomId,
           roomReady: true,
         };
@@ -1009,6 +1047,7 @@ export default function FaithChatPanel() {
       oritTypingDemoTimerRef.current = null;
     }
     setShowOritTypingDemo(false);
+    saveDmSession(dmSlotsLatestRef.current);
     faithSocket.emit('FAITH_CHAT_LEAVE');
     wantFaithLobbyRef.current = false;
     pendingPrivateDmOpenRef.current = null;
@@ -1018,7 +1057,7 @@ export default function FaithChatPanel() {
     setPrivateTabAlerts({});
     setTypingPartners({});
     setBlockIncomingPm(false);
-    setDmSlots(emptyDmSlots());
+    setDmSlots(emptyDmSlotsFromSession());
   }, []);
 
   const deletePublicMessageAsModerator = useCallback(
@@ -1116,22 +1155,28 @@ export default function FaithChatPanel() {
         setTimeout(() => setErrorToast(null), 4800);
         return;
       }
-      if (dmSlotsLatestRef.current.every(s => !!s.partner)) {
+      /* סלוט שחזור עם אותו שם — מועדף כדי לשמר היסטוריה */
+      const restoredIx = dmSlotsLatestRef.current.findIndex(
+        s => s.restored && s.partner?.name === u.displayName,
+      );
+      const hasOpenSlot = dmSlotsLatestRef.current.some(s => !s.partner || s.restored);
+      if (!hasOpenSlot) {
         setErrorToast(`כל ${DM_SLOT_COUNT} מקומות השיחות הפרטיות תפוסים — סגרו טאב לפני שמוסיפים.`);
         setTimeout(() => setErrorToast(null), 5000);
         return;
       }
-      const preIx = dmSlotsLatestRef.current.findIndex(s => !s.partner);
+      const preIx = restoredIx >= 0 ? restoredIx : dmSlotsLatestRef.current.findIndex(s => !s.partner);
       const slotIx = preIx < 0 ? DM_SLOT_COUNT - 1 : preIx;
       pendingPrivateDmOpenRef.current = { targetSocketId: u.socketId, slotIndex: slotIx };
       setDmSlots(prev => {
-        let ix = prev.findIndex(s => !s.partner);
+        let ix = restoredIx >= 0 ? restoredIx : prev.findIndex(s => !s.partner);
         if (ix < 0) ix = DM_SLOT_COUNT - 1;
         if (ix !== slotIx) pendingPrivateDmOpenRef.current = { targetSocketId: u.socketId, slotIndex: ix };
         const partner = { socketId: u.socketId, name: u.displayName };
         setActivePanel(ix);
         const next = [...prev];
-        next[ix] = { partner: { ...partner }, messages: [], roomId: null, roomReady: false };
+        const existingMessages = prev[ix]?.restored ? prev[ix].messages : [];
+        next[ix] = { partner: { ...partner }, messages: existingMessages, roomId: null, roomReady: false };
         return next;
       });
       faithSocket.emit('FAITH_DM_OPEN', { targetSocketId: u.socketId });
@@ -1208,6 +1253,7 @@ export default function FaithChatPanel() {
         return m;
       });
       closeAllDmSlotsForNorm(norm);
+      presenceMenuPinnedRef.current = false;
       setPresenceMenu(null);
       setErrorToast('המשתמש נחסם אצלך בצ\'אט (מקומי במכשיר).');
       setTimeout(() => setErrorToast(null), 4200);
@@ -1236,6 +1282,7 @@ export default function FaithChatPanel() {
         else m.add(norm);
         return m;
       });
+      presenceMenuPinnedRef.current = false;
       setPresenceMenu(null);
     },
     [persistMuted],
@@ -1245,13 +1292,34 @@ export default function FaithChatPanel() {
     e.preventDefault();
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
-    /** חפיפה קלה עם השורה — מעבר עכבר מהשם לתפריט בלי «נפילה» באמצע */
-    const top = Math.max(4, rect.bottom - 12);
-    setPresenceMenu({
-      top,
-      anchorRight: typeof window !== 'undefined' ? window.innerWidth - rect.right : 0,
-      targetUser,
-      mode,
+    const top = Math.max(4, rect.bottom + 8);
+    const anchorRight = typeof window !== 'undefined' ? window.innerWidth - rect.right : 0;
+    setPresenceMenu(prev => {
+      if (prev?.targetUser?.socketId === targetUser?.socketId) return prev;
+      return { top, anchorRight, targetUser, mode };
+    });
+  }, []);
+
+  const clickPresenceUserMenu = useCallback((e, targetUser, mode) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const top = Math.max(4, rect.bottom + 8);
+    const anchorRight = typeof window !== 'undefined' ? window.innerWidth - rect.right : 0;
+    setPresenceMenu(prev => {
+      if (prev?.targetUser?.socketId === targetUser?.socketId) {
+        if (presenceMenuPinnedRef.current) {
+          // כבר פינד — לחיצה שנייה סוגרת
+          presenceMenuPinnedRef.current = false;
+          return null;
+        }
+        // תפריט פתוח ממעבר עכבר — פין בלי לזוז
+        presenceMenuPinnedRef.current = true;
+        return prev;
+      }
+      // יוזר אחר — פתח פינד
+      presenceMenuPinnedRef.current = true;
+      return { top, anchorRight, targetUser, mode };
     });
   }, []);
 
@@ -1265,15 +1333,19 @@ export default function FaithChatPanel() {
   const onPresenceSheetPointerEnter = useCallback(() => {
     presenceSheetPointerInsideRef.current = true;
     clearPresenceSheetLeaveTimer();
+    /* ברגע שהעכבר בתוך החלונית — התפריט לא ייסגר מ־mouseleave על השם */
+    presenceMenuPinnedRef.current = true;
   }, [clearPresenceSheetLeaveTimer]);
 
   const onPresenceSheetPointerLeave = useCallback(() => {
     presenceSheetPointerInsideRef.current = false;
     clearPresenceSheetLeaveTimer();
+    if (presenceMenuPinnedRef.current) return;
     presenceSheetLeaveTimerRef.current = window.setTimeout(() => {
       presenceSheetLeaveTimerRef.current = null;
+      presenceMenuPinnedRef.current = false;
       setPresenceMenu(null);
-    }, 420);
+    }, 900);
   }, [clearPresenceSheetLeaveTimer]);
 
   useEffect(() => {
@@ -1281,12 +1353,14 @@ export default function FaithChatPanel() {
     function onKey(ev) {
       if (ev.key === 'Escape') {
         clearPresenceSheetLeaveTimer();
+        presenceMenuPinnedRef.current = false;
         setPresenceMenu(null);
       }
     }
     function onDown(ev) {
       if (ev.target.closest?.('.cage-presence-ctx-sheet')) return;
       clearPresenceSheetLeaveTimer();
+      presenceMenuPinnedRef.current = false;
       setPresenceMenu(null);
     }
     window.addEventListener('keydown', onKey);
@@ -1673,8 +1747,9 @@ export default function FaithChatPanel() {
             inset 0 1px 0 rgba(255, 255, 255, 0.06);
           direction: rtl;
           padding: 0;
-          padding-top: 10px;
-          margin-top: -10px;
+          /* גשר מעל הפער בין השם לחלונית — מקל על מעבר העכבר בלי לסגור את התפריט */
+          padding-top: 18px;
+          margin-top: -18px;
           overflow: hidden;
           font-family: var(--font-sans);
           text-align: right;
@@ -2798,28 +2873,22 @@ export default function FaithChatPanel() {
                     )}
                   </div>
                   <div className="cage-room-bar-spacer" aria-hidden />
-                  {activePanel === 'public' ? (
-                    <div className="cage-room-toggle">
-                      <button
-                        type="button"
-                        className={generalSubView === 'conversation' ? 'on' : ''}
-                        onClick={() => setGeneralSubView('conversation')}
-                      >
-                        שיחה
-                      </button>
-                      <button
-                        type="button"
-                        className={generalSubView === 'presence' ? 'on' : ''}
-                        onClick={() => setGeneralSubView('presence')}
-                      >
-                        נוכחים
-                      </button>
-                    </div>
-                  ) : (
-                    <span style={{ fontSize: '0.72rem', fontWeight: 800, opacity: 0.92, flexShrink: 0 }}>
-                      שיחה פרטית
-                    </span>
-                  )}
+                  <div className="cage-room-toggle">
+                    <button
+                      type="button"
+                      className={activePanel === 'public' && generalSubView === 'conversation' ? 'on' : ''}
+                      onClick={() => { selectPanel('public'); setGeneralSubView('conversation'); }}
+                    >
+                      שיחה
+                    </button>
+                    <button
+                      type="button"
+                      className={activePanel === 'public' && generalSubView === 'presence' ? 'on' : ''}
+                      onClick={() => { selectPanel('public'); setGeneralSubView('presence'); }}
+                    >
+                      נוכחים
+                    </button>
+                  </div>
                   <button
                     type="button"
                     className="cage-room-x"
@@ -2912,7 +2981,9 @@ export default function FaithChatPanel() {
                                 type="button"
                                 className="cage-presence-profile-hit"
                                 dir="auto"
-                                onClick={e => openPresenceUserMenu(e, u, 'other')}
+                                onClick={e => clickPresenceUserMenu(e, u, 'other')}
+                                onMouseEnter={e => { clearPresenceSheetLeaveTimer(); openPresenceUserMenu(e, u, 'other'); }}
+                                onMouseLeave={() => onPresenceSheetPointerLeave()}
                               >
                                 <UserAvatarSlot
                                   size="sm"
@@ -3508,12 +3579,13 @@ export default function FaithChatPanel() {
                       presenceMenu.targetUser?.socketId === mySocketId
                     }
                     onClick={() => {
+                      presenceMenuPinnedRef.current = false;
                       openPrivateConversationFromUser(presenceMenu.targetUser);
                       setPresenceMenu(null);
                     }}
                   >
                     <span className="cage-presence-ctx-item__icon" aria-hidden>💬</span>
-                    <span className="cage-presence-ctx-item__label">פרטי</span>
+                    <span className="cage-presence-ctx-item__label">שיחה פרטית</span>
                   </button>
                   <div className="cage-presence-ctx-divider" aria-hidden />
                   <button

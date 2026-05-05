@@ -4,7 +4,18 @@ import { store, createDebateState, registerUserFromSocket, isUsernameBlocked } f
 export function registerMatchmaking(io) {
   io.on('connection', (socket) => {
     console.log(`[socket] connected: ${socket.id}`);
-    socket.on('disconnect', reason => console.log(`[socket] disconnected: ${socket.id} (${reason})`));
+
+    // רישום כמחובר מיד בחיבור (לנורה הירוקה בפרופיל)
+    const authUsername = typeof socket.auth?.username === 'string' ? socket.auth.username.trim() : null;
+    const authSide = socket.auth?.side;
+    if (authUsername && (authSide === 'believer' || authSide === 'atheist')) {
+      store.users.set(socket.id, { username: authUsername, side: authSide, score: 0, voiceDebates: 0, giftsReceived: 0 });
+    }
+
+    socket.on('disconnect', reason => {
+      console.log(`[socket] disconnected: ${socket.id} (${reason})`);
+      store.users.delete(socket.id);
+    });
 
     socket.on('JOIN_QUEUE', ({ username, side }) => {
       if (!isValidMatchUser(username, side)) {

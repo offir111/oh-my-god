@@ -174,6 +174,50 @@ export default function LiveEventsPage() {
           margin: -12px 0 0;
         }
 
+        .live-events-hero-frame {
+          position: relative;
+          width: 100%;
+          max-width: 960px;
+          box-sizing: border-box;
+          border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.14));
+          border-radius: 16px;
+          background: rgba(0, 0, 0, 0.22);
+          padding: 20px 18px 18px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 20px;
+        }
+        .live-events-hero-close {
+          position: absolute;
+          top: 10px;
+          left: 10px;
+          z-index: 6;
+          width: 36px;
+          height: 36px;
+          margin: 0;
+          padding: 0;
+          border-radius: 10px;
+          border: 1px solid rgba(255, 255, 255, 0.22);
+          background: rgba(0, 0, 0, 0.5);
+          color: #f4f4f8;
+          font-size: 1.15rem;
+          line-height: 1;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: background 0.15s, border-color 0.15s;
+        }
+        .live-events-hero-close:hover {
+          background: rgba(255, 255, 255, 0.1);
+          border-color: rgba(255, 229, 102, 0.45);
+        }
+        .live-events-hero-close:focus-visible {
+          outline: 2px solid #FFE566;
+          outline-offset: 2px;
+        }
+
         .faith-science-vault {
           width: 100%;
           max-width: 960px;
@@ -577,7 +621,8 @@ export default function LiveEventsPage() {
           flex: 1 1 calc(33.333% - 8px);
           min-width: 120px;
           max-width: 200px;
-          padding: 10px 12px;
+          min-height: 54px;
+          padding: 4px 12px;
           border-radius: 12px;
           border: 1px solid #444;
           background: rgba(255,255,255,0.05);
@@ -589,7 +634,7 @@ export default function LiveEventsPage() {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 5px;
+          gap: 2px;
         }
         .live-youtube-toolbar-btn-title {
           font-size: clamp(0.88rem, 3.2vw, 1.05rem);
@@ -645,15 +690,21 @@ export default function LiveEventsPage() {
           flex-direction: column;
         }
         .live-video-slot-head {
+          position: relative;
           display: flex;
           align-items: center;
-          justify-content: space-between;
+          justify-content: center;
           gap: 10px;
+          min-height: 50px;
           padding: 8px 12px;
           background: linear-gradient(180deg, #141414 0%, #0a0a0a 100%);
           border-bottom: 1px solid #333;
         }
         .live-video-slot-close {
+          position: absolute;
+          left: 12px;
+          top: 50%;
+          transform: translateY(-50%);
           flex-shrink: 0;
           width: 34px;
           height: 34px;
@@ -837,10 +888,19 @@ export default function LiveEventsPage() {
         }
         .live-video-slot-default-head {
           flex-shrink: 0;
-          padding: 12px 14px 14px;
+          padding: 0 0 14px;
           background: linear-gradient(180deg, #141414 0%, #0a0a0a 100%);
           border-bottom: 1px solid #333;
           text-align: center;
+        }
+        .live-video-slot-default-head .live-video-slot-head {
+          border-bottom: none;
+          padding-bottom: 4px;
+        }
+        .live-video-slot-default-head .live-video-intro-title,
+        .live-video-slot-default-head .live-video-intro-tagline,
+        .live-video-slot-default-head .live-video-intro-professor {
+          padding-inline: 14px;
         }
         .live-video-slot-default-head .live-video-intro-tagline {
           margin-inline: auto;
@@ -880,11 +940,17 @@ export default function LiveEventsPage() {
           margin-inline-start: 5px;
         }
       `}</style>
-      <style>{`.back-btn-inline{background:none;border:none;color:#aaa;font-size:0.9rem;cursor:pointer;align-self:flex-start;padding:4px 0;}`}</style>
-
       <div className="live-events-page">
-        <button type="button" onClick={() => navigate('/')} style={backBtn}>← חזרה</button>
-
+        <div className="live-events-hero-frame">
+        <button
+          type="button"
+          className="live-events-hero-close"
+          onClick={() => navigate('/')}
+          aria-label="סגירת דף"
+          title="סגור"
+        >
+          ✕
+        </button>
         <div>
           <h1 className="live-events-title">רב <span style={{color:'#FFE566'}}>VS</span> מדען</h1>
           <p className="live-events-subtitle">אירועי לייב מתוכננים באפליקציה</p>
@@ -925,7 +991,6 @@ export default function LiveEventsPage() {
           {activeYoutubeClip ? (
             <>
               <div className="live-video-slot-head">
-                <span aria-hidden style={{ width: 34 }} />
                 <button
                   type="button"
                   className="live-video-slot-close"
@@ -969,6 +1034,16 @@ export default function LiveEventsPage() {
             <>
               {!mainDefaultOverlayDismissed ? (
                 <div className="live-video-slot-default-head">
+                  <div className="live-video-slot-head">
+                    <button
+                      type="button"
+                      className="live-video-slot-close"
+                      onClick={() => setMainDefaultOverlayDismissed(true)}
+                      aria-label="סגירת כרטיס הפתיחה והצגת הנגן"
+                    >
+                      ✕
+                    </button>
+                  </div>
                   <h2 className="live-video-intro-title">
                     אמונה <span className="live-video-intro-title-vs">VS</span> מדע
                   </h2>
@@ -1019,6 +1094,7 @@ export default function LiveEventsPage() {
             בקרוב: הרב זמיר כהן VS פרופ׳ יובל נוח הררי
           </span>
         </aside>
+        </div>
 
         <section
           className={`faith-science-vault${isOmgVaultEditor ? ' faith-science-vault--editor-on' : ''}`}
@@ -1212,8 +1288,3 @@ export default function LiveEventsPage() {
     </>
   );
 }
-
-const backBtn = {
-  background: 'none', border: 'none', color: '#aaa',
-  fontSize: '0.9rem', cursor: 'pointer', alignSelf: 'flex-start', padding: '4px 0',
-};

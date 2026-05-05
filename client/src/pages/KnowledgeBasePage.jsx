@@ -9,6 +9,7 @@ export default function KnowledgeBasePage() {
       showSearch
       showKnowledgeAiAssistant
       showBack={false}
+      showPageCloseX
       editorsPlacement="top"
     />
   );

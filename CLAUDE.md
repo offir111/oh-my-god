@@ -113,3 +113,26 @@ The client builds to a static bundle that Capacitor wraps. After any client chan
 
 ### AI integration
 Groq SDK (`groq-sdk`) is used for AI debate opponents and Bible search. Model: `llama-3.3-70b-versatile` with fallback to `llama-3.1-8b-instant`. All Groq calls go through `server/lib/groqChat.js` (`chatCompletionWithFallback`).
+
+## Recent client updates (Claude-assisted)
+
+Use `git log` / `git diff` for the full branch; below is a concise map of behavior and files.
+
+### Faith chat — presence user menu (`client/src/components/faith/FaithChatPanel.jsx`)
+- Floating menu on usernames in the “נוכחים” list: **stabilized** so moving the pointer to “שיחה פרטית” does not dismiss the sheet (pin when pointer enters the portal sheet, longer delayed close when unpinned, `mousedown` outside closes and clears pin, wider overlap bridge in CSS between name and sheet). Opening another user while the menu is open is allowed.
+
+### AI voice page (`client/src/pages/AiVoicePage.jsx`)
+- Header copy includes **«שלך»** in the subtitle; header gold uses a stronger accent (`HEADER_TITLE_COLOR`) vs page background gold.
+- **No** idle or in-call **×** escape buttons in the page body (exit via header AI toggle / end-call UI). `useNavigate` is not used for those removed controls.
+
+### Podcast LIVE — header dropdown (`HomeLivePodcastPanel.jsx`, `headerPodcastPanel.css`, `globals.css`, `AppHeader.jsx`)
+- Panel stays **fixed** under the shell; when open, `#root` gets class `header-podcast-panel-open` and `--header-podcast-panel-reserved-h` (measured with **ResizeObserver**) so **`#root` `padding-top`** grows and **main content is pushed down** instead of being covered.
+- **No** title line «פודקאסט LIVE — הקשבה» in the panel.
+- **Close ×** sits in the **same flex row** as the podcast tabs (`home-live-broadcast-row`), with compact tab strip (`fit-content`), tuned tab gaps/padding/font sizes, and × shifted **1cm left** via `transform: translateX(-1cm)` at **34×34px**.
+- **AppHeader** grid: “פודקאסט LIVE” uses **`toggleHeaderPodcastPanel`** (same idea as `SiteQuickNav`) so the menu can open/close the panel without relying only on × / Esc.
+
+### Registered members page (`client/src/pages/RegisteredMembersPage.jsx`)
+- Keeps a **page-local ×** (`.registered-page__close`) for back navigation — there is **no** global floating exit button in `App.jsx` (a shared `AppExitCloseButton` was tried and **removed**).
+
+### Other touched areas in this worktree (inspect diffs locally)
+- Examples: `AppHeader.jsx`, `MiniRadioBar.jsx`, `RadioAudioContext.jsx`, `israeliRadioStations.js`, `radioStationIsraelOrder.js`, `ytStationsLocal.js`, `BlogPage.jsx`, `CageUserProfilePage.jsx`, `LiveEventsPage.jsx`, `VideoLivePage.jsx`, `ArgumentsPage.jsx`, `socketFaith.js`, `server/routes/admin.js`, `server/socket/matchmaking.js`, `server/store/memory.js`, untracked `client/src/components/media/`, scripts `seed-users.mjs`, `set-online.mjs`.

@@ -4,7 +4,7 @@ import React, {
 import { ISRAELI_RADIO_STATIONS } from '../data/israeliRadioStations.js';
 import { getApiBaseUrl } from '../lib/apiBaseUrl.js';
 import { displayStationNameHebrewPrefer } from '../lib/radioStationDisplayName.js';
-import { sortIsraelRadioStationsForMenu } from '../lib/radioStationIsraelOrder.js';
+import { sortIsraelRadioStationsForMenu, radioStationIsraelMenuPriority } from '../lib/radioStationIsraelOrder.js';
 
 const RadioAudioContext = createContext(null);
 
@@ -85,7 +85,20 @@ export function RadioAudioProvider({ children }) {
               streamUrl: s.url_resolved,
             }));
           if (mapped.length > 0) {
-            setStations(sortIsraelRadioStationsForMenu(mapped));
+            // Merge hardcoded stations that the API doesn't cover
+            const hardcodedMapped = ISRAELI_RADIO_STATIONS.map(s => ({
+              ...s,
+              name: displayStationNameHebrewPrefer(s.name),
+            }));
+            const merged = [...mapped];
+            for (const hs of hardcodedMapped) {
+              const priority = radioStationIsraelMenuPriority(hs);
+              if (priority >= 1000) continue;
+              if (!merged.some(s => radioStationIsraelMenuPriority(s) === priority)) {
+                merged.push(hs);
+              }
+            }
+            setStations(sortIsraelRadioStationsForMenu(merged));
             break;
           }
         } catch (e) {

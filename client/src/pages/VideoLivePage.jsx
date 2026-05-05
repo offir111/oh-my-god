@@ -1,8 +1,9 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import Hls from 'hls.js';
 import { useAppStore } from '../store/appStore.js';
 import { getApiBaseUrl } from '../lib/apiBaseUrl.js';
+import YoutubeTvPlayer from '../components/media/YoutubeTvPlayer.jsx';
 import { getLikes, saveLikes, getComments, saveComments, fmtDate } from '../lib/blogReactions.js';
 
 /* ─── proxy helper ─────────────────────────────────────── */
@@ -80,6 +81,9 @@ const WORLD_CHANNELS = [
     hlsUrl: 'https://live-hls-web-ajb.getaj.net/AJB/index.m3u8',
   },
 ];
+
+/** ערוץ שמוצג בנגן בכניסה מ־«LIVE TV» / ברירת מחדל לדף */
+const DEFAULT_LIVE_TV_CHANNEL_ID = 'hidabroot';
 
 /* ─── HLS Player component ─────────────────────────────── */
 function HLSPlayer({ src, channelName, muted, onUnmute }) {
@@ -203,10 +207,11 @@ function HLSPlayer({ src, channelName, muted, onUnmute }) {
 
 /* ─── Debate stream cards (kept below TV player) ──────── */
 const STREAMS = [
-  { id: 3, title: 'האבולוציה מול הבריאה',    host: 'פרופ׳ שפירא VS הרב רוזן', status: 'soon',  tag: 'בקרוב' },
-  { id: 4, title: 'תפילה — מדע או רוחניות?', host: 'ד"ר גולן VS הרב כץ',      status: 'soon',  tag: 'בקרוב' },
-  { id: 5, title: 'קבלה ופיזיקה קוונטית',    host: 'ד"ר מזרחי VS הרב פרידמן', status: 'ended', tag: 'הסתיים' },
-  { id: 6, title: 'האם יש חיים אחרי המוות?', host: 'עו"ד שמיר VS הרב שרקי',  status: 'ended', tag: 'הסתיים' },
+  { id: 3, title: 'ד"ר משה רט VS רזי טלון', host: 'ראש בראש', status: 'soon', tag: 'בקרוב' },
+  { id: 4, title: 'הרב מיקי אברהם VS אביב פרנקו', host: 'ראש בראש', status: 'soon', tag: 'בקרוב' },
+  { id: 5, title: "נאור נרקיס VS. דולב דוידוביץ׳", host: 'פודקאסט על המשמעות — תמיר דורטל', status: 'ended', tag: 'הסתיים' },
+  { id: 6, title: "פרופ' אבי שגיא - טענת השעון", host: 'Alex Tseitlin · אלכס צייטלין', status: 'ended', tag: 'הסתיים' },
+  { id: 7, title: "פרופ' שנאן -חז\"ל", host: '', status: 'ended', tag: 'הסתיים' },
 ];
 
 function StreamCard({ stream, username }) {
@@ -236,7 +241,7 @@ function StreamCard({ stream, username }) {
 
   return (
     <div style={{ borderRadius: 10, border: `1.5px solid ${border}`, background: bg, display: 'flex', flexDirection: 'column', overflow: 'hidden', direction: 'rtl' }}>
-      <div style={{ width: '100%', aspectRatio: '16/6.3', background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+      <div style={{ width: '100%', aspectRatio: '16/3.8', background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
         <span style={{ fontSize: '1.8rem', opacity: 0.35 }}>🎥</span>
         <div style={{ position: 'absolute', top: 5, right: 6, background: tagBg, borderRadius: 5, padding: '2px 7px', fontSize: '0.55rem', fontWeight: 800, color: isSoon ? '#1a1a0a' : '#fff' }}>{stream.tag}</div>
       </div>
@@ -285,13 +290,29 @@ export default function VideoLivePage() {
   const setYtTvUrl  = useAppStore(s => s.setYtTvUrl);
   const username    = user?.username || pendingUser?.username || '';
   const [searchParams] = useSearchParams();
+  const location    = useLocation();
+  const navigate    = useNavigate();
 
-  const [activeCh, setActiveCh] = useState(() => IL_CHANNELS.find(c => c.id === 'hidabroot') ?? IL_CHANNELS[0]);
+  const [activeCh, setActiveCh] = useState(
+    () => IL_CHANNELS.find(c => c.id === DEFAULT_LIVE_TV_CHANNEL_ID) ?? IL_CHANNELS[0],
+  );
   const [muted, setMuted] = useState(true);
   const proxySrc = tvProxyUrl(activeCh.hlsUrl);
 
   const playerWrapRef = useRef(null);
   const [sidebarMaxH, setSidebarMaxH] = useState(null);
+
+  /** מכפתור «LIVE TV»: הידברות בנגן + סגירת YouTube */
+  useLayoutEffect(() => {
+    if (!location.state?.tvLiveDefault) return;
+    const ch = IL_CHANNELS.find(c => c.id === DEFAULT_LIVE_TV_CHANNEL_ID);
+    if (ch) setActiveCh(ch);
+    setYtTvUrl(null);
+    navigate(
+      { pathname: location.pathname, search: location.search, hash: location.hash },
+      { replace: true, state: {} },
+    );
+  }, [location.state, location.pathname, location.search, location.hash, navigate, setYtTvUrl]);
 
   const focusYoutube = searchParams.get('focus') === 'youtube';
   useLayoutEffect(() => {
@@ -358,12 +379,9 @@ export default function VideoLivePage() {
         <div className="tv-player-wrap" id="video-live-youtube-anchor" ref={playerWrapRef}>
           <div className="tv-player-screen">
             {ytTvUrl ? (
-              <iframe
-                src={ytTvUrl}
+              <YoutubeTvPlayer
+                ytTvUrl={ytTvUrl}
                 style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
-                allow="autoplay; encrypted-media; picture-in-picture"
-                allowFullScreen
-                title="YouTube"
               />
             ) : (
               <HLSPlayer key={activeCh.id} src={proxySrc} channelName={activeCh.name} muted={muted} onUnmute={() => setMuted(false)} />
