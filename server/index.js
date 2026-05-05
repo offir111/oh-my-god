@@ -294,7 +294,7 @@ app.post('/api/ai-voice-chat', async (req, res) => {
   ];
 
   try {
-    const response = await chatCompletionWithFallback(messages, { max_tokens: 200, temperature: 0.75 });
+    const response = await chatCompletionWithFallback(groqForApiRoutes(), { messages, max_tokens: 200, temperature: 0.75 });
     const raw = response.choices?.[0]?.message?.content?.trim() || '';
 
     let reply = 'מצטער, לא הצלחתי לענות.';
