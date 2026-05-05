@@ -27,6 +27,7 @@ import {
   normalizeUsername,
   getBlogFeedModerationPayload,
   getBlogAuthorNoticePayload,
+  purgeRetiredVirtualUsers,
 } from './store/memory.js';
 import { registerMatchmaking } from './socket/matchmaking.js';
 import { registerDebate } from './socket/debate.js';
@@ -613,6 +614,7 @@ app.post('/api/admin/set-permanent-online', express.json(), (req, res) => {
 });
 
 loadSnapshot();
+purgeRetiredVirtualUsers();
 
 // Seed demo users — always present after any restart
 const DEMO_USERS = [
@@ -620,7 +622,6 @@ const DEMO_USERS = [
   { username: 'יצחק_לוי',   password: 'yt34' },
   { username: 'יעקב_מזרחי', password: 'yv56' },
   { username: 'משה_פרץ',    password: 'ms78' },
-  { username: 'דוד_אמסלם',  password: 'dv90' },
   { username: 'שלמה_ביטון', password: 'sh12' },
   { username: 'אלון_שמיר',  password: 'al34' },
   { username: 'ניר_גולן',   password: 'nr56' },
