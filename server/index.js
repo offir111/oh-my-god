@@ -320,16 +320,16 @@ app.post('/api/ai-voice-chat', async (req, res) => {
 
 // ElevenLabs TTS — eleven_multilingual_v2 supports Hebrew
 const ELEVENLABS_VOICE_MAP = {
-  1:  'TxGEqnHWrfWFTfGW9XjX', // קריין גברי — Josh (deep)
-  2:  '21m00Tcm4TlvDq8ikWAM', // קריינית נשית — Rachel
-  3:  'VR6AewLTigWG4xSOukaG', // הרב זמיר כהן — Arnold (wise, crisp)
-  4:  'ODq5zmih8GrVes37Dy39',  // הררי — Daniel (intellectual)
-  5:  'pNInz6obpgDQGcFmaJgB', // ראש ממשלה — Adam (authoritative)
+  1:  '3gRjssTCTqbHGck8mIv7', // קריין גברי
+  2:  'nuVtpPA1A7SQPqVRggLF', // קריינית נשית — אורית
+  3:  'mNltV315CbDeheQKBRaG', // הרב זמיר כהן — משה
+  4:  'mNltV315CbDeheQKBRaG', // הררי — משה
+  5:  'mNltV315CbDeheQKBRaG', // ראש ממשלה — משה
   6:  'yoZ06aMxZJJ28mfd3POQ', // טראמפ — Sam (raspy, assertive)
   7:  'ErXwobaYiN019PkySvjV', // דובר אנגלית — Antoni
   8:  'ErXwobaYiN019PkySvjV', // דובר ספרדית — Antoni (multilingual)
   9:  'VR6AewLTigWG4xSOukaG', // דובר אידיש — Arnold
-  10: 'pNInz6obpgDQGcFmaJgB', // אלוהים — Adam (deep, majestic)
+  10: 'mNltV315CbDeheQKBRaG', // אלוהים — משה
 };
 
 app.post('/api/elevenlabs-tts', async (req, res) => {

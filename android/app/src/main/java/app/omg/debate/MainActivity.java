@@ -1,5 +1,6 @@
 package app.omg.debate;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.widget.Toast;
 import androidx.activity.OnBackPressedCallback;
@@ -23,6 +24,12 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
 
     private long backPressedTime = 0;
+
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        super.onTaskRemoved(rootIntent);
+        finishAndRemoveTask();
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

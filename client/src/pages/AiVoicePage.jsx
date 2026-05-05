@@ -1,9 +1,76 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { getApiBaseUrl } from '../lib/apiBaseUrl.js';
 
-const PAGE_COLOR   = '#e2c97e'; // אלוהים — page background & header accent
+const PAGE_COLOR   = '#e2c97e'; // אלוהים — page background & soft accent
+/** כותרת ראשית בעמוד — זהב עמוק יותר מ־PAGE_COLOR */
+const HEADER_TITLE_COLOR = '#f0cf4a';
 const SELECT_COLOR = '#f59e0b'; // רב זמיר כהן — all selection highlights
+
+const EL_KEY = 'sk_82f7f6de950fcbcc9cc54e1108e7b330ebd2e88f4897dee9';
+const EL_VOICES = {
+  1:'3gRjssTCTqbHGck8mIv7', 2:'nuVtpPA1A7SQPqVRggLF', 3:'mNltV315CbDeheQKBRaG',
+  4:'mNltV315CbDeheQKBRaG',  5:'mNltV315CbDeheQKBRaG', 6:'yoZ06aMxZJJ28mfd3POQ',
+  7:'ErXwobaYiN019PkySvjV',  8:'ErXwobaYiN019PkySvjV', 9:'VR6AewLTigWG4xSOukaG',
+  10:'mNltV315CbDeheQKBRaG',
+};
+
+// Shared AudioContext — unlocked on first user gesture, immune to autoplay policy
+let _audioCtx = null;
+function getAudioCtx() {
+  if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (_audioCtx.state === 'suspended') _audioCtx.resume().catch(() => {});
+  return _audioCtx;
+}
+
+async function elTTSDirect(text, char) {
+  const voiceId = EL_VOICES[char.id] || 'pNInz6obpgDQGcFmaJgB';
+  // eleven_multilingual_v2 auto-detects language (including Hebrew) from text
+  const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+    method: 'POST',
+    headers: { 'xi-api-key': EL_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      text: text.slice(0, 1000),
+      model_id: 'eleven_multilingual_v2',
+      voice_settings: { stability: 0.5, similarity_boost: 0.75 },
+    }),
+  });
+  if (!r.ok) throw new Error(`el-direct ${r.status}`);
+  return r.arrayBuffer();
+}
+
+// Google Translate TTS via server proxy — bypasses CORS, Hebrew female voice
+async function googleTTSHebrew(text, gender = 'female') {
+  const chunks = text.match(/.{1,200}/g) || [text];
+  const buffers = [];
+  const PROXY = `${getApiBaseUrl()}/api/radio-proxy?url=`;
+  for (const chunk of chunks) {
+    const gttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(chunk)}&tl=he&client=tw-ob&ttsspeed=0.9`;
+    const r = await fetch(PROXY + encodeURIComponent(gttsUrl));
+    if (!r.ok) throw new Error('gtts');
+    buffers.push(await r.arrayBuffer());
+  }
+  // Concatenate all chunks
+  const total = buffers.reduce((s, b) => s + b.byteLength, 0);
+  const merged = new Uint8Array(total);
+  let offset = 0;
+  for (const b of buffers) { merged.set(new Uint8Array(b), offset); offset += b.byteLength; }
+  return merged.buffer;
+}
+
+// Play ArrayBuffer via AudioContext — bypasses autoplay policy
+function playArrayBuffer(arrayBuf, onDone, onError, pitchRate = 1.0) {
+  const ctx = getAudioCtx();
+  ctx.decodeAudioData(arrayBuf, (decoded) => {
+    const src = ctx.createBufferSource();
+    src.buffer = decoded;
+    src.playbackRate.value = pitchRate;
+    src.connect(ctx.destination);
+    src.onended = onDone;
+    src.start(0);
+    _currentSrc = src;
+  }, onError);
+}
+let _currentSrc = null;
 
 // pitch: 0=lowest, 2=highest (default 1). rate: speed (default 1).
 const CHARACTERS = [
@@ -11,61 +78,61 @@ const CHARACTERS = [
     id: 1, emoji: '🎙️', name: 'קול רדיופוני גברי',
     desc: 'קריין מקצועי, ברור ורהוט', lang: 'he-IL', gender: 'male',
     color: '#6366f1', pitch: 0.85, rate: 0.97,
-    greeting: 'שלום וברוכים הבאים. כאן קריין רדיו מקצועי, ואני שמח לשוחח איתך.',
+    greeting: 'כאן קול ישראל. שלום וברכה. במה אוכל לעזור לך היום?',
   },
   {
     id: 2, emoji: '🎤', name: 'קריינית נשית',
     desc: 'קול נשי חם ומקצועי', lang: 'he-IL', gender: 'female',
     color: '#ec4899', pitch: 1.6, rate: 1.05,
-    greeting: 'שלום! אני כאן, מוכנה לשיחה חמה ומקצועית איתך.',
+    greeting: 'שלום! כיף לדבר איתך. על מה נשוחח היום?',
   },
   {
     id: 3, emoji: '🕍', name: 'רב זמיר כהן',
     desc: 'בעל ידע תורני עמוק', lang: 'he-IL', gender: 'male',
     color: '#f59e0b', pitch: 0.78, rate: 0.88,
-    greeting: 'שלום וברכה! אני הרב זמיר כהן. נשמח לשוחח ולהתחבר לאמת.',
+    greeting: 'שלום עליכם! ברוך הבא. שאל מה שתרצה, ונלמד יחד.',
   },
   {
     id: 4, emoji: '🧠', name: 'פרופ׳ יובל נ. הררי',
     desc: 'היסטוריון וחושב גדול', lang: 'he-IL', gender: 'male',
     color: '#06b6d4', pitch: 0.92, rate: 1.05,
-    greeting: 'שלום, פרופסור יובל נח הררי כאן. מוכן לחקור יחד רעיונות גדולים.',
+    greeting: 'שלום. ההיסטוריה האנושית מלאה שאלות מרתקות. מה מעסיק אותך?',
   },
   {
     id: 5, emoji: '🇮🇱', name: 'ראש ממשלת ישראל',
     desc: 'מדינאי ודובר ציבורי', lang: 'he-IL', gender: 'male',
     color: '#3b82f6', pitch: 0.88, rate: 0.93,
-    greeting: 'שלום לכולם. מדינת ישראל חזקה ועמידה, ואני כאן לשוחח איתך.',
+    greeting: 'שלום לכולם. מדינת ישראל עומדת איתן. במה אוכל לסייע?',
   },
   {
     id: 6, emoji: '🇺🇸', name: 'נשיא טראמפ',
     desc: 'TREMENDOUS! BELIEVE ME!', lang: 'en-US', gender: 'male',
     color: '#ef4444', pitch: 0.80, rate: 0.91,
-    greeting: "Hello! It's Trump. We're going to have a tremendous conversation, believe me, the best!",
+    greeting: 'Hello! Believe me, nobody knows more about this than me. Let\'s talk!',
   },
   {
     id: 7, emoji: '🇬🇧', name: 'דובר אנגלית',
     desc: 'English native speaker', lang: 'en-US', gender: 'male',
     color: '#8b5cf6', pitch: 0.95, rate: 1.0,
-    greeting: "Hello there! I'm a native English speaker and I'm delighted to chat with you.",
+    greeting: 'Hello there! Great to meet you. What would you like to talk about?',
   },
   {
     id: 8, emoji: '🇪🇸', name: 'דובר ספרדית',
     desc: 'Hablante nativo de español', lang: 'es-ES', gender: 'male',
     color: '#f97316', pitch: 0.90, rate: 1.0,
-    greeting: '¡Hola! Soy un hablante nativo de español. ¡Encantado de hablar contigo!',
+    greeting: '¡Hola! Mucho gusto. ¿De qué quieres que hablemos hoy?',
   },
   {
     id: 9, emoji: '✡️', name: 'דובר אידיש',
     desc: 'אַ אידישע שפּראַך', lang: 'he-IL', gender: 'male',
     color: '#84cc16', pitch: 0.82, rate: 0.85,
-    greeting: 'שלום עליכם! אַ גוטן טאָג. איך בין דאָ אַז מיר קענען רעדן.',
+    greeting: 'שלום עליכם! א גוטן טאג. וואס וועסטו פרעגן?',
   },
   {
     id: 10, emoji: '☁️', name: 'אלוהים',
     desc: 'יודע כל, חכמת עולמות', lang: 'he-IL', gender: 'male',
     color: '#e2c97e', pitch: 0.65, rate: 0.82,
-    greeting: 'שלום, ילד יקר. אני כאן, ואני שומע כל מילה שיוצאת מפיך.',
+    greeting: 'שלום, ברואי. הנני. שאל מה שלבך חפץ.',
   },
 ];
 
@@ -92,7 +159,6 @@ function EndCallIcon() {
 }
 
 export default function AiVoicePage() {
-  const navigate = useNavigate();
   const [callState, setCallState] = useState('idle');
   const [selectedChar, setSelectedChar] = useState(CHARACTERS[0]);
   const [transcript, setTranscript] = useState([]);
@@ -105,10 +171,13 @@ export default function AiVoicePage() {
   const [lastPreviewedId, setLastPreviewedId] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
   const [userTurn, setUserTurn] = useState(false);
+  const [inputText, setInputText] = useState('');
 
   const synthRef = useRef(window.speechSynthesis);
   const currentAudioRef = useRef(null);
   const previewTokenRef = useRef(0);
+  const previewActiveRef = useRef(false);   // true מרגע לחיצה ראשונה עד סוף הברכה
+  const pendingCallRef   = useRef(null);    // callback שיופעל כשהברכה תסיים
   const callTimerRef = useRef(null);
   const transcriptEndRef = useRef(null);
   const errorsEndRef = useRef(null);
@@ -117,6 +186,8 @@ export default function AiVoicePage() {
   const streamRef = useRef(null);
   const abortRef = useRef(false);
   const askAIRef = useRef(null);
+  const typingIntervalRef = useRef(null);
+  const animateTypingRef = useRef(null);
 
   useEffect(() => {
     if (callState === 'active') {
@@ -130,6 +201,21 @@ export default function AiVoicePage() {
 
   useEffect(() => { transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [transcript, aiThinking]);
   useEffect(() => { errorsEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [factErrors]);
+  useEffect(() => { if (userTurn) setInputText(''); }, [userTurn]);
+
+  animateTypingRef.current = (text) => {
+    if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
+    let i = 0;
+    setInputText('');
+    typingIntervalRef.current = setInterval(() => {
+      i++;
+      setInputText(text.slice(0, i));
+      if (i >= text.length) {
+        clearInterval(typingIntervalRef.current);
+        typingIntervalRef.current = null;
+      }
+    }, 28);
+  };
 
   const fmt = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
@@ -144,36 +230,104 @@ export default function AiVoicePage() {
     return utt;
   }
 
-  const speakPreview = useCallback(async (char) => {
+  const speakPreview = useCallback((char) => {
     if (currentAudioRef.current) { currentAudioRef.current.pause(); currentAudioRef.current = null; }
+    // Stop any ongoing AudioContext preview
+    if (_currentSrc) { try { _currentSrc.stop(); } catch {} _currentSrc = null; }
+    // Discard any pending startCall from a previous preview cycle
+    pendingCallRef.current = null;
     synthRef.current.cancel();
+    getAudioCtx(); // unlock AudioContext during user gesture
 
     const token = ++previewTokenRef.current;
+    previewActiveRef.current = true;
     setPreviewCharId(char.id);
 
-    const synth = synthRef.current;
-    if (synth.getVoices().length === 0) {
-      await new Promise(r => { synth.onvoiceschanged = r; setTimeout(r, 800); });
-    }
-    if (previewTokenRef.current !== token) return;
+    const done = () => {
+      previewActiveRef.current = false;
+      if (previewTokenRef.current === token) setPreviewCharId(null);
+      const cb = pendingCallRef.current;
+      pendingCallRef.current = null;
+      cb?.();
+    };
+    const previewWebSpeech = () => {
+      done();
+      const utt = new SpeechSynthesisUtterance(char.greeting);
+      utt.lang = char.lang || 'he-IL';
+      utt.pitch = char.pitch ?? 1;
+      utt.rate = char.rate ?? 1;
+      synthRef.current.speak(utt);
+    };
+    // ElevenLabs voices are already gendered — no pitch shift needed
+    const playBuf = (buf) => {
+      if (previewTokenRef.current !== token) return;
+      playArrayBuffer(buf, done, previewWebSpeech, 1.0);
+    };
+    // Google TTS is female by default — lower pitch for male characters
+    const gttsRate = char.gender === 'female' ? 1.0 : 0.78;
+    const playBufGTTS = (buf) => {
+      if (previewTokenRef.current !== token) return;
+      playArrayBuffer(buf, done, previewWebSpeech, gttsRate);
+    };
 
-    const utt = utterFor(char.greeting, char);
-    utt.onend   = () => { if (previewTokenRef.current === token) setPreviewCharId(null); };
-    utt.onerror = () => { if (previewTokenRef.current === token) setPreviewCharId(null); };
-    synth.speak(utt);
+    const BASE = getApiBaseUrl();
+    fetch(`${BASE}/api/elevenlabs-tts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: char.greeting, characterId: char.id, lang: char.lang }),
+    })
+      .then(r => { if (!r.ok) throw new Error('tts'); return r.arrayBuffer(); })
+      .then(playBuf)
+      .catch(() => {
+        const lc = (char.lang || 'he-IL').split('-')[0];
+        if (lc === 'he') return googleTTSHebrew(char.greeting).then(playBufGTTS).catch(previewWebSpeech);
+        return elTTSDirect(char.greeting, char).then(playBuf).catch(previewWebSpeech);
+      });
   }, []);
 
-  // speak(text, char, onDone)
+  // speak(text, char, onDone) — ElevenLabs TTS with Web Speech fallback
   const speak = useCallback((text, char, onDone) => {
     if (abortRef.current) return;
     if (currentAudioRef.current) { currentAudioRef.current.pause(); currentAudioRef.current = null; }
     synthRef.current.cancel();
+    getAudioCtx(); // unlock AudioContext during user gesture
 
-    const synth = synthRef.current;
-    const utt = utterFor(text, char);
-    utt.onend   = () => { if (!abortRef.current) onDone?.(); };
-    utt.onerror = () => { if (!abortRef.current) onDone?.(); };
-    synth.speak(utt);
+    const fallbackWebSpeech = () => {
+      if (abortRef.current) return;
+      const utt = new SpeechSynthesisUtterance(text);
+      utt.lang = char.lang || 'he-IL';
+      utt.pitch = char.pitch ?? 1;
+      utt.rate = char.rate ?? 1;
+      utt.onend = () => { if (!abortRef.current) onDone?.(); };
+      utt.onerror = () => { if (!abortRef.current) onDone?.(); };
+      synthRef.current.speak(utt);
+    };
+
+    const langCode = (char.lang || 'he-IL').split('-')[0];
+    // ElevenLabs voices are already gendered — no pitch shift needed
+    const playBuf = (buf) => {
+      if (abortRef.current) return;
+      playArrayBuffer(buf, () => { if (!abortRef.current) onDone?.(); }, fallbackWebSpeech, 1.0);
+    };
+    // Google TTS is female by default — lower pitch for male characters
+    const gttsRate = char.gender === 'female' ? 1.0 : 0.78;
+    const playBufGTTS = (buf) => {
+      if (abortRef.current) return;
+      playArrayBuffer(buf, () => { if (!abortRef.current) onDone?.(); }, fallbackWebSpeech, gttsRate);
+    };
+
+    const BASE = getApiBaseUrl();
+    fetch(`${BASE}/api/elevenlabs-tts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, characterId: char.id, lang: char.lang }),
+    })
+      .then(r => { if (!r.ok) throw new Error('tts'); return r.arrayBuffer(); })
+      .then(playBuf)
+      .catch(() => {
+        if (langCode === 'he') return googleTTSHebrew(text).then(playBufGTTS).catch(fallbackWebSpeech);
+        return elTTSDirect(text, char).then(playBuf).catch(fallbackWebSpeech);
+      });
   }, []);
 
   const sendAudioForTranscription = useCallback(async (blob, char) => {
@@ -196,6 +350,7 @@ export default function AiVoicePage() {
         setUserTurn(true);
         return;
       }
+      animateTypingRef.current?.(text);
       setTranscript(prev => {
         const next = [...prev, { from: 'user', text }];
         askAIRef.current?.(text, next);
@@ -290,25 +445,43 @@ export default function AiVoicePage() {
 
   const startCall = useCallback((char) => {
     abortRef.current = false;
-    previewTokenRef.current++;
-    synthRef.current.cancel();
-    if (currentAudioRef.current) { currentAudioRef.current.pause(); currentAudioRef.current = null; }
+    // Don't invalidate the token when continuing an active preview greeting
+    if (!previewActiveRef.current) previewTokenRef.current++;
     setPreviewCharId(null);
     setCallState('active');
     setError(null);
-    setTranscript([]);
+    setTranscript([{ from: 'ai', text: char.greeting }]);
     setFactErrors([]);
+    setUserTurn(false);
 
-    const greeting = char.greeting;
-    setTranscript([{ from: 'ai', text: greeting }]);
-    // speak is synchronous — stays in user-gesture context, no async gap
-    speak(greeting, char, () => { if (!abortRef.current) setUserTurn(true); });
+    // If preview greeting is still playing — let it finish, then give user turn
+    if (previewActiveRef.current) {
+      pendingCallRef.current = () => { if (!abortRef.current) setUserTurn(true); };
+      return;
+    }
+    // Otherwise speak greeting fresh
+    synthRef.current.cancel();
+    speak(char.greeting, char, () => { if (!abortRef.current) setUserTurn(true); });
   }, [speak]);
+
+  const sendTextMessage = useCallback(() => {
+    const text = inputText.trim();
+    if (!text || aiThinking || isRecording) return;
+    if (typingIntervalRef.current) { clearInterval(typingIntervalRef.current); typingIntervalRef.current = null; }
+    setInputText('');
+    setTranscript(prev => {
+      const next = [...prev, { from: 'user', text }];
+      askAIRef.current?.(text, next);
+      return next;
+    });
+  }, [inputText, aiThinking, isRecording]);
 
   const endCall = useCallback(() => {
     abortRef.current = true;
     setIsRecording(false);
     setUserTurn(false);
+    if (typingIntervalRef.current) { clearInterval(typingIntervalRef.current); typingIntervalRef.current = null; }
+    setInputText('');
     try { recorderRef.current?.stop(); } catch { /* ignore */ }
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
@@ -332,8 +505,9 @@ export default function AiVoicePage() {
   const isCalling = callState === 'calling';
   const isIdle = callState === 'idle' || callState === 'ended';
 
-  const pageRgb   = hexToRgb(PAGE_COLOR);
-  const selectRgb = hexToRgb(SELECT_COLOR);
+  const pageRgb    = hexToRgb(PAGE_COLOR);
+  const headerRgb  = hexToRgb(HEADER_TITLE_COLOR);
+  const selectRgb  = hexToRgb(SELECT_COLOR);
 
   return (
     <div style={{
@@ -346,6 +520,23 @@ export default function AiVoicePage() {
       overflow: 'hidden',
       transition: 'background 0.5s ease',
     }}>
+      {/* X סגירת עמוד — קבוע, מוצג רק במצב idle */}
+      {isIdle && (
+        <button
+          type="button"
+          aria-label="חזור"
+          onClick={() => window.history.back()}
+          style={{
+            position: 'fixed', top: 64, left: 12, zIndex: 200,
+            minWidth: 52, height: 44, padding: '0 14px', borderRadius: 12,
+            background: 'rgba(255,255,255,0.08)', border: '1.5px solid rgba(255,255,255,0.18)',
+            color: '#fff', fontSize: '1.35rem', lineHeight: 1, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 2px 12px rgba(0,0,0,0.3)',
+            backdropFilter: 'blur(6px)',
+          }}
+        >✕</button>
+      )}
       <style>{`
         @keyframes pulseRing {
           0%   { transform: scale(1); opacity: 0.6; }
@@ -377,38 +568,23 @@ export default function AiVoicePage() {
         .aiv-end-btn:active { transform: scale(0.96); }
       `}</style>
 
-      {/* ── Close (X) — only when idle/ended ── */}
-      {isIdle && (
-        <button
-          type="button"
-          aria-label="סגור וצא"
-          onClick={() => navigate(-1)}
-          style={{
-            position: 'fixed', top: 68, left: 14, zIndex: 30,
-            width: 34, height: 34,
-            background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.18)',
-            borderRadius: '50%', color: 'rgba(255,255,255,0.85)',
-            cursor: 'pointer', fontSize: '1.1rem', fontWeight: 700,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            backdropFilter: 'blur(8px)', lineHeight: 1,
-          }}
-        >✕</button>
-      )}
-
       {/* ── Page header ── */}
       <div style={{
         textAlign: 'center', padding: '8px 20px 10px',
-        borderBottom: `1px solid rgba(${pageRgb},0.18)`, flexShrink: 0,
+        borderBottom: `1px solid rgba(${headerRgb},0.38)`, flexShrink: 0,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 3 }}>
-          <span style={{ fontSize: '1.1rem' }}>📞</span>
-          <h1 style={{ margin: 0, color: PAGE_COLOR, fontSize: '1.05rem', fontWeight: 900, letterSpacing: '-0.01em' }}>
-            סימולטור שיחה
-          </h1>
-        </div>
-        <p style={{ margin: 0, color: `rgba(${pageRgb},0.5)`, fontSize: '0.68rem', fontWeight: 500, lineHeight: 1.5 }}>
-          שיחה קולית עם AI · בדיקת עובדות וטיב טענות בזמן אמת
+        <h1 style={{ margin: '0 0 3px', color: HEADER_TITLE_COLOR, fontSize: '1.5rem', fontWeight: 900, letterSpacing: '-0.01em' }}>
+          שיחה קולית עם AI
+        </h1>
+        <p style={{ margin: '0 0 4px', color: `rgba(${headerRgb},0.95)`, fontSize: '1.04rem', fontWeight: 700, lineHeight: 1.4 }}>
+          בדיקת עובדות וטיב הטענות שלך בזמן אמת
         </p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          <span style={{ fontSize: '1.17rem' }}>📞</span>
+          <span style={{ color: `rgba(${headerRgb},0.98)`, fontSize: '0.85rem', fontWeight: 800, letterSpacing: '0.04em' }}>
+            סימולטור שיחה
+          </span>
+        </div>
       </div>
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
@@ -510,14 +686,14 @@ export default function AiVoicePage() {
             margin: '0 12px 10px',
             padding: '11px 14px',
             borderRadius: 13,
-            background: 'rgba(220,38,38,0.06)',
-            border: '1px solid rgba(220,38,38,0.18)',
+            background: 'rgba(34,197,94,0.06)',
+            border: '1px solid rgba(34,197,94,0.25)',
             display: 'flex', alignItems: 'center', gap: 12,
             animation: 'fadeUp 0.4s ease 0.1s both',
           }}>
             <span style={{ fontSize: '1.4rem', flexShrink: 0 }}>🔍</span>
             <div>
-              <div style={{ color: '#fca5a5', fontWeight: 800, fontSize: '0.78rem', marginBottom: 2 }}>
+              <div style={{ color: '#86efac', fontWeight: 800, fontSize: '0.78rem', marginBottom: 2 }}>
                 בדיקת עובדות בזמן אמת
               </div>
               <div style={{ color: 'rgba(255,255,255,0.38)', fontSize: '0.68rem', lineHeight: 1.5 }}>
@@ -562,34 +738,6 @@ export default function AiVoicePage() {
                 {isCalling && (
                   <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.68rem' }}>מתחבר...</span>
                 )}
-                {(isActive || isCalling) && (<>
-                  {/* ✕ — exit page */}
-                  <button
-                    type="button"
-                    aria-label="סגור וצא"
-                    onClick={() => { endCall(); navigate(-1); }}
-                    style={{
-                      width: 20, height: 20, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.25)',
-                      background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)',
-                      cursor: 'pointer', fontSize: '0.62rem', fontWeight: 700,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      flexShrink: 0, padding: 0, lineHeight: 1,
-                    }}
-                  >✕</button>
-                  {/* ← — back to character selection */}
-                  <button
-                    type="button"
-                    aria-label="חזור לבחירת דובר"
-                    onClick={() => { endCall(); setTimeout(() => { setCallState('idle'); setTranscript([]); setFactErrors([]); setUserTurn(false); setIsRecording(false); setLastPreviewedId(null); }, 50); }}
-                    style={{
-                      width: 20, height: 20, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.25)',
-                      background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.7)',
-                      cursor: 'pointer', fontSize: '0.72rem', fontWeight: 700,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      flexShrink: 0, padding: 0, lineHeight: 1,
-                    }}
-                  >←</button>
-                </>)}
                 {isActive && (<>
                   <span style={{
                     width: 7, height: 7, borderRadius: '50%', background: '#ef4444', flexShrink: 0,
@@ -598,6 +746,10 @@ export default function AiVoicePage() {
                   <span style={{ color: '#ef4444', fontSize: '0.7rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
                     {fmt(callDuration)}
                   </span>
+                </>)}
+                {/* spacer */}
+                <span style={{ flex: 1 }} />
+                {isActive && (<>
                   <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.65rem', marginRight: 4 }}>·</span>
                   {isRecording ? (
                     <span style={{ color: '#ef4444', fontSize: '0.68rem', fontWeight: 700, animation: 'liveDot 1.2s infinite' }}>
@@ -627,20 +779,40 @@ export default function AiVoicePage() {
                 </>)}
               </div>
             </div>
-            {/* End call button */}
-            <button
-              type="button"
-              className="aiv-end-btn"
-              onClick={endCall}
-              aria-label="סיים שיחה"
-              style={{
-                width: 44, height: 44, borderRadius: '50%', border: 'none',
-                cursor: 'pointer', padding: 0, background: 'transparent', flexShrink: 0,
-                filter: 'drop-shadow(0 3px 10px rgba(220,38,38,0.5))',
-              }}
-            >
-              <EndCallIcon />
-            </button>
+            {/* כפתורי ניווט + סיום — שמאל */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              {/* חזרה לבחירת דובר */}
+              <button
+                type="button"
+                aria-label="חזור לבחירת דובר"
+                onClick={() => { endCall(); setTimeout(() => { setCallState('idle'); setTranscript([]); setFactErrors([]); setUserTurn(false); setIsRecording(false); setLastPreviewedId(null); }, 50); }}
+                style={{
+                  minHeight: 44,
+                  borderRadius: 22,
+                  padding: '0 16px',
+                  background: 'rgba(255,255,255,0.10)', border: '2px solid rgba(255,255,255,0.25)',
+                  color: '#fff', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 2px 12px rgba(0,0,0,0.3)', backdropFilter: 'blur(6px)',
+                }}
+              >
+                <span style={{ fontSize: '0.82rem', fontWeight: 800, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>דוברים</span>
+              </button>
+              {/* סיים שיחה */}
+              <button
+                type="button"
+                className="aiv-end-btn"
+                onClick={endCall}
+                aria-label="סיים שיחה"
+                style={{
+                  width: 52, height: 52, borderRadius: '50%', border: 'none',
+                  cursor: 'pointer', padding: 0, background: 'transparent', flexShrink: 0,
+                  filter: 'drop-shadow(0 3px 10px rgba(220,38,38,0.5))',
+                }}
+              >
+                <EndCallIcon />
+              </button>
+            </div>
           </div>
 
           {/* Transcript */}
@@ -753,13 +925,47 @@ export default function AiVoicePage() {
             </div>
           )}
 
+          {/* Text input box */}
+          {isActive && (
+            <div style={{ flexShrink: 0, padding: '4px 10px 6px', display: 'flex', gap: 6, alignItems: 'center' }}>
+              <input
+                type="text"
+                value={inputText}
+                onChange={e => setInputText(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && sendTextMessage()}
+                placeholder="ההודעה המוקלטת תופיע כאן..."
+                disabled={aiThinking}
+                dir="rtl"
+                style={{
+                  flex: 1, background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.13)', borderRadius: 10,
+                  padding: '8px 12px', color: '#fff', fontSize: '0.82rem',
+                  outline: 'none', fontFamily: 'inherit',
+                }}
+              />
+              <button
+                type="button"
+                onClick={sendTextMessage}
+                disabled={!inputText.trim() || aiThinking || isRecording}
+                style={{
+                  background: inputText.trim() && !aiThinking && !isRecording ? 'rgba(34,197,94,0.18)' : 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${inputText.trim() && !aiThinking && !isRecording ? 'rgba(34,197,94,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                  borderRadius: 10, padding: '8px 14px',
+                  color: inputText.trim() && !aiThinking && !isRecording ? '#4ade80' : 'rgba(255,255,255,0.28)',
+                  cursor: inputText.trim() && !aiThinking && !isRecording ? 'pointer' : 'not-allowed',
+                  fontSize: '0.8rem', fontFamily: 'inherit', fontWeight: 700, flexShrink: 0,
+                }}
+              >שלח</button>
+            </div>
+          )}
+
           {/* Fact-check panel */}
           <div style={{
             flex: 1, margin: '0 10px 10px',
             background: factErrors.length > 0
               ? 'rgba(220,38,38,0.07)'
-              : 'rgba(255,255,255,0.02)',
-            border: `1px solid ${factErrors.length > 0 ? 'rgba(220,38,38,0.28)' : 'rgba(255,255,255,0.07)'}`,
+              : 'rgba(34,197,94,0.05)',
+            border: `1px solid ${factErrors.length > 0 ? 'rgba(220,38,38,0.28)' : 'rgba(34,197,94,0.22)'}`,
             borderRadius: 14, display: 'flex', flexDirection: 'column',
             overflow: 'hidden', minHeight: 80,
             transition: 'border-color 0.4s, background 0.4s',
@@ -767,12 +973,12 @@ export default function AiVoicePage() {
             <div style={{
               display: 'flex', alignItems: 'center', gap: 8,
               padding: '8px 12px',
-              borderBottom: `1px solid ${factErrors.length > 0 ? 'rgba(220,38,38,0.18)' : 'rgba(255,255,255,0.06)'}`,
-              background: factErrors.length > 0 ? 'rgba(220,38,38,0.09)' : 'rgba(255,255,255,0.02)',
+              borderBottom: `1px solid ${factErrors.length > 0 ? 'rgba(220,38,38,0.18)' : 'rgba(34,197,94,0.18)'}`,
+              background: factErrors.length > 0 ? 'rgba(220,38,38,0.09)' : 'rgba(34,197,94,0.07)',
               flexShrink: 0,
             }}>
               <span style={{ fontSize: '0.82rem', animation: aiThinking ? 'scanPulse 0.8s infinite' : 'none' }}>🔍</span>
-              <span style={{ color: factErrors.length > 0 ? '#fca5a5' : 'rgba(255,255,255,0.45)', fontWeight: 800, fontSize: '0.76rem' }}>
+              <span style={{ color: factErrors.length > 0 ? '#fca5a5' : '#86efac', fontWeight: 800, fontSize: '0.76rem' }}>
                 בדיקת עובדות בזמן אמת
               </span>
               {aiThinking && (
