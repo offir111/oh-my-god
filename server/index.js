@@ -338,10 +338,7 @@ app.post('/api/elevenlabs-tts', async (req, res) => {
   if (!text || typeof text !== 'string') return res.status(400).json({ error: 'missing text' });
 
   const apiKey = 'sk_82f7f6de950fcbcc9cc54e1108e7b330ebd2e88f4897dee9';
-
-
   const voiceId = ELEVENLABS_VOICE_MAP[characterId] || 'pNInz6obpgDQGcFmaJgB';
-  const languageCode = lang ? String(lang).split('-')[0] : 'he';
 
   try {
     const upstream = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
@@ -350,7 +347,6 @@ app.post('/api/elevenlabs-tts', async (req, res) => {
       body: JSON.stringify({
         text: text.slice(0, 1000),
         model_id: 'eleven_multilingual_v2',
-        language_code: languageCode,
         voice_settings: { stability: 0.5, similarity_boost: 0.75, use_speaker_boost: true },
       }),
     });
