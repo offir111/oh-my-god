@@ -161,13 +161,16 @@ app.get('/api/tv-proxy', async (req, res) => {
   const timeout = setTimeout(() => ctrl.abort(), 20_000);
   req.on('close', () => { clearTimeout(timeout); ctrl.abort(); });
   try {
+    const isMako = raw.includes('mako') || raw.includes('n12.co.il');
+    const referer = isMako ? 'https://www.n12.co.il/' : new URL(raw).origin + '/';
+    const origin  = isMako ? 'https://www.n12.co.il'  : new URL(raw).origin;
     const upstream = await fetch(raw, {
       signal: ctrl.signal,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120 Safari/537.36',
         'Accept': '*/*',
-        'Referer': new URL(raw).origin + '/',
-        'Origin': new URL(raw).origin,
+        'Referer': referer,
+        'Origin': origin,
       },
     });
     clearTimeout(timeout);
@@ -277,24 +280,89 @@ const FACT_CHECK_SUFFIX = `
 אם אין טעויות — "factErrors":[]
 אל תמציא טעויות. אל תוסיף טקסט מחוץ ל-JSON.`;
 
+function voiceChatTopicBlock(topicSide) {
+  if (topicSide === 'faith') {
+    return `
+
+הקשר נושא (נבחר על ידי המשתמש): הדגש על אמונה, דת, אלוהות ותנ"ך — שיחה עניינית ומכבדת.`;
+  }
+  if (topicSide === 'science') {
+    return `
+
+הקשר נושא (נבחר על ידי המשתמש): הדגש על מדע, אבולוציה, מפץ גדול ואתאיזם — שיחה מבוססת ידע.`;
+  }
+  return '';
+}
+
+function voiceChatModeBlock(conversationMode, bootstrapAiQuestion) {
+  if (conversationMode === 'user_questions') {
+    return `
+
+מצב שיחה: המשתמש שואל שאלות ואתה עונה. ענה בקצרה. אל תאריך בנאומים; שאל שאלת הבהרה רק אם חיוני.`;
+  }
+  if (conversationMode === 'ai_questions') {
+    if (bootstrapAiQuestion) {
+      return `
+
+מצב שיחה: אתה מוביל בשאלות. זו פתיחת הסיבוב — אין עדיין תשובה מהמשתמש. שאל שאלה ראשונה אחת קצרה ובהירה בלבד, בלי הקדמות ארוכות.`;
+    }
+    return `
+
+מצב שיחה: אתה מוביל בשאלות. קודם התייחס בקצרה לתשובת המשתמש (משפט אחד), ואז שאל שאלה חדשה אחת בלבד.`;
+  }
+  return `
+
+מצב שיחה: שיחה חופשית דו-צדדית — אפשר להרחיב, להגיב ולשאול. שמרו על תמציתיות.`;
+}
+
 app.post('/api/ai-voice-chat', async (req, res) => {
-  const { userText, history, characterId } = req.body || {};
-  if (!userText) return res.status(400).json({ error: 'missing userText' });
+  const {
+    userText,
+    history,
+    characterId,
+    conversationMode = 'free',
+    topicSide = null,
+    bootstrapAiQuestion = false,
+  } = req.body || {};
+
+  const isAiLeadBootstrap = Boolean(bootstrapAiQuestion) && conversationMode === 'ai_questions';
+  const trimmedUser = typeof userText === 'string' ? userText.trim() : '';
+  if (!trimmedUser && !isAiLeadBootstrap) {
+    return res.status(400).json({
+      error: 'לא נשלח טקסט מהמשתמש. במצב «AI שואל» ודאו שסימנתם שאלת פתיחה, או הקליטו שוב.',
+      code: 'MISSING_USER_TEXT',
+    });
+  }
 
   const charBase = VOICE_CHAR_PROMPTS[characterId] || VOICE_CHAR_PROMPTS[1];
-  const systemPrompt = charBase + FACT_CHECK_SUFFIX;
+  const systemPrompt = charBase
+    + voiceChatTopicBlock(topicSide)
+    + voiceChatModeBlock(conversationMode, isAiLeadBootstrap)
+    + FACT_CHECK_SUFFIX;
+
+  const historyMessages = Array.isArray(history) ? history.slice(-8).map(m => ({
+    role: m.from === 'user' ? 'user' : 'assistant',
+    content: m.text,
+  })) : [];
+
+  const lastUserContent = isAiLeadBootstrap
+    ? '(עדיין אין תשובה מהמשתמש — זה תורך לשאול את שאלת הפתיחה בלבד.)'
+    : trimmedUser;
 
   const messages = [
     { role: 'system', content: systemPrompt },
-    ...(Array.isArray(history) ? history.slice(-8).map(m => ({
-      role: m.from === 'user' ? 'user' : 'assistant',
-      content: m.text,
-    })) : []),
-    { role: 'user', content: userText },
+    ...historyMessages,
+    { role: 'user', content: lastUserContent },
   ];
 
   try {
-    const response = await chatCompletionWithFallback(groqForApiRoutes(), { messages, max_tokens: 200, temperature: 0.75 });
+    const voiceGroq = new Groq({ apiKey: process.env.GROQ_API_KEY, timeout: 8_000, maxRetries: 1 });
+    const response = await voiceGroq.chat.completions.create({
+      model: 'llama-3.1-8b-instant',
+      messages,
+      max_tokens: 80,
+      temperature: 0.7,
+    });
     const raw = response.choices?.[0]?.message?.content?.trim() || '';
 
     let reply = 'מצטער, לא הצלחתי לענות.';
@@ -315,7 +383,8 @@ app.post('/api/ai-voice-chat', async (req, res) => {
 
     res.json({ reply, factErrors });
   } catch (e) {
-    res.status(500).json({ error: groqErrorForClient(e) });
+    const ge = groqErrorForClient(e);
+    res.status(500).json({ error: ge.error, code: ge.code, detail: ge.detail });
   }
 });
 
