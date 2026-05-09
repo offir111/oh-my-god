@@ -1155,6 +1155,19 @@ export default function ReligionFaithPage() {
 
       <div className="faith-page">
         <header className="faith-header">
+          <button
+            type="button"
+            onClick={() => navigate('/lobby')}
+            aria-label="סגירה וחזרה ללובי"
+            style={{
+              position: 'absolute', top: 14, left: 12, zIndex: 3,
+              width: 36, height: 36, borderRadius: 10,
+              border: '1px solid var(--border)', background: 'var(--card2)',
+              color: 'var(--text-secondary)', fontSize: '1.1rem', fontWeight: 700,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: 0, transition: 'background 0.2s, color 0.2s, border-color 0.2s',
+            }}
+          >✕</button>
           <div
             className="faith-shabbat-actions"
             role="group"
@@ -1409,6 +1422,14 @@ export default function ReligionFaithPage() {
               >
                 שלח
               </button>
+              {faithSearch.trim() && (
+                <button
+                  type="button"
+                  className="btn-clear-search"
+                  onClick={() => { setFaithSearch(''); clearFaithAi(); }}
+                  aria-label="נקה חיפוש"
+                >נקה</button>
+              )}
             </div>
           </div>
           {renderFaithAiSlot()}

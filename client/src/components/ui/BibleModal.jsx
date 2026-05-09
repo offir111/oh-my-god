@@ -398,6 +398,9 @@ export function BiblePanel({ embedded = false, onClose }) {
           onKeyDown={e => e.key === 'Enter' && handleSearch()}
         />
         <button type="button" className="bm-search-btn" onClick={handleSearch} aria-label="חיפוש">🔍</button>
+        {query && (
+          <button type="button" className="btn-clear-search" onClick={() => { setQuery(''); closeAnswerPanel(); setSelectedBook(null); setChapter(null); setVerses(null); searchRef.current?.focus(); }} aria-label="נקה חיפוש">נקה</button>
+        )}
       </div>
 
       {!query.trim() && (

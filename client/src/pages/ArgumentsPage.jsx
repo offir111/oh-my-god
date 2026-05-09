@@ -796,6 +796,9 @@ function EvolutionTreePanel() {
             aria-label="חיפוש מדעי"
           />
           <button type="button" className="evo-search-btn" onClick={handleSciSearch} aria-label="חיפוש">🔍</button>
+          {sciQuery && (
+            <button type="button" className="btn-clear-search" onClick={() => { setSciQuery(''); closeSciPanel(); }} aria-label="נקה חיפוש">נקה</button>
+          )}
         </div>
         {!sciQuery.trim() && (
           <div className="evo-hint">
@@ -1250,6 +1253,14 @@ export default function ArgumentsPage({
           >
             {knowledgeAiLoading ? '…' : 'שלח'}
           </button>
+          {searchQuery.trim() && (
+            <button
+              type="button"
+              className="btn-clear-search"
+              onClick={() => { setSearchQuery(''); clearAiState(); }}
+              aria-label="נקה חיפוש"
+            >נקה</button>
+          )}
         </div>
       </div>
     );
