@@ -63,7 +63,7 @@ const INITIAL_DATA = {
       { text: 'פיצוץ הקמבריון — מינים רבים הופיעו בבת אחת לפני 540 מיליון שנה, ללא אבות משותפים מוכחים. סותר אבולוציה הדרגתית.', author: 'סטיבן גולד' },
       { text: 'מורכבות הביוכימיה — מנגנון הדם הקרישי, העין, הציוט — מערכות שלא יכלו להתפתח בשלבים כי פגומות הן לא פונקציונליות.', author: 'מיכאל ביהי' },
       { text: 'היעדר חוליות ביניים — חרף מיליוני מאובנים שנמצאו, חוליות מעבר בין מינים עיקריים כמעט אינן קיימות.', author: 'ביקורת מדעית' },
-      { text: 'אבוגנזה — אבולוציה לא מסבירה את ראשית החיים. מהדומם לחי — פער עצום שמדע טרם גישר עליו.', author: 'פילוסופיה של ביולוגיה' },
+      { text: 'אביוגנזה — אבולוציה לא מסבירה את ראשית החיים. מהדומם לחי — פער עצום שמדע טרם גישר עליו.', author: 'פילוסופיה של ביולוגיה' },
     ],
     con: [
       { text: '99% מה-DNA של האדם והשימפנזה זהה — ראיה גנטית מובהקת לאב משותף לפני כ-6 מיליון שנה.', author: 'פרויקט הגנום האנושי' },
@@ -789,7 +789,7 @@ function EvolutionTreePanel() {
       <div className="evo-search-zone">
         <div className="evo-search-bar">
           <input
-            placeholder="שאל על אבולוציה, אבוגנזה, גנטיקה, מאובנים… Enter לשליחה"
+            placeholder="שאל על אבולוציה, אביוגנזה, גנטיקה, מאובנים… Enter לשליחה"
             value={sciQuery}
             onChange={e => { setSciQuery(e.target.value); closeSciPanel(); }}
             onKeyDown={e => e.key === 'Enter' && handleSciSearch()}
@@ -802,7 +802,7 @@ function EvolutionTreePanel() {
         </div>
         {!sciQuery.trim() && (
           <div className="evo-hint">
-            <strong>לדוגמה:</strong> איזה הוכחות יש לאבוגנזה · הוכחות לאבולוציה · ניסוי יורי-מילר · DNA ואב משותף
+            <strong>לדוגמה:</strong> איזה הוכחות יש לאביוגנזה · הוכחות לאבולוציה · ניסוי יורי-מילר · DNA ואב משותף
           </div>
         )}
 
@@ -2439,7 +2439,7 @@ export default function ArgumentsPage({
                   </button>
                   <PageOverviewLink title="סקירת העמוד — מאגר ידע" />
                 </div>
-                <p>{subtitle}</p>
+                {subtitle && <p>{subtitle}</p>}
                 {renderSearchRow()}
                 {showKnowledgeAiAssistant && renderKnowledgeAiSlot()}
               </div>
