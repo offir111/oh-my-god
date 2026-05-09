@@ -460,6 +460,7 @@ const RELIGIONS = [
 ];
 
 const EVOLUTION_TREE_IMAGE = '/evolutionary-tree-of-life-high-res.png';
+const EVOLUTION_INTRO_IMAGE = '/evolution-missing-link-26.png';
 
 const EVOLUTION_DETAILED_TIMELINE = [
   { era: 'ראשית החיים', time: 'לפני כ-3.8-3.5 מיליארד שנה', group: 'LUCA, חיידקים וארכאונים', note: 'התפצלות ראשונית של החיים ליצורים חד-תאיים קדומים.' },
@@ -543,6 +544,11 @@ function ReligionsTable() {
 
 function EvolutionTreePanel() {
   const [zoomOpen, setZoomOpen] = useState(false);
+  const [sciQuery, setSciQuery] = useState('');
+  const [sciSearched, setSciSearched] = useState('');
+  const [sciData, setSciData] = useState(null);
+  const [sciLoading, setSciLoading] = useState(false);
+  const [sciError, setSciError] = useState('');
 
   useEffect(() => {
     if (!zoomOpen) return;
@@ -558,8 +564,275 @@ function EvolutionTreePanel() {
     };
   }, [zoomOpen]);
 
+  function closeSciPanel() {
+    setSciData(null);
+    setSciError('');
+  }
+
+  async function handleSciSearch() {
+    const q = sciQuery.trim();
+    if (!q) return;
+    closeSciPanel();
+    setSciSearched(q);
+    setSciLoading(true);
+    try {
+      const base = (import.meta.env.VITE_API_URL || FALLBACK_API_ORIGIN).replace(/\/$/, '');
+      const res = await fetch(`${base}/api/science-search`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: q }),
+      });
+      if (!res.ok) throw new Error('science search failed');
+      const data = await res.json();
+      setSciData({ explanation: data.explanation || '', results: data.results || [] });
+    } catch {
+      setSciError('לא ניתן לקבל תשובה — נסה שוב');
+    }
+    setSciLoading(false);
+  }
+
+  const showSciPanel = sciLoading || sciData !== null || !!sciError;
+
   return (
     <section className="evolution-tree-panel" aria-label="עץ החיים האבולוציוני">
+      <style>{`
+        .evo-search-zone { direction: rtl; margin: 0 0 18px; }
+        .evo-search-bar {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+          background: rgba(255,255,255,0.045);
+          border: 1px solid rgba(255,255,255,0.12);
+          border-radius: 14px;
+          padding: 8px 10px 8px 12px;
+          transition: border-color 0.18s;
+        }
+        .evo-search-bar:focus-within { border-color: rgba(99,102,241,0.55); }
+        .evo-search-bar input {
+          flex: 1;
+          background: none;
+          border: none;
+          outline: none;
+          color: var(--text, #f4f4f8);
+          font-size: 0.9rem;
+          font-family: inherit;
+          direction: rtl;
+          min-width: 0;
+        }
+        .evo-search-bar input::placeholder { color: rgba(180,180,192,0.55); }
+        .evo-search-btn {
+          width: 36px; height: 36px;
+          border-radius: 10px;
+          border: 1px solid rgba(99,102,241,0.4);
+          background: rgba(99,102,241,0.18);
+          color: #a5b4fc;
+          font-size: 1rem;
+          cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0;
+          touch-action: manipulation;
+          transition: background 0.15s;
+        }
+        .evo-search-btn:hover { background: rgba(99,102,241,0.32); }
+        .evo-hint {
+          font-size: 0.72rem;
+          color: rgba(148,163,184,0.6);
+          direction: rtl;
+          padding: 5px 4px 0;
+          line-height: 1.6;
+        }
+        .evo-hint strong { color: rgba(165,180,252,0.75); }
+        /* Answer panel */
+        .evo-answer-panel {
+          margin-top: 12px;
+          background: rgba(10,12,28,0.96);
+          border: 1px solid rgba(99,102,241,0.28);
+          border-radius: 16px;
+          overflow: hidden;
+          direction: rtl;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+        .evo-ap-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 11px 14px 10px;
+          border-bottom: 1px solid rgba(99,102,241,0.18);
+          gap: 8px;
+        }
+        .evo-ap-title {
+          font-size: 0.82rem;
+          font-weight: 800;
+          color: #a5b4fc;
+          flex: 1;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .evo-ap-close {
+          width: 30px; height: 30px;
+          border-radius: 8px;
+          border: 1px solid rgba(255,255,255,0.1);
+          background: rgba(255,255,255,0.05);
+          color: rgba(180,180,200,0.8);
+          font-size: 0.88rem;
+          cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0;
+          touch-action: manipulation;
+          font-family: inherit;
+        }
+        .evo-ap-close:hover { background: rgba(255,255,255,0.1); }
+        .evo-ap-body { padding: 14px 16px 18px; }
+        .evo-explanation {
+          font-size: 0.93rem;
+          line-height: 1.85;
+          color: var(--text, #f4f4f8);
+          margin-bottom: 16px;
+          padding: 13px 15px;
+          background: rgba(99,102,241,0.09);
+          border-radius: 10px;
+          border-right: 3px solid #a5b4fc;
+        }
+        .evo-refs-label {
+          font-size: 0.7rem;
+          font-weight: 900;
+          color: rgba(148,163,184,0.7);
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          margin-bottom: 10px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .evo-science-tag {
+          display: inline-block;
+          font-size: 0.62rem;
+          font-weight: 800;
+          padding: 2px 6px;
+          border-radius: 4px;
+          background: rgba(99,102,241,0.2);
+          color: #a5b4fc;
+          letter-spacing: 0.06em;
+        }
+        .evo-ref-card {
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 12px;
+          padding: 12px 14px;
+          margin-bottom: 10px;
+          direction: rtl;
+        }
+        .evo-ref-card:last-child { margin-bottom: 0; }
+        .evo-ref-head {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 8px;
+          margin-bottom: 7px;
+          flex-wrap: wrap;
+        }
+        .evo-ref-name {
+          font-size: 0.83rem;
+          font-weight: 800;
+          color: #fbbf24;
+          flex: 1;
+        }
+        .evo-ref-field {
+          font-size: 0.65rem;
+          font-weight: 700;
+          padding: 2px 8px;
+          border-radius: 999px;
+          background: rgba(16,185,129,0.15);
+          color: #6ee7b7;
+          border: 1px solid rgba(16,185,129,0.25);
+          white-space: nowrap;
+        }
+        .evo-ref-text {
+          font-size: 0.88rem;
+          line-height: 1.7;
+          color: rgba(226,232,240,0.88);
+        }
+        .evo-ap-spinner {
+          display: flex; align-items: center; justify-content: center;
+          padding: 28px 0;
+        }
+        .evo-ap-error {
+          color: #f87171;
+          font-size: 0.85rem;
+          padding: 16px;
+          text-align: center;
+        }
+      `}</style>
+      {/* שורת חיפוש מדעי */}
+      <div className="evo-search-zone">
+        <div className="evo-search-bar">
+          <input
+            placeholder="שאל על אבולוציה, אבוגנזה, גנטיקה, מאובנים… Enter לשליחה"
+            value={sciQuery}
+            onChange={e => { setSciQuery(e.target.value); closeSciPanel(); }}
+            onKeyDown={e => e.key === 'Enter' && handleSciSearch()}
+            aria-label="חיפוש מדעי"
+          />
+          <button type="button" className="evo-search-btn" onClick={handleSciSearch} aria-label="חיפוש">🔍</button>
+        </div>
+        {!sciQuery.trim() && (
+          <div className="evo-hint">
+            <strong>לדוגמה:</strong> איזה הוכחות יש לאבוגנזה · הוכחות לאבולוציה · ניסוי יורי-מילר · DNA ואב משותף
+          </div>
+        )}
+
+        {showSciPanel && (
+          <div className="evo-answer-panel">
+            <div className="evo-ap-header">
+              <span className="evo-ap-title">📡 {sciSearched}</span>
+              <button type="button" className="evo-ap-close" onClick={closeSciPanel} aria-label="סגור">✕</button>
+            </div>
+            <div className="evo-ap-body">
+              {sciLoading && <div className="evo-ap-spinner"><div className="spinner" /></div>}
+              {sciError && !sciLoading && <div className="evo-ap-error">{sciError}</div>}
+              {sciData && !sciLoading && (
+                <>
+                  {sciData.explanation ? (
+                    <div className="evo-explanation">{sciData.explanation}</div>
+                  ) : null}
+                  {sciData.results && sciData.results.length > 0 && (
+                    <>
+                      <div className="evo-refs-label">
+                        <span className="evo-science-tag">מדע</span>
+                        מקורות ומחקרים · {sciData.results.length} תוצאות
+                      </div>
+                      {sciData.results.map((r, i) => (
+                        <div key={i} className="evo-ref-card">
+                          <div className="evo-ref-head">
+                            <div className="evo-ref-name">{r.ref}</div>
+                            {r.field && <div className="evo-ref-field">{r.field}</div>}
+                          </div>
+                          <div className="evo-ref-text">{r.text}</div>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  {sciData.results && sciData.results.length === 0 && (
+                    <p style={{ color: 'var(--muted)', textAlign: 'center', padding: '12px' }}>לא נמצאו תוצאות — נסה לנסח אחרת</p>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="evolution-image-card evolution-image-card--intro">
+        <img
+          className="evolution-intro-image"
+          src={EVOLUTION_INTRO_IMAGE}
+          alt="איור אבולוציה היסטורי"
+          decoding="async"
+          loading="eager"
+          fetchPriority="high"
+        />
+      </div>
       <div className="evolution-image-card">
         <button
           type="button"
@@ -1383,8 +1656,8 @@ export default function ArgumentsPage({
           position: absolute;
           top: 50%;
           z-index: 2;
-          width: 34px;
-          height: 34px;
+          width: 40px;
+          height: 40px;
           border-radius: 999px;
           border: 1px solid var(--border-strong);
           background: rgba(5,5,10,0.72);
@@ -1559,6 +1832,17 @@ export default function ArgumentsPage({
           border-radius: 22px;
           background: rgba(255,255,255,0.04);
           box-shadow: var(--shadow-md);
+        }
+        .evolution-image-card--intro {
+          width: 100%;
+          margin: 0 0 14px;
+        }
+        .evolution-image-card .evolution-intro-image {
+          display: block;
+          width: 100%;
+          height: 6cm;
+          object-fit: fill;
+          background: rgba(0,0,0,0.22);
         }
         .evolution-image-link {
           display: block;
@@ -2048,8 +2332,8 @@ export default function ArgumentsPage({
             top: 10px;
             left: 8px;
             right: auto;
-            width: 34px;
-            height: 34px;
+            width: 40px;
+            height: 40px;
           }
           .args-knowledge-composer-wrap {
             padding: 0;

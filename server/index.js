@@ -624,6 +624,61 @@ app.post('/api/bible-search', async (req, res) => {
   }
 });
 
+// Science / Evolution search — returns { explanation, results }
+app.post('/api/science-search', async (req, res) => {
+  const { query } = req.body;
+  if (!query?.trim()) return res.status(400).json({ error: 'missing query' });
+  if (!process.env.GROQ_API_KEY) {
+    return res.status(503).json({ error: 'שירות ה־AI לא זמין כרגע', code: 'GROQ_API_KEY_MISSING' });
+  }
+  try {
+    const response = await chatCompletionWithFallback(
+      groqForApiRoutes(),
+      {
+        max_tokens: 1600,
+        messages: [
+          {
+            role: 'system',
+            content: `אתה מדען ומורה מדעים מנוסה. המשתמש שואל שאלה על מדע — ביולוגיה אבולוציונית, אבוגנזה, גנטיקה, פלאונטולוגיה, פיזיקה, כימיה, אסטרונומיה, קוסמולוגיה ועוד.
+
+תחזיר תשובה בשני חלקים:
+
+1. **explanation** — הסבר מלא ונגיש של 3-5 משפטים, כפי שמדען יסביר לאדם מתעניין. כלול: מה ידוע, כיצד גילינו זאת, ומה ההשלכות. אם השאלה היא "מה ההוכחות" — פרט את סוגי הראיות. אם "מדוע" — הסבר את המנגנון.
+
+2. **results** — רשימת ניסויים, מחקרים, תגליות, עדויות מדעיות רלוונטיות.
+
+כל תוצאה:
+- ref: שם הניסוי/מחקר/תגלית + שנה + שם מדען (אם ידוע), למשל "ניסוי יורי-מילר, 1953 — Stanley Miller & Harold Urey"
+- text: תיאור קצר של מה הוכח/גולה ומה משמעותו
+- field: תחום המדע (ביוכימיה, גנטיקה, פלאונטולוגיה, אסטרופיזיקה וכו')
+
+פורמט JSON בלבד, ללא שום טקסט נוסף:
+{"explanation":"הסבר 3-5 משפטים...","results":[{"ref":"שם הניסוי, שנה — מדען","text":"מה הוכח","field":"תחום"}]}
+
+כללים:
+- 3-6 מחקרים/ניסויים
+- רק מחקרים/עובדות שאכן קיימים
+- כתוב בעברית, בהיר ונגיש`,
+          },
+          { role: 'user', content: query },
+        ],
+      },
+      'science-search',
+    );
+    const text = response.choices[0].message.content.trim();
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return res.json({ explanation: '', results: [] });
+    const parsed = JSON.parse(jsonMatch[0]);
+    res.json(parsed);
+  } catch (e) {
+    console.error('[science-search] error:', e?.status, e?.message);
+    const { error, code, detail } = groqErrorForClient(e);
+    const payload = { error, code };
+    if (process.env.DEBUG_GROQ === '1' && detail) payload.detail = detail;
+    res.status(503).json(payload);
+  }
+});
+
 /** תשובת AI במאגר ידע — שאלה חופשית; התשובה מוצגת בלוח מתחת לטאבים */
 app.post('/api/knowledge-ask', async (req, res) => {
   const question = String(req.body?.question ?? '').trim();
