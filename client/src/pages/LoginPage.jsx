@@ -917,7 +917,7 @@ export default function LoginPage() {
           display: flex;
           gap: 10px;
           justify-content: center;
-          margin: 14px 0 4px;
+          margin-top: 3cm;
           direction: rtl;
         }
         .login-qn-btn {
@@ -1214,26 +1214,6 @@ export default function LoginPage() {
                 </button>
               </div>
 
-              {/* 4 quick-nav squares */}
-              <div className="login-quicknav">
-                <button className="login-qn-btn" onClick={() => navigate('/knowledge?tab=התנך')}>
-                  <span className="login-qn-icon">📖</span>
-                  <span className="login-qn-label">תנ״ך</span>
-                </button>
-                <button className="login-qn-btn" onClick={() => navigate('/knowledge?tab=אבולוציה')}>
-                  <span className="login-qn-icon">🧬</span>
-                  <span className="login-qn-label">אבולוציה</span>
-                </button>
-                <button className="login-qn-btn" onClick={() => navigate('/faith')}>
-                  <span className="login-qn-icon">💬</span>
-                  <span className="login-qn-label">צ׳אט</span>
-                </button>
-                <button className="login-qn-btn" onClick={() => navigate('/knowledge')}>
-                  <span className="login-qn-icon">🤖</span>
-                  <span className="login-qn-label">AI</span>
-                </button>
-              </div>
-
               <button
                 className="ai-button"
                 onClick={handleAI}
@@ -1284,6 +1264,28 @@ export default function LoginPage() {
           )}
             </>}
         </section>
+
+        {/* 4 quick-nav squares — מחוץ לכרטיס, 3 ס"מ מתחת לכפתור AI */}
+        {!selectedSide && (
+          <div className="login-quicknav">
+            <button className="login-qn-btn" onClick={() => navigate('/knowledge?tab=התנך')}>
+              <span className="login-qn-icon">📖</span>
+              <span className="login-qn-label">תנ״ך</span>
+            </button>
+            <button className="login-qn-btn" onClick={() => navigate('/knowledge?tab=אבולוציה')}>
+              <span className="login-qn-icon">🧬</span>
+              <span className="login-qn-label">אבולוציה</span>
+            </button>
+            <button className="login-qn-btn" onClick={() => navigate('/faith')}>
+              <span className="login-qn-icon">💬</span>
+              <span className="login-qn-label">צ׳אט</span>
+            </button>
+            <button className="login-qn-btn" onClick={() => navigate('/knowledge')}>
+              <span className="login-qn-icon">🤖</span>
+              <span className="login-qn-label">AI</span>
+            </button>
+          </div>
+        )}
 
       </div>
     </>
