@@ -917,7 +917,7 @@ export default function LoginPage() {
           display: flex;
           gap: 10px;
           justify-content: center;
-          margin-top: 3cm;
+          margin-top: 1cm;
           direction: rtl;
         }
         .login-qn-btn {
