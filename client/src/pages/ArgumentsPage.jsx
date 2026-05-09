@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppStore } from '../store/appStore.js';
 import { BiblePanel } from '../components/ui/BibleModal.jsx';
 import PageOverviewLink from '../components/ui/PageOverviewLink.jsx';
@@ -1013,8 +1013,14 @@ export default function ArgumentsPage({
 }) {
   const user = useAppStore(s => s.user);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const categoriesRef = useRef(null);
-  const [activeCategory, setActiveCategory] = useState(BIBLE_CATEGORY);
+  const [activeCategory, setActiveCategory] = useState(() => {
+    const tab = searchParams.get('tab');
+    if (tab && Object.keys(INITIAL_DATA).includes(tab)) return tab;
+    if (tab === 'אבולוציה') return 'אבולוציה';
+    return BIBLE_CATEGORY;
+  });
   const [customArgs, setCustomArgs] = useState(loadArguments);
   const [searchQuery, setSearchQuery] = useState('');
   const [newPro, setNewPro] = useState('');

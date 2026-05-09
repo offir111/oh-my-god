@@ -646,7 +646,7 @@ export default function LoginPage() {
           border: 1px solid var(--border-strong, rgba(255,255,255,0.14));
           background: rgba(255,255,255,0.08);
           color: var(--text, #fff);
-          font-size: 0.7rem;
+          font-size: 0.82rem;
           font-weight: 800;
           cursor: pointer;
           flex-shrink: 0;
@@ -913,6 +913,41 @@ export default function LoginPage() {
           align-self: center;
           opacity: 0.95;
         }
+        .login-quicknav {
+          display: flex;
+          gap: 10px;
+          justify-content: center;
+          margin: 14px 0 4px;
+          direction: rtl;
+        }
+        .login-qn-btn {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          width: 56px;
+          height: 56px;
+          border-radius: 14px;
+          border: 1px solid rgba(255,255,255,0.13);
+          background: rgba(255,255,255,0.06);
+          color: rgba(226,232,240,0.9);
+          cursor: pointer;
+          gap: 3px;
+          touch-action: manipulation;
+          transition: background 0.15s, border-color 0.15s, transform 0.1s;
+        }
+        .login-qn-btn:hover {
+          background: rgba(255,255,255,0.11);
+          border-color: rgba(255,255,255,0.25);
+        }
+        .login-qn-btn:active { transform: scale(0.94); }
+        .login-qn-icon { font-size: 1.35rem; line-height: 1; }
+        .login-qn-label {
+          font-size: 0.6rem;
+          font-weight: 700;
+          letter-spacing: 0.03em;
+          line-height: 1;
+        }
         .ai-button {
           background: linear-gradient(180deg, #e8e8ee 0%, #a8a8b8 55%, #787890 100%);
           box-shadow: 0 4px 0 #5a5a6e, 0 10px 28px rgba(0,0,0,0.4);
@@ -1176,6 +1211,26 @@ export default function LoginPage() {
                   />
                   <div className="panel-title">אתאיסט</div>
                   <div className="panel-subtitle">מדע</div>
+                </button>
+              </div>
+
+              {/* 4 quick-nav squares */}
+              <div className="login-quicknav">
+                <button className="login-qn-btn" onClick={() => navigate('/knowledge?tab=התנך')}>
+                  <span className="login-qn-icon">📖</span>
+                  <span className="login-qn-label">תנ״ך</span>
+                </button>
+                <button className="login-qn-btn" onClick={() => navigate('/knowledge?tab=אבולוציה')}>
+                  <span className="login-qn-icon">🧬</span>
+                  <span className="login-qn-label">אבולוציה</span>
+                </button>
+                <button className="login-qn-btn" onClick={() => navigate('/faith')}>
+                  <span className="login-qn-icon">💬</span>
+                  <span className="login-qn-label">צ׳אט</span>
+                </button>
+                <button className="login-qn-btn" onClick={() => navigate('/knowledge')}>
+                  <span className="login-qn-icon">🤖</span>
+                  <span className="login-qn-label">AI</span>
                 </button>
               </div>
 
