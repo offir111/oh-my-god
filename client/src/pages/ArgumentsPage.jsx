@@ -596,6 +596,22 @@ function EvolutionTreePanel() {
   return (
     <section className="evolution-tree-panel" aria-label="עץ החיים האבולוציוני">
       <style>{`
+        .evo-page-title-block {
+          text-align: center;
+          padding: 22px 16px 18px;
+          direction: rtl;
+        }
+        .evo-page-title {
+          font-size: clamp(1.6rem, 5vw, 2.4rem);
+          font-weight: 950;
+          letter-spacing: 0.03em;
+          background: linear-gradient(135deg, #34d399 0%, #60a5fa 50%, #a78bfa 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          margin: 0 0 6px;
+          line-height: 1.15;
+        }
         .evo-search-zone { direction: rtl; margin: 0 0 18px; }
         .evo-search-bar {
           display: flex;
@@ -764,6 +780,11 @@ function EvolutionTreePanel() {
           text-align: center;
         }
       `}</style>
+      {/* כותרת ראשית */}
+      <div className="evo-page-title-block">
+        <h2 className="evo-page-title">מדע · אבולוציה · מפץ גדול</h2>
+      </div>
+
       {/* שורת חיפוש מדעי */}
       <div className="evo-search-zone">
         <div className="evo-search-bar">
