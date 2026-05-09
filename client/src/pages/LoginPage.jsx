@@ -1280,7 +1280,7 @@ export default function LoginPage() {
               <span className="login-qn-icon">💬</span>
               <span className="login-qn-label">צ׳אט</span>
             </button>
-            <button className="login-qn-btn" onClick={() => navigate('/ai-voice')}>
+            <button className="login-qn-btn" onClick={() => navigate('/lobby?ai=1')}>
               <span className="login-qn-icon">🤖</span>
               <span className="login-qn-label">AI</span>
             </button>
