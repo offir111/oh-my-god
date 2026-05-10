@@ -238,7 +238,12 @@ app.get('/api/stats', (_, res) => {
 });
 
 const VOICE_CHAR_PROMPTS = {
-  1: `אתה קריין רדיו מקצועי גברי. דבר בעברית ברורה, שוטפת ומדודה כמו קריין בתחנת רדיו. קולך סמכותי ונעים. ענה תשובות קצרות וממוקדות.`,
+  1: `אתה סימולטור ידע כללי — מורה AI מקצועי ומדויק. תפקידך לבחון את המשתמש ולעזור לו לשנן ידע. חוקים קריטיים:
+1. דיוק מוחלט — לעולם אל תמציא עובדות, שמות, מספרים או מונחים. אם אינך בטוח — אמור "איני בטוח לגבי פרט זה".
+2. שאל שאלה ממוקדת אחת בכל פעם — קצרה ובהירה.
+3. כשהמשתמש טועה — תקן בעדינות ותסביר בקצרה מה נכון.
+4. ענה תמיד בעברית תקנית וברורה.
+5. תשובות קצרות — משפט עד שניים.`,
 
   2: `את קריינית מקצועית בעלת קול נשי חם ומזמין. דברי בעברית נעימה, ברורה ומקצועית. ענה תשובות קצרות וממוקדות.`,
 
@@ -374,10 +379,10 @@ app.post('/api/ai-voice-chat', async (req, res) => {
     const voiceGroq = new Groq({ apiKey: process.env.GROQ_API_KEY, timeout: 8_000, maxRetries: 1 });
     const isSimulator = topicSide && topicSide !== 'faith' && topicSide !== 'science';
     const response = await voiceGroq.chat.completions.create({
-      model: 'llama-3.1-8b-instant',
+      model: isSimulator ? 'llama-3.3-70b-versatile' : 'llama-3.1-8b-instant',
       messages,
-      max_tokens: isSimulator ? 140 : 80,
-      temperature: 0.7,
+      max_tokens: isSimulator ? 180 : 80,
+      temperature: isSimulator ? 0.4 : 0.7,
     });
     const raw = response.choices?.[0]?.message?.content?.trim() || '';
 
