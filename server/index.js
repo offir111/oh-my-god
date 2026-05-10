@@ -238,12 +238,12 @@ app.get('/api/stats', (_, res) => {
 });
 
 const VOICE_CHAR_PROMPTS = {
-  1: `אתה סימולטור ידע כללי — מורה AI מקצועי ומדויק. תפקידך לבחון את המשתמש ולעזור לו לשנן ידע. חוקים קריטיים:
-1. דיוק מוחלט — לעולם אל תמציא עובדות, שמות, מספרים או מונחים. אם אינך בטוח — אמור "איני בטוח לגבי פרט זה".
-2. שאל שאלה ממוקדת אחת בכל פעם — קצרה ובהירה.
-3. כשהמשתמש טועה — תקן בעדינות ותסביר בקצרה מה נכון.
-4. ענה תמיד בעברית תקנית וברורה.
-5. תשובות קצרות — משפט עד שניים.`,
+  1: `אתה סימולטור ידע כללי — ספריית ידע מעמיקה, מדויקת ומאומתת כמו ויקיפדיה. חוקים קריטיים:
+1. דיוק מוחלט — לעולם אל תמציא עובדות, מספרים, שמות או מונחים. אם אינך בטוח — ציין זאת מפורשות.
+2. כל תשובה מגובה במקורות אמינים (ספרים, מחקרים, אנציקלופדיות, אתרי סמכות).
+3. תשובות עד 40 מילים ב-reply. אם הנושא מצריך הרחבה — המשך ב-continuation.
+4. כשהמשתמש טועה — תקן בעדינות, הסבר מה נכון, ציין מקור.
+5. ענה בעברית תקנית, אקדמית וברורה.`,
 
   2: `את קריינית מקצועית בעלת קול נשי חם ומזמין. דברי בעברית נעימה, ברורה ומקצועית. ענה תשובות קצרות וממוקדות.`,
 
@@ -279,11 +279,15 @@ Keep answers short — one or two sentences max.`,
 
 const FACT_CHECK_SUFFIX = `
 
-בנוסף, זהה טעויות עובדתיות בדברי המשתמש.
-החזר תמיד JSON תקני בלבד בפורמט זה:
-{"reply":"תשובה בסגנון הדמות (קצרה — משפט עד שניים)","factErrors":["תיאור קצר של טעות עובדתית"]}
-אם אין טעויות — "factErrors":[]
-אל תמציא טעויות. אל תוסיף טקסט מחוץ ל-JSON.`;
+זהה טעויות עובדתיות בדברי המשתמש.
+החזר תמיד JSON תקני בלבד — ללא שום טקסט לפני או אחרי:
+{"reply":"תשובה עיקרית עד 40 מילים","continuation":"המשך הסבר אם נדרש — ריק אם לא","sources":["מקור 1","מקור 2"],"factErrors":["טעות עובדתית אם קיימת"]}
+כללים:
+- reply: תמיד עד 40 מילים, ברור ומדויק.
+- continuation: רק אם יש תוכן נוסף חשוב מעבר ל-40 המילים. אחרת: "".
+- sources: 1–3 מקורות אמינים (ויקיפדיה, ספרי לימוד, מחקרים). אם אין מקורות ספציפיים: [].
+- factErrors: רק טעויות אמיתיות בדברי המשתמש. אם אין: [].
+- אל תמציא מקורות. אל תוסיף טקסט מחוץ ל-JSON.`;
 
 function voiceChatTopicBlock(topicSide) {
   if (!topicSide) return '';
@@ -381,19 +385,22 @@ app.post('/api/ai-voice-chat', async (req, res) => {
     const response = await voiceGroq.chat.completions.create({
       model: isSimulator ? 'llama-3.3-70b-versatile' : 'llama-3.1-8b-instant',
       messages,
-      max_tokens: isSimulator ? 180 : 80,
+      max_tokens: isSimulator ? 380 : 80,
       temperature: isSimulator ? 0.4 : 0.7,
     });
     const raw = response.choices?.[0]?.message?.content?.trim() || '';
 
     let reply = 'מצטער, לא הצלחתי לענות.';
+    let continuation = '';
+    let sources = [];
     let factErrors = [];
     try {
-      // חיפוש JSON בתוך התגובה (למקרה שה-model הוסיף טקסט)
       const jsonMatch = raw.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
         if (parsed.reply) reply = String(parsed.reply);
+        if (parsed.continuation && typeof parsed.continuation === 'string') continuation = parsed.continuation.trim();
+        if (Array.isArray(parsed.sources)) sources = parsed.sources.filter(s => typeof s === 'string' && s.trim()).slice(0, 3);
         if (Array.isArray(parsed.factErrors)) factErrors = parsed.factErrors.filter(e => typeof e === 'string' && e.trim());
       } else {
         reply = raw || reply;
@@ -402,7 +409,7 @@ app.post('/api/ai-voice-chat', async (req, res) => {
       reply = raw || reply;
     }
 
-    res.json({ reply, factErrors });
+    res.json({ reply, continuation, sources, factErrors });
   } catch (e) {
     const ge = groqErrorForClient(e);
     res.status(500).json({ error: ge.error, code: ge.code, detail: ge.detail });
