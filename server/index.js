@@ -281,6 +281,7 @@ const FACT_CHECK_SUFFIX = `
 אל תמציא טעויות. אל תוסיף טקסט מחוץ ל-JSON.`;
 
 function voiceChatTopicBlock(topicSide) {
+  if (!topicSide) return '';
   if (topicSide === 'faith') {
     return `
 
@@ -291,7 +292,21 @@ function voiceChatTopicBlock(topicSide) {
 
 הקשר נושא (נבחר על ידי המשתמש): הדגש על מדע, אבולוציה, מפץ גדול ואתאיזם — שיחה מבוססת ידע.`;
   }
-  return '';
+  if (topicSide.startsWith('קובץ:')) {
+    const lines = topicSide.split('\n');
+    const filename = lines[0].replace('קובץ:', '').trim();
+    const content = lines.slice(1).join('\n').trim();
+    return `
+
+חומר לימוד שהמשתמש העלה (קובץ: "${filename}"):
+${content ? content.slice(0, 1800) : '(תוכן לא זמין)'}
+
+תפקידך כסימולטור: בחן את המשתמש על החומר הנ"ל. שאל שאלות ממוקדות על התוכן, בדוק הבנה, תן הסברים קצרים כשנדרש.`;
+  }
+  return `
+
+נושא שנבחר: "${topicSide}"
+תפקידך כסימולטור ידע: שאל שאלות על הנושא, בדוק הבנה, הסבר מושגים — בסגנון מורה מקצועי. שאלה אחת בכל פעם.`;
 }
 
 function voiceChatModeBlock(conversationMode, bootstrapAiQuestion) {
@@ -357,10 +372,11 @@ app.post('/api/ai-voice-chat', async (req, res) => {
 
   try {
     const voiceGroq = new Groq({ apiKey: process.env.GROQ_API_KEY, timeout: 8_000, maxRetries: 1 });
+    const isSimulator = topicSide && topicSide !== 'faith' && topicSide !== 'science';
     const response = await voiceGroq.chat.completions.create({
       model: 'llama-3.1-8b-instant',
       messages,
-      max_tokens: 80,
+      max_tokens: isSimulator ? 140 : 80,
       temperature: 0.7,
     });
     const raw = response.choices?.[0]?.message?.content?.trim() || '';
