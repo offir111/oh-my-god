@@ -612,44 +612,43 @@ function EvolutionTreePanel() {
           margin: 0 0 6px;
           line-height: 1.15;
         }
-        .evo-search-zone { direction: rtl; margin: 0 0 18px; }
+        .evo-search-zone { direction: rtl; margin: 0 0 18px; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; background: rgba(255,255,255,0.025); }
         .evo-search-bar {
           display: flex;
-          gap: 8px;
+          gap: 10px;
           align-items: center;
-          background: rgba(255,255,255,0.045);
-          border: 1px solid rgba(255,255,255,0.12);
-          border-radius: 14px;
-          padding: 8px 10px 8px 12px;
-          transition: border-color 0.18s;
+          padding: 12px 16px;
+          border-bottom: 1px solid var(--border);
+          background: transparent;
         }
-        .evo-search-bar:focus-within { border-color: rgba(99,102,241,0.55); }
         .evo-search-bar input {
           flex: 1;
           background: none;
           border: none;
           outline: none;
           color: var(--text, #f4f4f8);
-          font-size: 0.9rem;
+          font-size: 0.92rem;
           font-family: inherit;
           direction: rtl;
           min-width: 0;
         }
-        .evo-search-bar input::placeholder { color: rgba(180,180,192,0.55); }
+        .evo-search-bar input::placeholder { color: rgba(180,180,192,0.5); }
         .evo-search-btn {
-          width: 36px; height: 36px;
-          border-radius: 10px;
-          border: 1px solid rgba(99,102,241,0.4);
-          background: rgba(99,102,241,0.18);
-          color: #a5b4fc;
-          font-size: 1rem;
+          background: linear-gradient(135deg, #fde047, var(--gold, #f59e0b));
+          border: none;
+          border-radius: 12px;
+          padding: 0 18px;
+          height: 38px;
           cursor: pointer;
-          display: flex; align-items: center; justify-content: center;
+          font-size: 1.05rem;
+          font-weight: 800;
+          color: #171717;
           flex-shrink: 0;
           touch-action: manipulation;
-          transition: background 0.15s;
+          transition: filter 0.15s, transform 0.12s;
         }
-        .evo-search-btn:hover { background: rgba(99,102,241,0.32); }
+        .evo-search-btn:hover { filter: brightness(1.05); }
+        .evo-search-btn:active { transform: scale(0.96); }
         .evo-hint {
           font-size: 0.72rem;
           color: rgba(148,163,184,0.6);
@@ -1228,6 +1227,7 @@ export default function ArgumentsPage({
 
   function renderSearchRow() {
     if (!showSearch) return null;
+    if (activeCategory === 'התנך' || activeCategory === 'אבולוציה') return null;
     return (
       <div className="args-knowledge-composer-wrap">
         <div className="debate-composer args-knowledge-debate-composer">
