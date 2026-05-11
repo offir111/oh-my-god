@@ -629,43 +629,11 @@ app.post('/api/bible-search', async (req, res) => {
     const response = await chatCompletionWithFallback(
       groqForApiRoutes(),
       {
-        max_tokens: 2000,
+        max_tokens: 200,
         messages: [
           {
             role: 'system',
-            content: `אתה עוזר ידע כללי ומומחה תנ"ך. ענה על כל שאלה — לא משנה הנושא.
-
-חוק מוחלט: explanation חייב תמיד להכיל תשובה מלאה ומפורטת — לעולם אל תשאיר explanation ריק.
-
-אם השאלה על אדם/אירוע/נושא כלשהו (כמו "מי היה דוד בן גוריון") — כתוב תשובה לימודית מלאה ב-explanation ו-results: [].
-אם השאלה על התנ"ך — כתוב הסבר ב-explanation והוסף פסוקים ב-results.
-
-תחזיר תשובה עשירה בשדות הבאים:
-
-1. **summary** — משפט אחד קצר (עד 12 מילים) שמסכם את הנושא.
-2. **searchType** — סוג השאילתה: "event" / "character" / "topic" / "why" / "verse"
-3. **explanation** — תשובה טבעית ומפורטת של 3-5 משפטים, כפי שמורה מנוסה יסביר לתלמיד. ציין ספר ופרק.
-4. **didYouKnow** — עובדה מעניינת קצרה (משפט אחד) שקשורה לנושא.
-5. **relatedTopics** — מערך של 3 נושאים קשורים קצרים (עד 4 מילים כל אחד).
-6. **results** — **חובה: לפחות 4 פסוקים, תמיד**. אם האירוע מפורש בתנ"ך — הבא את הפסוקים הישירים. אם לא — הבא פסוקים קשורים לנושא.
-
-סוגי שאילתות לפי searchType:
-- **why** (למה, מדוע): 4-6 פסוקים שמסבירים את הסיבה
-- **event** (אירוע, סיפור): 5-7 פסוקים בסדר כרונולוגי
-- **topic** (נושא, רעיון): 5-6 פסוקים ממגוון ספרים
-- **character** (דמות, שם): 4-6 פסוקים מרכזיים על הדמות
-
-דוגמה לעקידת יצחק: בראשית כב א-יח — הבא לפחות 5 פסוקים מהפרק הזה.
-
-פורמט תשובה — JSON בלבד, ללא שום טקסט נוסף:
-{"summary":"תיאור קצר בעד 12 מילים","searchType":"event","explanation":"הסבר 3-5 משפטים...","didYouKnow":"עובדה מעניינת...","relatedTopics":["נושא קשור א","נושא קשור ב","נושא קשור ג"],"results":[{"ref":"בראשית כב:א","text":"הפסוק המלא בעברית מקראית","context":"הסבר קצר","relevanceScore":5}]}
-
-כללים:
-- ref בפורמט: "שם ספר פרק:פסוק" בגמטריה עברית (למשל: "בראשית כב:א")
-- relevanceScore: מספר 1-5 (5=הכי רלוונטי)
-- טקסט הפסוק — עברית מקראית מדויקת ומלאה
-- **לפחות 4 תוצאות, עד 8** — אסור להחזיר פחות מ-4
-- רק פסוקים שאכן קיימים בתנ"ך`,
+            content: `אתה עוזר ידע כללי ומומחה תנ"ך. ענה בעברית על כל שאלה — לא משנה הנושא. ללא markdown. ללא פתיח. קפוץ ישירות לתשובה.`,
           },
           { role: 'user', content: query },
         ],
@@ -673,11 +641,8 @@ app.post('/api/bible-search', async (req, res) => {
       'bible-search',
     );
 
-    const text = response.choices[0].message.content.trim();
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return res.json({ results: [] });
-    const parsed = JSON.parse(jsonMatch[0]);
-    res.json(parsed);
+    const explanation = response.choices[0].message.content.trim();
+    res.json({ explanation, results: [] });
   } catch (e) {
     console.error('[bible-search] error:', e?.status, e?.message, e?.error);
     const { error, code, detail } = groqErrorForClient(e);
@@ -699,43 +664,19 @@ app.post('/api/kabbalah-search', async (req, res) => {
     const response = await chatCompletionWithFallback(
       groqForApiRoutes(),
       {
-        max_tokens: 2000,
+        max_tokens: 200,
         messages: [
           {
             role: 'system',
-            content: `אתה עוזר ידע כללי ומומחה קבלה יהודית. ענה על כל שאלה — לא משנה הנושא.
-
-חוק מוחלט: explanation חייב תמיד להכיל תשובה מלאה ומפורטת — לעולם אל תשאיר explanation ריק.
-
-אם השאלה על אדם/אירוע/נושא כלשהו (כמו "מי היה דוד בן גוריון") — כתוב תשובה לימודית מלאה ב-explanation ו-results: [].
-אם השאלה על קבלה — כתוב הסבר ב-explanation והוסף ציטוטים ממקורות קבלה ב-results.
-
-תחזיר תשובה עשירה:
-1. **summary** — משפט אחד קצר (עד 12 מילים) שמסכם את הנושא.
-2. **explanation** — הסבר מעמיק ומפורט של 3-5 משפטים, כולל הקשר לספרות הקבלה. ציין ספר ופרק כשרלוונטי.
-3. **didYouKnow** — עובדה מפתיעה אחת קצרה הקשורה לנושא.
-4. **relatedTopics** — מערך של 3 נושאים קשורים (עד 4 מילים כל אחד).
-5. **results** — **חובה: לפחות 3 ציטוטים תמיד** מספרי קבלה (זוהר, תניא, ספר יצירה, בהיר, עץ חיים, שערי קדושה וכו׳).
-
-פורמט JSON בלבד, ללא שום טקסט נוסף:
-{"summary":"תיאור קצר","explanation":"הסבר מפורט...","didYouKnow":"עובדה מעניינת...","relatedTopics":["נושא א","נושא ב","נושא ג"],"results":[{"ref":"זוהר בראשית ב:ג","text":"ציטוט מהמקור בעברית/ארמית","context":"הסבר קצר מה המקור מלמד","relevanceScore":5}]}
-
-כללים:
-- ref בפורמט: "שם ספר פרק:סעיף" (למשל: "זוהר בראשית א:א", "תניא פרק א", "ספר יצירה א:ב")
-- relevanceScore: 1-5
-- טקסט — עברית מקורית או ארמית (לזוהר) עם תרגום בתוך context
-- לפחות 3 תוצאות, עד 7`,
+            content: `אתה עוזר ידע כללי ומומחה קבלה יהודית. ענה בעברית על כל שאלה — לא משנה הנושא. ללא markdown. ללא פתיח. קפוץ ישירות לתשובה.`,
           },
           { role: 'user', content: query },
         ],
       },
       'kabbalah-search',
     );
-    const text = response.choices[0].message.content.trim();
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return res.json({ results: [] });
-    const parsed = JSON.parse(jsonMatch[0]);
-    res.json(parsed);
+    const explanation = response.choices[0].message.content.trim();
+    res.json({ explanation, results: [] });
   } catch (e) {
     console.error('[kabbalah-search] error:', e?.status, e?.message, e?.error);
     const { error, code, detail } = groqErrorForClient(e);
@@ -756,42 +697,19 @@ app.post('/api/zohar-search', async (req, res) => {
     const response = await chatCompletionWithFallback(
       groqForApiRoutes(),
       {
-        max_tokens: 2000,
+        max_tokens: 200,
         messages: [
           {
             role: 'system',
-            content: `אתה עוזר ידע כללי ומומחה ספר הזוהר. ענה על כל שאלה — לא משנה הנושא.
-
-חוק מוחלט: explanation חייב תמיד להכיל תשובה מלאה ומפורטת — לעולם אל תשאיר explanation ריק.
-
-אם השאלה על אדם/אירוע/נושא כלשהו (כמו "מי היה דוד בן גוריון") — כתוב תשובה לימודית מלאה ב-explanation ו-results: [].
-אם השאלה על הזוהר — כתוב הסבר ב-explanation והוסף ציטוטים מהזוהר ב-results.
-
-תחזיר תשובה עשירה:
-1. **summary** — משפט אחד קצר (עד 12 מילים) שמסכם את הנושא.
-2. **explanation** — הסבר מעמיק של 3-5 משפטים. ציין פרשה ועמוד בזוהר כשרלוונטי. הסבר את המשמעות הקבלית.
-3. **didYouKnow** — עובדה מפתיעה אחת על הזוהר הקשורה לנושא.
-4. **relatedTopics** — מערך של 3 נושאים קשורים קצרים.
-5. **results** — **חובה: לפחות 3 ציטוטים מהזוהר** (ציטוט בארמית/עברית + תרגום/הסבר ב-context).
-
-פורמט JSON בלבד:
-{"summary":"תיאור קצר","explanation":"הסבר מפורט...","didYouKnow":"עובדה מעניינת...","relatedTopics":["נושא א","נושא ב","נושא ג"],"results":[{"ref":"זוהר בראשית א:א","text":"ציטוט בארמית מהזוהר","context":"תרגום והסבר הציטוט","relevanceScore":5}]}
-
-כללים:
-- ref בפורמט: "זוהר [פרשה] [עמוד]:[חלק]" (למשל: "זוהר בראשית א:א", "זוהר תרומה קמ:א")
-- טקסט — ארמית מקורית מהזוהר ככל הניתן, עם תרגום ב-context
-- לפחות 3 תוצאות, עד 7`,
+            content: `אתה עוזר ידע כללי ומומחה ספר הזוהר. ענה בעברית על כל שאלה — לא משנה הנושא. ללא markdown. ללא פתיח. קפוץ ישירות לתשובה.`,
           },
           { role: 'user', content: query },
         ],
       },
       'zohar-search',
     );
-    const text = response.choices[0].message.content.trim();
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return res.json({ results: [] });
-    const parsed = JSON.parse(jsonMatch[0]);
-    res.json(parsed);
+    const explanation = response.choices[0].message.content.trim();
+    res.json({ explanation, results: [] });
   } catch (e) {
     console.error('[zohar-search] error:', e?.status, e?.message, e?.error);
     const { error, code, detail } = groqErrorForClient(e);
@@ -812,46 +730,19 @@ app.post('/api/science-search', async (req, res) => {
     const response = await chatCompletionWithFallback(
       groqForApiRoutes(),
       {
-        max_tokens: 1600,
+        max_tokens: 200,
         messages: [
           {
             role: 'system',
-            content: `אתה עוזר ידע כללי ומדען מנוסה. ענה על כל שאלה — לא משנה הנושא.
-
-חוק מוחלט: explanation חייב תמיד להכיל תשובה מלאה ומפורטת — לעולם אל תשאיר explanation ריק.
-
-אם השאלה על אדם/אירוע/נושא כלשהו (כמו "מי היה דוד בן גוריון") — כתוב תשובה לימודית מלאה ב-explanation ו-results: [].
-אם השאלה על מדע (ביולוגיה, אבולוציה, גנטיקה, פיזיקה, כימיה, אסטרונומיה וכו') — כתוב הסבר ב-explanation והוסף מחקרים ב-results.
-
-תחזיר תשובה בשני חלקים:
-
-1. **explanation** — הסבר מלא ונגיש של 3-5 משפטים, כפי שמדען יסביר לאדם מתעניין. כלול: מה ידוע, כיצד גילינו זאת, ומה ההשלכות. אם השאלה היא "מה ההוכחות" — פרט את סוגי הראיות. אם "מדוע" — הסבר את המנגנון.
-
-2. **results** — רשימת ניסויים, מחקרים, תגליות, עדויות מדעיות רלוונטיות.
-
-כל תוצאה:
-- ref: שם הניסוי/מחקר/תגלית + שנה + שם מדען (אם ידוע), למשל "ניסוי יורי-מילר, 1953 — Stanley Miller & Harold Urey"
-- text: תיאור קצר של מה הוכח/גולה ומה משמעותו
-- field: תחום המדע (ביוכימיה, גנטיקה, פלאונטולוגיה, אסטרופיזיקה וכו')
-
-פורמט JSON בלבד, ללא שום טקסט נוסף:
-{"explanation":"הסבר 3-5 משפטים...","results":[{"ref":"שם הניסוי, שנה — מדען","text":"מה הוכח","field":"תחום"}]}
-
-כללים:
-- 3-6 מחקרים/ניסויים
-- רק מחקרים/עובדות שאכן קיימים
-- כתוב בעברית, בהיר ונגיש`,
+            content: `אתה עוזר ידע כללי ומדען מנוסה. ענה בעברית על כל שאלה — לא משנה הנושא. ללא markdown. ללא פתיח. קפוץ ישירות לתשובה.`,
           },
           { role: 'user', content: query },
         ],
       },
       'science-search',
     );
-    const text = response.choices[0].message.content.trim();
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return res.json({ explanation: '', results: [] });
-    const parsed = JSON.parse(jsonMatch[0]);
-    res.json(parsed);
+    const explanation = response.choices[0].message.content.trim();
+    res.json({ explanation, results: [] });
   } catch (e) {
     console.error('[science-search] error:', e?.status, e?.message);
     const { error, code, detail } = groqErrorForClient(e);
