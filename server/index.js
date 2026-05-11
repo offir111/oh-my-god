@@ -240,10 +240,10 @@ app.get('/api/stats', (_, res) => {
 const VOICE_CHAR_PROMPTS = {
   1: `אתה סימולטור ידע כללי — ספריית ידע מעמיקה כמו ויקיפדיה. חוקים:
 1. דיוק מוחלט — אל תמציא עובדות, מספרים, שמות. אם אינך בטוח — ציין זאת.
-2. תן תשובות מפורטות ומנומקות לחלוטין — ללא הגבלת אורך. כתוב הכל: תהליכים, סיבות, דוגמאות, מספרים, הקשרים.
-3. אל תקצר. אל תחתוך. תן את התמונה המלאה.
+2. תן תשובות רחבות, מלאות ומנומקות — לא תשובות קצרות. כתוב רקע, הסבר מרכזי, דוגמאות, הקשרים, חשיבות היסטורית/מדעית ותרומה כללית כשזה רלוונטי.
+3. בשאלת "מהו/מה היא/מי היה" בנה תשובה לימודית: פתיחה ברורה, רקע כללי, ההגדרה או המשפט עצמו, דוגמה פשוטה, חשיבות ותרומה, ואז סימוכין.
 4. כשהמשתמש טועה — תקן, הסבר מה נכון, ציין מקור.
-5. עברית תקנית, אקדמית, מפורטת.`,
+5. עברית תקנית, אקדמית ונגישה. אל תקצר ואל תחתוך אלא אם המשתמש מבקש במפורש תשובה קצרה.`,
 
   2: `את קריינית מקצועית בעלת קול נשי חם ומזמין. דברי בעברית נעימה, ברורה ומקצועית. ענה תשובות קצרות וממוקדות.`,
 
@@ -281,12 +281,14 @@ const FACT_CHECK_SUFFIX = `
 
 זהה טעויות עובדתיות בדברי המשתמש.
 החזר תמיד JSON תקני בלבד — ללא שום טקסט לפני או אחרי:
-{"reply":"תשובה עיקרית עד 40 מילים","continuation":"המשך הסבר אם נדרש — ריק אם לא","sources":["מקור 1","מקור 2"],"factErrors":["טעות עובדתית אם קיימת"]}
+{"reply":"תשובה מלאה, רחבה ומסודרת","continuation":"","sources":["מקור 1","מקור 2","מקור 3"],"factErrors":[{"error":"הטעות העובדתית שהמשתמש אמר","correction":"הנתון הנכון והתיקון המדויק"}]}
 כללים:
-- reply: תשובה מלאה ומפורטת ללא הגבלת אורך — כתוב הכל במקום אחד. לא לקצר, לא לחתוך.
+- reply: תשובה מלאה ומפורטת — כתוב הכל במקום אחד. לא לקצר, לא לחתוך, לא לענות בשורה אחת לשאלות ידע.
+- לשאלות ידע כלליות כלול לפי הצורך: רקע היסטורי/ביוגרפי, ההסבר המרכזי, דוגמה, חשיבות, תרומה, שימושים או השלכות.
 - continuation: "" (ריק תמיד — הכל נכנס ל-reply).
-- sources: 1–3 מקורות אמינים. אם אין: [].
-- factErrors: רק טעויות בדברי המשתמש. אם אין: [].
+- sources: 2–5 מקורות אמינים וקצרים כשאפשר. אם אין מקור אמין ידוע: [].
+- factErrors: רק טעויות בדברי המשתמש. כל פריט חייב לכלול error וגם correction. אם אין טעויות: [].
+- correction: כתוב את הנתון הנכון במשפט ברור, לדוגמה: "אנואר סאדאת היה נשיא מצרים, ונהרג בהתנקשות בשנת 1981."
 - אל תמציא מקורות. אל תוסיף טקסט מחוץ ל-JSON.`;
 
 function voiceChatTopicBlock(topicSide) {
@@ -315,14 +317,14 @@ ${content ? content.slice(0, 1800) : '(תוכן לא זמין)'}
   return `
 
 נושא שנבחר: "${topicSide}"
-תפקידך כסימולטור ידע: שאל שאלות על הנושא, בדוק הבנה, הסבר מושגים — בסגנון מורה מקצועי. שאלה אחת בכל פעם.`;
+תפקידך כסימולטור ידע: אם המשתמש שואל שאלה — ענה בהרחבה בסגנון מורה מקצועי עם רקע, הסבר, דוגמה וסימוכין כשאפשר. אם אתה מוביל את השיחה — שאל שאלה אחת בכל פעם.`;
 }
 
 function voiceChatModeBlock(conversationMode, bootstrapAiQuestion) {
   if (conversationMode === 'user_questions') {
     return `
 
-מצב שיחה: המשתמש שואל שאלות ואתה עונה. ענה בקצרה. אל תאריך בנאומים; שאל שאלת הבהרה רק אם חיוני.`;
+מצב שיחה: המשתמש שואל שאלות ואתה עונה. תן תשובה מלאה ורחבה כשזו שאלת ידע; שאל שאלת הבהרה רק אם אי אפשר לענות בלי מידע נוסף.`;
   }
   if (conversationMode === 'ai_questions') {
     if (bootstrapAiQuestion) {
@@ -336,7 +338,7 @@ function voiceChatModeBlock(conversationMode, bootstrapAiQuestion) {
   }
   return `
 
-מצב שיחה: שיחה חופשית דו-צדדית — אפשר להרחיב, להגיב ולשאול. שמרו על תמציתיות.`;
+מצב שיחה: שיחה חופשית דו-צדדית — אפשר להרחיב, להגיב ולשאול. כשנשאלת שאלה לימודית, ענה בהרחבה עם רקע וידע כללי.`;
 }
 
 app.post('/api/ai-voice-chat', async (req, res) => {
@@ -380,14 +382,24 @@ app.post('/api/ai-voice-chat', async (req, res) => {
   ];
 
   try {
-    const voiceGroq = new Groq({ apiKey: process.env.GROQ_API_KEY, timeout: 8_000, maxRetries: 1 });
-    const isSimulator = topicSide && topicSide !== 'faith' && topicSide !== 'science';
-    const response = await voiceGroq.chat.completions.create({
-      model: isSimulator ? 'llama-3.3-70b-versatile' : 'llama-3.1-8b-instant',
-      messages,
-      max_tokens: isSimulator ? 1200 : 80,
-      temperature: isSimulator ? 0.4 : 0.7,
-    });
+    const HEBREW_CHAR_IDS = [1, 2, 3, 4, 5, 9, 10];
+    const isHebrew = HEBREW_CHAR_IDS.includes(Number(characterId));
+    let response;
+    if (isHebrew) {
+      response = await chatCompletionWithFallback(
+        groqForApiRoutes(),
+        { max_tokens: 200, messages },
+        'ai-voice-chat'
+      );
+    } else {
+      const voiceGroq = new Groq({ apiKey: process.env.GROQ_API_KEY, timeout: 45_000, maxRetries: 1 });
+      response = await voiceGroq.chat.completions.create({
+        model: 'llama-3.1-8b-instant',
+        messages,
+        max_tokens: 900,
+        temperature: 0.7,
+      });
+    }
     const raw = response.choices?.[0]?.message?.content?.trim() || '';
 
     let reply = 'מצטער, לא הצלחתי לענות.';
@@ -400,8 +412,23 @@ app.post('/api/ai-voice-chat', async (req, res) => {
         const parsed = JSON.parse(jsonMatch[0]);
         if (parsed.reply) reply = String(parsed.reply);
         if (parsed.continuation && typeof parsed.continuation === 'string') continuation = parsed.continuation.trim();
-        if (Array.isArray(parsed.sources)) sources = parsed.sources.filter(s => typeof s === 'string' && s.trim()).slice(0, 3);
-        if (Array.isArray(parsed.factErrors)) factErrors = parsed.factErrors.filter(e => typeof e === 'string' && e.trim());
+        if (Array.isArray(parsed.sources)) sources = parsed.sources.filter(s => typeof s === 'string' && s.trim()).slice(0, 5);
+        if (Array.isArray(parsed.factErrors)) {
+          factErrors = parsed.factErrors
+            .map(e => {
+              if (typeof e === 'string') {
+                const text = e.trim();
+                return text ? { error: text, correction: '' } : null;
+              }
+              if (e && typeof e === 'object') {
+                const error = String(e.error || e.text || e.mistake || '').trim();
+                const correction = String(e.correction || e.correct || e.fix || '').trim();
+                return error ? { error, correction } : null;
+              }
+              return null;
+            })
+            .filter(Boolean);
+        }
       } else {
         reply = raw || reply;
       }
@@ -648,6 +675,114 @@ app.post('/api/bible-search', async (req, res) => {
     res.json(parsed);
   } catch (e) {
     console.error('[bible-search] error:', e?.status, e?.message, e?.error);
+    const { error, code, detail } = groqErrorForClient(e);
+    const payload = { error, code };
+    if (process.env.DEBUG_GROQ === '1' && detail) payload.detail = detail;
+    res.status(503).json(payload);
+  }
+});
+
+// Kabbalah search via Groq AI
+app.post('/api/kabbalah-search', async (req, res) => {
+  const { query } = req.body;
+  if (!query?.trim()) return res.status(400).json({ error: 'missing query' });
+  if (!process.env.GROQ_API_KEY) {
+    console.warn('[kabbalah-search] GROQ_API_KEY missing');
+    return res.status(503).json({ error: 'שירות ה־AI לא זמין כרגע', code: 'GROQ_API_KEY_MISSING' });
+  }
+  try {
+    const response = await chatCompletionWithFallback(
+      groqForApiRoutes(),
+      {
+        max_tokens: 2000,
+        messages: [
+          {
+            role: 'system',
+            content: `אתה מומחה קבלה יהודית ומורה רוחני מנוסה. המשתמש שואל שאלה על קבלה, ספירות, זוהר, תניא, ספר יצירה, או מושגי קבלה אחרים.
+
+**חובה**: תמיד תחזיר תשובה מלאה עם לפחות 3 ציטוטים ממקורות קבלה ב-results. אל תחזיר results ריק לעולם.
+
+תחזיר תשובה עשירה:
+1. **summary** — משפט אחד קצר (עד 12 מילים) שמסכם את הנושא.
+2. **explanation** — הסבר מעמיק ומפורט של 3-5 משפטים, כולל הקשר לספרות הקבלה. ציין ספר ופרק כשרלוונטי.
+3. **didYouKnow** — עובדה מפתיעה אחת קצרה הקשורה לנושא.
+4. **relatedTopics** — מערך של 3 נושאים קשורים (עד 4 מילים כל אחד).
+5. **results** — **חובה: לפחות 3 ציטוטים תמיד** מספרי קבלה (זוהר, תניא, ספר יצירה, בהיר, עץ חיים, שערי קדושה וכו׳).
+
+פורמט JSON בלבד, ללא שום טקסט נוסף:
+{"summary":"תיאור קצר","explanation":"הסבר מפורט...","didYouKnow":"עובדה מעניינת...","relatedTopics":["נושא א","נושא ב","נושא ג"],"results":[{"ref":"זוהר בראשית ב:ג","text":"ציטוט מהמקור בעברית/ארמית","context":"הסבר קצר מה המקור מלמד","relevanceScore":5}]}
+
+כללים:
+- ref בפורמט: "שם ספר פרק:סעיף" (למשל: "זוהר בראשית א:א", "תניא פרק א", "ספר יצירה א:ב")
+- relevanceScore: 1-5
+- טקסט — עברית מקורית או ארמית (לזוהר) עם תרגום בתוך context
+- לפחות 3 תוצאות, עד 7`,
+          },
+          { role: 'user', content: query },
+        ],
+      },
+      'kabbalah-search',
+    );
+    const text = response.choices[0].message.content.trim();
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return res.json({ results: [] });
+    const parsed = JSON.parse(jsonMatch[0]);
+    res.json(parsed);
+  } catch (e) {
+    console.error('[kabbalah-search] error:', e?.status, e?.message, e?.error);
+    const { error, code, detail } = groqErrorForClient(e);
+    const payload = { error, code };
+    if (process.env.DEBUG_GROQ === '1' && detail) payload.detail = detail;
+    res.status(503).json(payload);
+  }
+});
+
+// Zohar search via Groq AI
+app.post('/api/zohar-search', async (req, res) => {
+  const { query } = req.body;
+  if (!query?.trim()) return res.status(400).json({ error: 'missing query' });
+  if (!process.env.GROQ_API_KEY) {
+    return res.status(503).json({ error: 'שירות ה־AI לא זמין כרגע', code: 'GROQ_API_KEY_MISSING' });
+  }
+  try {
+    const response = await chatCompletionWithFallback(
+      groqForApiRoutes(),
+      {
+        max_tokens: 2000,
+        messages: [
+          {
+            role: 'system',
+            content: `אתה מומחה ספר הזוהר ומורה קבלה מנוסה. המשתמש שואל שאלה על ספר הזוהר, פרשיותיו, מושגיו וסודותיו.
+
+**חובה**: תמיד תחזיר לפחות 3 ציטוטים מהזוהר ב-results. אל תחזיר results ריק לעולם.
+
+תחזיר תשובה עשירה:
+1. **summary** — משפט אחד קצר (עד 12 מילים) שמסכם את הנושא.
+2. **explanation** — הסבר מעמיק של 3-5 משפטים. ציין פרשה ועמוד בזוהר כשרלוונטי. הסבר את המשמעות הקבלית.
+3. **didYouKnow** — עובדה מפתיעה אחת על הזוהר הקשורה לנושא.
+4. **relatedTopics** — מערך של 3 נושאים קשורים קצרים.
+5. **results** — **חובה: לפחות 3 ציטוטים מהזוהר** (ציטוט בארמית/עברית + תרגום/הסבר ב-context).
+
+פורמט JSON בלבד:
+{"summary":"תיאור קצר","explanation":"הסבר מפורט...","didYouKnow":"עובדה מעניינת...","relatedTopics":["נושא א","נושא ב","נושא ג"],"results":[{"ref":"זוהר בראשית א:א","text":"ציטוט בארמית מהזוהר","context":"תרגום והסבר הציטוט","relevanceScore":5}]}
+
+כללים:
+- ref בפורמט: "זוהר [פרשה] [עמוד]:[חלק]" (למשל: "זוהר בראשית א:א", "זוהר תרומה קמ:א")
+- טקסט — ארמית מקורית מהזוהר ככל הניתן, עם תרגום ב-context
+- לפחות 3 תוצאות, עד 7`,
+          },
+          { role: 'user', content: query },
+        ],
+      },
+      'zohar-search',
+    );
+    const text = response.choices[0].message.content.trim();
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return res.json({ results: [] });
+    const parsed = JSON.parse(jsonMatch[0]);
+    res.json(parsed);
+  } catch (e) {
+    console.error('[zohar-search] error:', e?.status, e?.message, e?.error);
     const { error, code, detail } = groqErrorForClient(e);
     const payload = { error, code };
     if (process.env.DEBUG_GROQ === '1' && detail) payload.detail = detail;
