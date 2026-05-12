@@ -2,6 +2,9 @@ import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppStore } from '../store/appStore.js';
 import { BiblePanel } from '../components/ui/BibleModal.jsx';
+import { KabbalachPanel } from '../components/ui/KabbalachModal.jsx';
+import { ZoharPanel } from '../components/ui/ZoharModal.jsx';
+import { useTypewriter } from '../hooks/useTypewriter.js';
 import PageOverviewLink from '../components/ui/PageOverviewLink.jsx';
 
 /** כפתור ניווט במאגר ידע — לא קטגוריית טענות; לפני קטגוריית «דעת אמת» (שמאל ב־RTL) */
@@ -186,39 +189,38 @@ const INITIAL_DATA = {
       { text: 'NDE מוסבר נוירולוגית — חסך חמצן, שחרור DMT טבעי במוח, ודפוסי תקשורת שיוריים הפוכים.', author: 'נוירולוגיה' },
     ],
   },
+  /** סדר לפי שכיחות בדיון ציבורי (הנפוצים ביותר למעלה) — תצוגה אחת ללא עמודות אדום/ירוק */
   'כשלים לוגיים': {
-    pro: [
-      { text: 'פנייה לרוב / אד פופולום — טענה נחשבת נכונה רק כי רבים מאמינים בה: "כולם יודעים", "רוב העולם חושב כך".', author: 'לוגיקה שימושית' },
-      { text: 'פנייה לסמכות — הסתמכות על רב, פרופסור, סלבריטי או מוסד במקום על ראיות ונימוקים עצמאיים.', author: 'חשיבה ביקורתית' },
+    ordered: [
       { text: 'פנייה לרגש — ניסיון לנצח דיון דרך פחד, רחמים, אשמה, גאווה או בושה במקום דרך הטענה עצמה.', author: 'רטוריקה' },
-      { text: 'דחליל — הצגת גרסה חלשה או מגוחכת של עמדת היריב ואז תקיפתה כאילו זו עמדתו האמיתית.', author: 'כשלי ייצוג' },
+      { text: 'פנייה לרוב / אד פופולום — טענה נחשבת נכונה רק כי רבים מאמינים בה: "כולם יודעים", "רוב העולם חושב כך".', author: 'לוגיקה שימושית' },
       { text: 'אד הומינם — תקיפת האדם, אופיו, עברו או מניעיו במקום להתמודד עם הטיעון שהציג.', author: 'כשלי אי-רלוונטיות' },
-      { text: 'איש קש הפוך / איש פלדה מדומה — הצגת העמדה שלך כעמוקה וחזקה יותר ממה שהראיות באמת מאפשרות.', author: 'רטוריקה בדיון' },
-      { text: 'פנייה למסורת — "זה נכון כי כך האמינו תמיד"; הוותק של רעיון אינו מוכיח את אמיתותו.', author: 'חשיבה ביקורתית' },
-      { text: 'פנייה לחידוש — "זה נכון כי זה מודרני/חדש"; חידוש אינו ראיה לאמת או ליעילות.', author: 'חשיבה ביקורתית' },
-      { text: 'פנייה לבורות — טענה נכונה כי לא הוכיחו שהיא שגויה, או שגויה כי לא הוכיחו שהיא נכונה.', author: 'לוגיקה' },
-      { text: 'העברת נטל ההוכחה — מי שטוען טענה דורש מהצד השני להפריך אותה במקום להביא ראיות בעצמו.', author: 'כללי דיון' },
+      { text: 'פנייה לסמכות — הסתמכות על רב, פרופסור, סלבריטי או מוסד במקום על ראיות ונימוקים עצמאיים.', author: 'חשיבה ביקורתית' },
+      { text: 'דחליל — הצגת גרסה חלשה או מגוחכת של עמדת היריב ואז תקיפתה כאילו זו עמדתו האמיתית.', author: 'כשלי ייצוג' },
       { text: 'ברירה כוזבת — הצגת שתי אפשרויות בלבד כשיש בפועל אפשרויות ביניים או הסברים נוספים.', author: 'כשלי היסק' },
       { text: 'מדרון חלקלק — טענה שצעד קטן יוביל בהכרח לשרשרת אסונות בלי להראות קשר סיבתי הכרחי.', author: 'כשלי סיבתיות' },
+      { text: 'העברת נטל ההוכחה — מי שטוען טענה דורש מהצד השני להפריך אותה במקום להביא ראיות בעצמו.', author: 'כללי דיון' },
+      { text: 'פנייה לבורות — טענה נכונה כי לא הוכיחו שהיא שגויה, או שגויה כי לא הוכיחו שהיא נכונה.', author: 'לוגיקה' },
       { text: 'טיעון מעגלי — המסקנה כבר כלולה בהנחה: "הספר אמת כי הוא אומר שהוא אמת".', author: 'לוגיקה פורמלית' },
       { text: 'הנחת המבוקש — בניית הטיעון על הנחה שלא הוכחה ושעליה בדיוק מתווכחים.', author: 'לוגיקה' },
-      { text: 'טווח ביניים שגוי — הנחה שהאמת חייבת להיות באמצע בין שתי עמדות, גם אם אחת מהן שגויה לגמרי.', author: 'כשל האמצע' },
-    ],
-    con: [
-      { text: 'כשל הצלף הבודד — ירי חיצים ואז סימון המטרה סביב הפגיעות: בחירת התאמות בדיעבד והצגתן כנבואה או תכנון.', author: 'סטטיסטיקה' },
+      { text: 'נון סקוויטור — המסקנה אינה נובעת מההנחות, גם אם המשפטים נשמעים קשורים.', author: 'לוגיקה' },
+      { text: 'עמימות לשונית — שימוש במילה אחת בכמה משמעויות בתוך אותו טיעון כדי ליצור מסקנה מדומה.', author: 'כשלים סמנטיים' },
       { text: 'קטיף דובדבנים — בחירת נתונים שתומכים בטענה והתעלמות מנתונים שסותרים אותה.', author: 'מתודולוגיה' },
       { text: 'הכללה חפוזה — הסקת כלל רחב ממעט דוגמאות, מסיפור אישי או ממדגם לא מייצג.', author: 'אינדוקציה' },
       { text: 'אנקדוטה במקום ראיה — סיפור אישי מרשים מוצג כהוכחה כללית אף שאינו מחקר או מדגם.', author: 'חשיבה מדעית' },
       { text: 'מתאם אינו סיבתיות — שני דברים קורים יחד, אך אין מכך הוכחה שאחד גרם לשני.', author: 'סטטיסטיקה' },
       { text: 'סיבה שגויה / פוסט הוק — "זה קרה אחרי זה, לכן זה נגרם בגלל זה".', author: 'כשלי סיבתיות' },
-      { text: 'נון סקוויטור — המסקנה אינה נובעת מההנחות, גם אם המשפטים נשמעים קשורים.', author: 'לוגיקה' },
-      { text: 'עמימות לשונית — שימוש במילה אחת בכמה משמעויות בתוך אותו טיעון כדי ליצור מסקנה מדומה.', author: 'כשלים סמנטיים' },
       { text: 'שאלה טעונה — שאלה שמניחה מראש אשמה או מסקנה: "מתי הפסקת להטעות אנשים?".', author: 'רטוריקה' },
+      { text: 'הרינג אדום — הסחת הדיון לנושא צדדי כדי לברוח מהשאלה המרכזית.', author: 'כשלי הסחה' },
+      { text: 'כשל הצלף הבודד — ירי חיצים ואז סימון המטרה סביב הפגיעות: בחירת התאמות בדיעבד והצגתן כנבואה או תכנון.', author: 'סטטיסטיקה' },
+      { text: 'פנייה למסורת — "זה נכון כי כך האמינו תמיד"; הוותק של רעיון אינו מוכיח את אמיתותו.', author: 'חשיבה ביקורתית' },
+      { text: 'פנייה לחידוש — "זה נכון כי זה מודרני/חדש"; חידוש אינו ראיה לאמת או ליעילות.', author: 'חשיבה ביקורתית' },
+      { text: 'טווח ביניים שגוי — הנחה שהאמת חייבת להיות באמצע בין שתי עמדות, גם אם אחת מהן שגויה לגמרי.', author: 'כשל האמצע' },
+      { text: 'איש קש הפוך / איש פלדה מדומה — הצגת העמדה שלך כעמוקה וחזקה יותר ממה שהראיות באמת מאפשרות.', author: 'רטוריקה בדיון' },
       { text: 'No True Scotsman — שינוי ההגדרה בכל פעם שמופיעה דוגמה נגדית: "מאמין אמיתי לעולם לא...".', author: 'כשלי הגדרה' },
       { text: 'כשל ההרכב — מה שנכון לחלקים נכון בהכרח לשלם; למשל מתכונות פרטים מסיקים תכונה של מערכת שלמה.', author: 'לוגיקה' },
       { text: 'כשל החלוקה — מה שנכון לשלם נכון בהכרח לכל חלקיו.', author: 'לוגיקה' },
       { text: 'אד נאוסאם — חזרה שוב ושוב על אותה טענה עד שהיא נשמעת מוכרת, בלי להוסיף ראיות.', author: 'רטוריקה' },
-      { text: 'הרינג אדום — הסחת הדיון לנושא צדדי כדי לברוח מהשאלה המרכזית.', author: 'כשלי הסחה' },
       { text: 'כשל המהמר — הנחה שאירוע אקראי "חייב להתאזן" בקרוב, אף שכל אירוע עצמאי.', author: 'הסתברות' },
     ],
   },
@@ -424,7 +426,6 @@ const CATEGORY_COLUMN_TITLES = {
   'בחנוני בזאת': { pro: 'טענות אמונה, שכר וברכה', con: 'נבואות ואמירות מחזקות' },
   'מוות קליני': { pro: 'עדויות וחיזוק לאמונה', con: 'הסברים רפואיים ושאלת ההוכחה' },
   'פילוסופיה': { pro: 'טיעונים פילוסופיים בעד', con: 'ביקורת ושאלות נגד' },
-  'כשלים לוגיים': { pro: 'כשלי שכנוע נפוצים', con: 'כשלי סיבה וראיות' },
   'טעויות בתלמוד': { pro: 'טענות ביקורת נפוצות', con: 'הקשר ובדיקה' },
   'חקר המקרא': { pro: 'כלי מחקר ונושאי יסוד', con: 'גישות, מחלוקות וזהירות' },
   [DAAT_EMET_CATEGORY]: { pro: 'הקשר, בדיקת מקור ודיון', con: 'ירון ידען' },
@@ -432,8 +433,12 @@ const CATEGORY_COLUMN_TITLES = {
 
 const RELIGIONS_CATEGORY = 'דתות';
 const BIBLE_CATEGORY = 'התנך';
+const KABBALAH_CATEGORY = 'קבלה';
+const ZOHAR_CATEGORY = 'זוהר';
+const PRO_FAITH_CATEGORY = 'בעד אמונה';
 /** קטגוריה במאגר ידע — מעל המלבנים יוצג משפט תיאולוגי קצר */
 const GOD_EXISTENCE_CATEGORY = 'קיום האלוהים';
+const LOGICAL_FALLACIES_CATEGORY = 'כשלים לוגיים';
 
 const RELIGIONS = [
   { name: 'יהדות', belief: 'אל אחד', messenger: 'משה ומשיח עתידי', origin: 'ישראל / המזרח הקדום', followers: 'כ-15 מיליון', age: 'כ-3,000 שנה', principle: 'ברית בין עם ישראל לאל אחד דרך תורה, מצוות ומוסר.' },
@@ -542,6 +547,98 @@ function ReligionsTable() {
   );
 }
 
+const EVO_CHIPS = [
+  'המפץ הגדול',
+  'דרווין',
+  'הוכחות מהקוף',
+  'אביוגנזה',
+  'ברירה טבעית',
+  'DNA ואב משותף',
+  'מאובנים',
+  'גנטיקה',
+];
+
+const EVO_HARDCODED = {
+  'המפץ הגדול': {
+    explanation: 'תיאוריית המפץ הגדול היא ההסבר המדעי המקובל לראשית היקום. לפני כ-13.8 מיליארד שנה, כל החומר, האנרגיה, הזמן והמרחב היו דחוסים לנקודה אחת קטנה בלתי-נתפסת (סינגולריות). האירוע שהפץ אותה יצר את היקום שלנו — ועדיין מתרחש: הגלקסיות ממשיכות להתרחק זו מזו.',
+    results: [
+      { ref: 'רקע הקרינה הקוסמית (CMB)', text: 'בשנת 1965 גילו פנזיאס ווילסון קרינת מיקרוגל אחידה מכל כיווני השמיים — "הד" של אנרגיית המפץ הגדול. זו הראיה החזקה ביותר לתיאוריה.', field: 'קוסמולוגיה' },
+      { ref: 'התרחבות היקום — הובל 1929', text: 'אדווין הובל גילה שכל הגלקסיות מתרחקות מאיתנו, ומהר יותר ככל שהן רחוקות יותר. הסיק: אם מחזירים את הקלטה לאחור — הכל התחיל מנקודה אחת.', field: 'אסטרונומיה' },
+      { ref: 'שפע הליום ביקום', text: 'כ-25% ממסת היקום הרגיל הוא הליום. כמות זו לא יכלה להיווצר בכוכבים בלבד — היא תוצאה ישירה של תנאי הטמפרטורה בדקות הראשונות לאחר המפץ.', field: 'פיזיקה גרעינית' },
+      { ref: 'גיל כוכבים ואור גלקסיות רחוקות', text: 'כוכבים עתיקים מדורגים בגיל 13+ מיליארד שנה. טלסקופ ג\'יימס ווב מצלם גלקסיות מ-400 מיליון שנה לאחר המפץ — אנו רואים את ראשית היקום ממש.', field: 'אסטרונומיה' },
+      { ref: 'פיזיקת חלקיקים — מאיץ LHC', text: 'מאיץ החלקיקים בסרן יוצר תנאים הדומים למיליארדיות השנייה הראשונה לאחר המפץ — ומאשש את תחזיות מודל הסטנדרטי לגבי אותם רגעים.', field: 'פיזיקת חלקיקים' },
+    ],
+  },
+  'דרווין': {
+    explanation: 'צ׳ארלס דרווין (1809–1882) היה הביולוג הבריטי שגיבש את תיאוריית האבולוציה בספרו "מוצא המינים" (1859). הוא הציע שכל צורות החיים על כדור הארץ התפתחו ממינים קדמוניים משותפים, דרך תהליך איטי הנקרא ברירה טבעית. הרעיון שלו שינה לחלוטין את הביולוגיה, הרפואה, ומדעי הטבע.',
+    results: [
+      { ref: "מסע בגל' דארווין, 1831–1836", text: 'דרווין שהה 5 שנים באמריקה הדרומית וגלפגוס. שם הבחין בשינויים עדינים בין אותו מין ציפור (פינצ׳) באיים שונים — כל אחד מותאם לסביבתו. הניצוץ לתיאוריה.', field: 'ביולוגיה שדה' },
+      { ref: '"מוצא המינים", 1859', text: 'הספר הגדול ביותר בהיסטוריית הביולוגיה. הציג את מושג הברירה הטבעית: פרטים עם תכונות מועילות ישרדו ויתרבו יותר — וצאצאיהם יקבלו את התכונות הללו.', field: 'תיאוריה אבולוציונית' },
+      { ref: 'ספרי דרווין הנוספים', text: '"ירידת האדם" (1871) — הרחיב את התיאוריה לבני אדם ישירות. "ביטויי הרגש" (1872) — על אבולוציה של הרגשות. "ההפלייה המינית" — מנגנון נוסף מלבד ברירה טבעית.', field: 'תיאוריה אבולוציונית' },
+      { ref: 'מורשת מדעית', text: 'כל ענפי הביולוגיה המודרנית נבנו על יסוד דרווין: גנטיקה, ביוכימיה, אקולוגיה, רפואה אבולוציונית. לא נמצאה ולו ראיה אחת שסותרת את הבסיס התיאורטי שלו.', field: 'היסטוריה של המדע' },
+    ],
+  },
+  'ברירה טבעית': {
+    explanation: 'ברירה טבעית היא המנגנון המרכזי של האבולוציה — עקרון פשוט ועוצמתי: בכל אוכלוסייה יש גיוון בתכונות. פרטים שיש להם תכונות שמסייעות להם לשרוד ולהתרבות בסביבתם — ישאירו יותר צאצאים שיירשו תכונות אלה. עם הזמן, התכונות המועילות מתפשטות בכל האוכלוסייה.',
+    results: [
+      { ref: 'העש הנפחם — סיפור קלאסי', text: 'לפני המהפכה התעשייתית, עשי ליבנה בבריטניה היו בהירים (הסוואה על קליפת עצים בהירות). אחרי, עצים הושחרו בפיח — עשים כהים שרדו. ברירה טבעית בזמן אמת.', field: 'ביולוגיה שדה' },
+      { ref: 'עמידות לאנטיביוטיקה', text: 'חיידקים מוטנטים שיש להם עמידות לאנטיביוטיקה שורדים כאשר שאר מיניהם מתים. הם מתרבים ומפיצים את הגן לעמידות. בעיית העמידות לאנטיביוטיקה היא ברירה טבעית שנצפה בזמן אמת.', field: 'ביולוגיה רפואית' },
+      { ref: 'ציפורי פינצ׳ בגלפגוס', text: 'פיטר ורוזמרי גרנט עקבו 40 שנה אחרי פינצ׳ בגלפגוס. לאחר בצורת שמות גרעינים גדולים, ניצלו ציפורים עם מקורים חזקים יותר — ובדור הבא מקורות היו גדולים בממוצע. ברירה נמדדה!', field: 'אקולוגיה' },
+      { ref: 'ברירה מינית', text: 'הזנב הגדול של הטווס מהווה עול — הוא כבד, בולט ומסכן. אך נקבות בוחרות זכרים עם זנבות גדולים. הגן לזנב גדול מתפשט כי הוא מוביל להצלחה ברבייה, אפילו על חשבון הישרדות.', field: 'ביולוגיה אבולוציונית' },
+    ],
+  },
+  'DNA ואב משותף': {
+    explanation: 'ה-DNA הוא מולקולת הירושה של כל הצורות של החיים — ספר ההוראות הכתוב בשפת 4 אותיות: A, T, G, C. השוואת ה-DNA בין מינים שונים מאפשרת לנו לבנות עצי משפחה מדויקים ולגלות מי קרוב למי — ואת מועד הפרידה ביניהם. התוצאות עקביות לחלוטין עם עץ החיים המתקבל מהמאובנים.',
+    results: [
+      { ref: '98.7% — אדם ושימפנזה', text: 'הגנום האנושי (3.2 מיליארד בסיסים) זהה ב-98.7% לגנום השימפנזה. ההבדל קטן מהמרחק בין שני מינים של ציפורים. אב משותף לפני כ-6–7 מיליון שנה.', field: 'גנומיקה' },
+      { ref: 'כרומוזום 2 — מיזוג', text: 'לאדם 46 כרומוזומים, לקוף הגדול 48. כרומוזום 2 האנושי הוא בבירור מיזוג של שני כרומוזומים נפרדים — יש בו שתי טלומרות (קצוות) פנימיות וסנטרומר בלתי-פעיל. הוכחה מבנית חותכת.', field: 'גנטיקה ציטולוגית' },
+      { ref: 'שעון מולקולרי', text: 'מוטציות DNA מצטברות בקצב קבוע. על ידי ספירת ההבדלים ב-DNA בין שני מינים, ניתן לחשב מתי פרדו מאב משותף — והתוצאות עולות בקנה אחד עם תיארוך המאובנים.', field: 'ביולוגיה מולקולרית' },
+      { ref: 'HERV — וירוסים עתיקים', text: 'אנדוגנוס רטרווירוסים (HERV) — וירוסים ששילבו עצמם ב-DNA של אבותינו לפני מיליוני שנים. מופיעים בדיוק באותם מקומות ב-DNA של אדם, שימפנזה וגורילה — סיכוי אפסי ללא אב משותף.', field: 'ויירולוגיה אבולוציונית' },
+      { ref: 'עץ חיים DNA — 1,000 מינים', text: 'פרויקט רב-שנתי שבדק DNA של אלף מינים בנה עץ משפחה — ותוצאותיו זהות לעץ שנבנה ממאובנים בלבד, ממחקרים שנעשו ללא ידיעה הדדית. אישוש עצמאי מלא.', field: 'ביואינפורמטיקה' },
+    ],
+  },
+  'מאובנים': {
+    explanation: 'מאובנים הם שרידים מוקשחים של יצורים שחיו לפני מיליוני שנים — עצמות, שיניים, צדפות, עקבות ואפילו DNA עתיק. הם נשמרים בשכבות הסלעים כ"ספר ההיסטוריה" של החיים. יותר מ-300,000 מינים מאובנים תועדו עד היום — ותמונה ברורה של התפתחות החיים מופיעה.',
+    results: [
+      { ref: 'Tiktaalik — דג שהתחיל לצאת ליבשה', text: 'נמצא ב-2004 בקנדה, בן 375 מיליון שנה. יצור עם סנפירים אך גם "ידיים" (עצמות כמו רדיוס ואולנה). ממש חוליית הביניים בין דגים לחוליות יבשה — בדיוק כפי שחזתה האבולוציה.', field: 'פלאונטולוגיה' },
+      { ref: 'Archaeopteryx — דינוזאור-ציפור', text: 'בן 150 מיליון שנה, גרמניה. יש לו נוצות וכנפיים כמו ציפור — אך גם שיניים, טפרים ועצמות זנב כמו דינוזאור. הראשון שהתגלה, ב-1861, הדהים את העולם המדעי.', field: 'פלאונטולוגיה' },
+      { ref: 'שרשרת האדם — 6 מיליון שנה', text: 'Sahelanthropus (7M שנה) → Australopithecus afarensis "לוסי" (3.2M) → Homo habilis (2.5M) → Homo erectus (1.8M) → Homo sapiens (300K). כל שלב מגשר בין הקודם לבא.', field: 'אנתרופולוגיה' },
+      { ref: 'DNA מאובן — ניאנדרתל', text: 'מ-2010, ד"ר סוואנטה פאאבו (נובל 2022) שחזר את הגנום המלא של הניאנדרתל ממאובנים. 1–4% מהDNA של אנשים לא-אפריקאים הוא ניאנדרתלי — הם התרבו עם אבות האדם המודרני.', field: 'גנומיקה עתיקה' },
+    ],
+  },
+  'גנטיקה': {
+    explanation: 'גנטיקה היא מדע הגנים — יחידות הירושה שמועברות מהורים לצאצאים. גנטיקה מודרנית מאשרת את האבולוציה ומוסיפה לה מנגנונים: מוטציות יוצרות גיוון חדש, ברירה טבעית ממיינת, ודריפט גנטי מעצב אוכלוסיות קטנות. כל הגנום ייקרא רק ב-2003.',
+    results: [
+      { ref: 'פרויקט הגנום האנושי, 2003', text: 'פענוח מלא של 3.2 מיליארד בסיסים ב-DNA האנושי. גילויים מפתיעים: רק ~2% מהגנום מקודד לחלבונים; כ-8% הוא DNA ויראלי עתיק (HERV); שאר הגנום — רגולציה, RNA לא-מקודד, ו"DNA אפל".', field: 'גנומיקה' },
+      { ref: 'מוטציות — מנוע הגיוון', text: 'כל אדם נולד עם כ-60–70 מוטציות חדשות שאינן קיימות אצל הוריו. רובן ניטרליות, חלקן מזיקות, נדירות שבהן — מועילות. הברירה הטבעית עובדת על מוטציות אלה לאורך הדורות.', field: 'ביולוגיה מולקולרית' },
+      { ref: 'CRISPR — עריכת גנום', text: 'כלי עריכת הגנים CRISPR-Cas9, שנתן את פרס נובל 2020, מאפשר לחתוך ולתקן DNA בדיוק כירורגי. מבוסס על מנגנון חיסוני שהתפתח בחיידקים — ומשמש כיום לרפואה, חקלאות ומחקר.', field: 'ביוטכנולוגיה' },
+      { ref: 'גנטיקת אוכלוסין — הגירה מאפריקה', text: 'ניתוח DNA של אלפי אנשים מכל העולם הראה שכל בני האדם מחוץ לאפריקה מוצאים מקבוצה קטנה של כ-1,000–10,000 אנשים שיצאו מאפריקה לפני כ-70,000 שנה. "Out of Africa" מאושר.', field: 'גנטיקת אוכלוסין' },
+      { ref: 'אפיגנטיקה — מעבר לגנים', text: 'לא רק הגן — גם המתגים שמפעילים ומכבים גנים עוברים בירושה. ניסויים הראו שחוויות (כגון רעב, טראומה) יכולות להשפיע על הביטוי הגנטי של הדורות הבאים.', field: 'אפיגנטיקה' },
+    ],
+  },
+  'הוכחות מהקוף': {
+    explanation: 'המדע מציג מגוון רחב של הוכחות למוצא האדם מאב משותף עם השימפנזים לפני כ-6-7 מיליון שנה. ההוכחות מגיעות מתחומים שונים לחלוטין ומצביעות כולן לאותו כיוון.',
+    results: [
+      { ref: 'DNA — 98.7% זהות', text: 'הגנום האנושי זהה ב-98.7% לגנום השימפנזה. הפרש קטן זה גדול מהמרחק בין שני מינים של ציפורים רבים.', field: 'גנטיקה' },
+      { ref: 'כרומוזום 2 — מיזוג', text: 'לאדם 46 כרומוזומים ולקוף הגדול 48. כרומוזום 2 אנושי הוא מיזוג של שני כרומוזומים קופיים — הוכחה מולקולרית ישירה לאב משותף.', field: 'גנטיקה' },
+      { ref: 'מאובנים — Homo habilis, erectus, sapiens', text: 'שרשרת מאובנים רציפה מ-Australopithecus (3.5M שנה) → Homo habilis (2.5M) → Homo erectus (1.8M) → Homo sapiens (300K). כל שלב מגשר בין הקודם לבא.', field: 'פלאונטולוגיה' },
+      { ref: 'אנטומיה השוואתית — עצמות', text: 'יד האדם, כף יד המחבט של דב, סנפיר הלוויתן ואגף העטלף — כולם אותה מבנה עצמות בסיסי (הומולוגיה). מעידים על אב קדמון משותף.', field: 'אנטומיה' },
+      { ref: 'איברים וסטיגיאליים', text: 'לאדם זנב עוברי שנספג, שרירי אוזן שאינם פועלים (כמו בבעלי חיים), ועצם הזנב (coccyx) — שרידים של מבנים שהיו פונקציונליים אצל אבות קדמונים.', field: 'אנטומיה' },
+      { ref: 'HERV — וירוסים פרהיסטוריים', text: 'אנדוגנוס רטרווירוסים (HERV) — וירוסים שהטביעו את עצמם ב-DNA של אבותינו מיליוני שנה לפני כן, ומופיעים באותם מיקומים מדויקים ב-DNA של האדם והקוף הגדול.', field: 'גנטיקה' },
+      { ref: 'ביולוגיה התפתחותית — עוברים', text: 'עובר אנושי עובר שלבי התפתחות הדומים לעוברי דגים, זוחלים ויונקים — כולל חריצי זימים וזנב בשלבים מוקדמים. שוב ושוב בכל היונקים.', field: 'אמבריולוגיה' },
+    ],
+  },
+  'אביוגנזה': {
+    explanation: 'אביוגנזה היא תחום המחקר כיצד נוצרו החיים הראשונים מחומר דומם לפני כ-3.8 מיליארד שנה. זהו אחד האתגרים הגדולים במדע — עדיין אין תשובה סופית, אך ישנן תיאוריות מגובות ניסויית.',
+    results: [
+      { ref: 'ניסוי מילר-יורי, 1953', text: 'סטנלי מילר והרולד יורי הרכיבו בצנצנת את תנאי כדור הארץ הקדמוני (מימן, מתאן, אמוניה, מים) + ברק חשמלי — ולאחר שבוע נוצרו חומצות אמינו, אבני הבניין של חלבונים.', field: 'ביוכימיה' },
+      { ref: 'RNA World — "עולם ה-RNA"', text: 'השערה מרכזית: RNA היה הראשון — הוא גם אוגר מידע גנטי (כמו DNA) וגם מזרז תגובות כימיות (כמו חלבון). ריבוזימים הם RNA עם פעילות קטליטית, עדות חיה לתיאוריה.', field: 'ביוכימיה מולקולרית' },
+      { ref: 'מאגרי מים חמים (Hydrothermal Vents)', text: 'פתחים הידרותרמליים בעומקי הים מספקים אנרגיה כימית, חום, ומינרלים — סביבה אידיאלית ליצירת קישורים כימיים מורכבים ללא שמש. נמצאו שם תאים חיים עתיקים.', field: 'גיאוכימיה' },
+      { ref: 'ברקים ו"מרק הקדמוני"', text: 'ברקים קדמוניים ועל-כן אנרגיה אדירה הביאו לאיחוד מולקולות פשוטות (CO₂, N₂, H₂O) למולקולות אורגניות מורכבות — בסיס ל"מרק הקדמוני" של אופרין-הולדיין.', field: 'כימיה אבולוציונית' },
+    ],
+  },
+};
+
 function EvolutionTreePanel() {
   const [zoomOpen, setZoomOpen] = useState(false);
   const [sciQuery, setSciQuery] = useState('');
@@ -549,6 +646,7 @@ function EvolutionTreePanel() {
   const [sciData, setSciData] = useState(null);
   const [sciLoading, setSciLoading] = useState(false);
   const [sciError, setSciError] = useState('');
+  const { displayed: typedSciExplanation, isDone: sciExplanationDone } = useTypewriter(sciData?.explanation || '');
 
   useEffect(() => {
     if (!zoomOpen) return;
@@ -567,6 +665,27 @@ function EvolutionTreePanel() {
   function closeSciPanel() {
     setSciData(null);
     setSciError('');
+  }
+
+  function handleSciChipClick(chip) {
+    setSciQuery(chip);
+    closeSciPanel();
+    setSciSearched(chip);
+    if (EVO_HARDCODED[chip]) {
+      setSciData(EVO_HARDCODED[chip]);
+      return;
+    }
+    setSciLoading(true);
+    const base = (import.meta.env.VITE_API_URL || FALLBACK_API_ORIGIN).replace(/\/$/, '');
+    fetch(`${base}/api/science-search`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: chip }),
+    })
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(data => setSciData({ explanation: data.explanation || '', results: data.results || [] }))
+      .catch(() => setSciError('לא ניתן לקבל תשובה — נסה שוב'))
+      .finally(() => setSciLoading(false));
   }
 
   async function handleSciSearch() {
@@ -623,14 +742,24 @@ function EvolutionTreePanel() {
         }
         .evo-search-bar input {
           flex: 1;
-          background: none;
-          border: none;
+          background: rgba(255,255,255,0.06);
+          border: 2px solid rgba(99,102,241,0.5);
+          border-radius: 10px;
           outline: none;
           color: var(--text, #f4f4f8);
           font-size: 0.92rem;
           font-family: inherit;
           direction: rtl;
           min-width: 0;
+          padding: 8px 12px;
+          box-shadow: none;
+          transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+        }
+        .evo-search-bar input:not(:placeholder-shown),
+        .evo-search-bar input:focus {
+          border-color: rgba(99,102,241,0.9);
+          background: rgba(255,255,255,0.1);
+          box-shadow: 0 0 10px rgba(99,102,241,0.25);
         }
         .evo-search-bar input::placeholder { color: rgba(180,180,192,0.5); }
         .evo-search-btn {
@@ -657,6 +786,32 @@ function EvolutionTreePanel() {
           line-height: 1.6;
         }
         .evo-hint strong { color: rgba(165,180,252,0.75); }
+        .evo-chips-wrap {
+          display: flex;
+          gap: 7px;
+          overflow-x: auto;
+          padding: 0 0 14px;
+          scrollbar-width: none;
+          direction: rtl;
+          flex-wrap: wrap;
+        }
+        .evo-chips-wrap::-webkit-scrollbar { display: none; }
+        .evo-chip {
+          font-size: 0.76rem;
+          font-weight: 700;
+          padding: 6px 13px;
+          border-radius: 20px;
+          border: 1px solid rgba(99,102,241,0.35);
+          background: rgba(99,102,241,0.1);
+          color: #a5b4fc;
+          cursor: pointer;
+          white-space: nowrap;
+          touch-action: manipulation;
+          font-family: inherit;
+          transition: background 0.12s, border-color 0.12s;
+          flex-shrink: 0;
+        }
+        .evo-chip:hover { background: rgba(99,102,241,0.22); border-color: rgba(99,102,241,0.6); }
         /* Answer panel */
         .evo-answer-panel {
           margin-top: 12px;
@@ -699,6 +854,7 @@ function EvolutionTreePanel() {
         }
         .evo-ap-close:hover { background: rgba(255,255,255,0.1); }
         .evo-ap-body { padding: 14px 16px 18px; }
+        @keyframes evo-cursor-blink { 0%,100%{opacity:1} 50%{opacity:0} }
         .evo-explanation {
           font-size: 0.93rem;
           line-height: 1.85;
@@ -817,7 +973,10 @@ function EvolutionTreePanel() {
               {sciData && !sciLoading && (
                 <>
                   {sciData.explanation ? (
-                    <div className="evo-explanation">{sciData.explanation}</div>
+                    <div className="evo-explanation">
+                      {typedSciExplanation}
+                      {!sciExplanationDone && <span style={{ borderRight: '2px solid var(--accent,#38bdf8)', marginRight: 2, animation: 'evo-cursor-blink 0.7s step-end infinite' }}>&nbsp;</span>}
+                    </div>
                   ) : null}
                   {sciData.results && sciData.results.length > 0 && (
                     <>
@@ -844,6 +1003,15 @@ function EvolutionTreePanel() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* כפתורי נושא מהירים */}
+      <div className="evo-chips-wrap">
+        {EVO_CHIPS.map(chip => (
+          <button key={chip} type="button" className="evo-chip" onClick={() => handleSciChipClick(chip)}>
+            {chip}
+          </button>
+        ))}
       </div>
 
       <div className="evolution-image-card evolution-image-card--intro">
@@ -955,13 +1123,13 @@ function EvolutionTreePanel() {
 function argMatchesQuery(arg, query) {
   if (!query) return true;
   const q = query.toLowerCase();
-  return `${arg.text} ${arg.author}`.toLowerCase().includes(q);
+  return `${arg.text} ${arg.author || ''}`.toLowerCase().includes(q);
 }
 
 /** סינון קטגוריות לפי תיבת החיפוש — משמש גם להחלטה אם לפנות ל־AI לחיפוש כללי */
 function getMatchingCategories(searchRaw, customArgsState, religionsPageFlag, appendLeaderboardNav = false) {
   const normalizedSearch = searchRaw.trim().toLowerCase();
-  const priorityCategories = [BIBLE_CATEGORY, 'אבולוציה', RELIGIONS_CATEGORY];
+  const priorityCategories = [BIBLE_CATEGORY, KABBALAH_CATEGORY, ZOHAR_CATEGORY, 'אבולוציה', PRO_FAITH_CATEGORY, RELIGIONS_CATEGORY];
   const baseCategories = religionsPageFlag
     ? Object.keys(INITIAL_DATA)
     : [
@@ -976,6 +1144,14 @@ function getMatchingCategories(searchRaw, customArgsState, religionsPageFlag, ap
           return 'התנך תנך ספר התנך תורה נביאים כתובים בראשית שמות ויקרא במדבר דברים תהילים משלי'
             .includes(normalizedSearch);
         }
+        if (category === ZOHAR_CATEGORY) {
+          return 'זוהר ספר הזוהר בראשית שמות ויקרא במדבר דברים אידרא ספרא דצניעותא תיקוני זוהר זוהר חדש רשבי שמעון בר יוחאי ארמית פרשה'
+            .includes(normalizedSearch);
+        }
+        if (category === KABBALAH_CATEGORY) {
+          return 'קבלה זוהר תניא ספר יצירה בהיר עץ חיים ספירות עין סוף גלגול נשמות תיקון עולם קליפות צינצום אר״י שמונה שערים שערי קדושה'
+            .includes(normalizedSearch);
+        }
         if (category === RELIGIONS_CATEGORY) {
           return RELIGIONS.some((religion) => (
             `${religion.name} ${religion.belief} ${religion.origin} ${religion.followers} ${religion.age} ${religion.principle}`
@@ -984,8 +1160,10 @@ function getMatchingCategories(searchRaw, customArgsState, religionsPageFlag, ap
           ));
         }
         const allArgs = [
+          ...(INITIAL_DATA[category]?.ordered || []),
           ...(INITIAL_DATA[category]?.pro || []),
           ...(INITIAL_DATA[category]?.con || []),
+          ...(customArgsState[category]?.ordered || []),
           ...(customArgsState[category]?.pro || []),
           ...(customArgsState[category]?.con || []),
         ];
@@ -1018,6 +1196,9 @@ export default function ArgumentsPage({
     const tab = searchParams.get('tab');
     if (tab && Object.keys(INITIAL_DATA).includes(tab)) return tab;
     if (tab === 'אבולוציה') return 'אבולוציה';
+    if (tab === 'קבלה') return KABBALAH_CATEGORY;
+    if (tab === 'זוהר') return ZOHAR_CATEGORY;
+    if (tab === 'בעד אמונה') return PRO_FAITH_CATEGORY;
     return BIBLE_CATEGORY;
   });
   const [customArgs, setCustomArgs] = useState(loadArguments);
@@ -1075,6 +1256,34 @@ export default function ArgumentsPage({
   const isReligionsPage = title === 'דתות';
 
   const normalizedSearch = searchQuery.trim().toLowerCase();
+
+  function getLogicalFallaciesList() {
+    const base = INITIAL_DATA[LOGICAL_FALLACIES_CATEGORY]?.ordered || [];
+    const extraOrdered = customArgs[LOGICAL_FALLACIES_CATEGORY]?.ordered || [];
+    const legacyPro = customArgs[LOGICAL_FALLACIES_CATEGORY]?.pro || [];
+    const legacyCon = customArgs[LOGICAL_FALLACIES_CATEGORY]?.con || [];
+    const merged = [...base, ...extraOrdered, ...legacyPro, ...legacyCon];
+    if (showKnowledgeAiAssistant) return merged;
+    if (LOGICAL_FALLACIES_CATEGORY.toLowerCase().includes(normalizedSearch)) return merged;
+    return merged.filter(arg => argMatchesQuery(arg, normalizedSearch));
+  }
+
+  function addLogicalFallacy() {
+    const text = newPro.trim();
+    if (!text || !user?.username) return;
+    const cat = LOGICAL_FALLACIES_CATEGORY;
+    const next = {
+      ...customArgs,
+      [cat]: {
+        ordered: [...(customArgs[cat]?.ordered || []), { text }],
+        pro: customArgs[cat]?.pro || [],
+        con: customArgs[cat]?.con || [],
+      },
+    };
+    setCustomArgs(next);
+    saveArguments(next);
+    setNewPro('');
+  }
 
   function getArgs(category, side) {
     const base = INITIAL_DATA[category]?.[side] || [];
@@ -1227,7 +1436,7 @@ export default function ArgumentsPage({
 
   function renderSearchRow() {
     if (!showSearch) return null;
-    if (activeCategory === 'התנך' || activeCategory === 'אבולוציה') return null;
+    if (activeCategory === 'התנך' || activeCategory === 'אבולוציה' || activeCategory === KABBALAH_CATEGORY || activeCategory === ZOHAR_CATEGORY || activeCategory === PRO_FAITH_CATEGORY) return null;
     return (
       <div className="args-knowledge-composer-wrap">
         <div className="debate-composer args-knowledge-debate-composer">
@@ -1475,9 +1684,17 @@ export default function ArgumentsPage({
           min-height: 48px;
           border-radius: 999px;
           padding: 14px 20px;
-          background: rgba(10, 10, 16, 0.55);
-          border: 1px solid rgba(255, 255, 255, 0.16);
+          background: rgba(255,255,255,0.06);
+          border: 2px solid rgba(99,102,241,0.5);
           text-align: right;
+          box-shadow: none;
+          transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+        }
+        .args-knowledge-debate-composer input:not(:placeholder-shown),
+        .args-knowledge-debate-composer input:focus {
+          border-color: rgba(99,102,241,0.9);
+          background: rgba(255,255,255,0.1);
+          box-shadow: 0 0 10px rgba(99,102,241,0.25);
         }
         .args-knowledge-debate-composer .btn-send {
           border-radius: 999px;
@@ -1666,6 +1883,13 @@ export default function ArgumentsPage({
           -webkit-backdrop-filter: blur(14px);
           border-bottom: 1px solid var(--border);
         }
+        /* שורה דקה מעל הכותרות — רק לחיצים, בלי לגעת בפס הכותרות */
+        .args-cats-arrows-row {
+          position: relative;
+          height: calc(20px + 0.25cm);
+          min-height: calc(20px + 0.25cm);
+          pointer-events: none;
+        }
         .args-cats {
           position: relative;
           display: flex;
@@ -1694,34 +1918,39 @@ export default function ArgumentsPage({
           position: absolute;
           top: 50%;
           z-index: 2;
-          width: 40px;
-          height: 40px;
+          width: 28px;
+          height: 28px;
           border-radius: 999px;
-          border: 1px solid var(--border-strong);
-          background: rgba(5,5,10,0.72);
+          border: 1px solid rgba(255, 255, 255, 0.55);
+          background: rgba(18, 22, 38, 0.88);
           color: #fff;
-          font-size: 1.15rem;
+          font-size: 0.92rem;
           line-height: 1;
           display: flex;
           align-items: center;
           justify-content: center;
           cursor: pointer;
           transform: translateY(-50%);
-          box-shadow: 0 10px 30px rgba(0,0,0,0.34);
-          opacity: 0;
-          transition: opacity 0.18s ease, background 0.18s ease, transform 0.18s ease;
-        }
-        .args-cats-wrap:hover .args-cat-scroll-btn,
-        .args-cats-wrap:active .args-cat-scroll-btn,
-        .args-cats-wrap:focus-within .args-cat-scroll-btn {
           opacity: 1;
+          pointer-events: auto;
+          box-shadow:
+            0 0 10px rgba(255, 255, 255, 0.45),
+            0 0 22px rgba(147, 197, 253, 0.35),
+            0 2px 8px rgba(0, 0, 0, 0.35);
+          text-shadow: 0 0 8px rgba(255, 255, 255, 0.75);
+          transition: background 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
         }
         .args-cat-scroll-btn:hover {
-          background: rgba(255,255,255,0.12);
-          transform: translateY(-50%) scale(1.04);
+          background: rgba(40, 48, 72, 0.95);
+          border-color: rgba(255, 255, 255, 0.85);
+          transform: translateY(-50%) scale(1.06);
+          box-shadow:
+            0 0 14px rgba(255, 255, 255, 0.65),
+            0 0 28px rgba(147, 197, 253, 0.5),
+            0 2px 10px rgba(0, 0, 0, 0.4);
         }
-        .args-cat-scroll-btn.left { left: 10px; }
-        .args-cat-scroll-btn.right { right: 10px; }
+        .args-cat-scroll-btn.left { left: 8px; }
+        .args-cat-scroll-btn.right { right: 8px; }
         .args-cat-btn {
           white-space: nowrap;
           padding: 9px 18px;
@@ -1767,6 +1996,196 @@ export default function ArgumentsPage({
           color: rgba(248, 250, 252, 0.93);
           line-height: 1.62;
           letter-spacing: 0.015em;
+        }
+        /* כשלים לוגיים — פלטה כמו סימולטור ידע כללי (AiVoicePage: PAGE_COLOR / HEADER_TITLE / SELECT) */
+        .logical-fallacies-wrap {
+          --lf-warm: #e2c97e;
+          --lf-gold: #f0cf4a;
+          --lf-amber: #f59e0b;
+          --lf-base: #06060e;
+          max-width: 760px;
+          margin: 0 auto 32px;
+          padding: 22px 18px 26px;
+          box-sizing: border-box;
+          border-radius: 18px;
+          border: 1px solid rgba(245, 158, 11, 0.3);
+          background: linear-gradient(
+            160deg,
+            var(--lf-base) 0%,
+            rgba(226, 201, 126, 0.12) 44%,
+            rgba(200, 169, 110, 0.09) 56%,
+            var(--lf-base) 100%
+          );
+          box-shadow:
+            0 18px 50px rgba(0, 0, 0, 0.48),
+            inset 0 1px 0 rgba(240, 207, 74, 0.1);
+        }
+        .logical-fallacies-main-title {
+          margin: 0 0 20px;
+          text-align: center;
+          font-size: clamp(1.08rem, 3.3vw, 1.42rem);
+          font-weight: 900;
+          color: var(--lf-gold, #f0cf4a);
+          letter-spacing: 0.02em;
+          text-shadow: 0 0 28px rgba(240, 207, 74, 0.22);
+        }
+        .logical-fallacies-list {
+          margin: 0;
+          padding: 0 1.15em 0 0;
+          list-style: decimal;
+          list-style-position: outside;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .logical-fallacies-list .logical-fallacies-item::marker {
+          color: var(--lf-amber, #f59e0b);
+          font-weight: 900;
+        }
+        .logical-fallacies-item {
+          display: list-item;
+          text-align: right;
+        }
+        .logical-fallacies-wrap .logical-fallacies-item.arg-card {
+          padding: 14px 16px 12px;
+          border-radius: 14px;
+          border: 1px solid rgba(245, 158, 11, 0.32);
+          background: linear-gradient(155deg, rgba(10, 9, 8, 0.94) 0%, rgba(32, 26, 18, 0.92) 100%);
+          color: #f8f1e6;
+          box-shadow:
+            0 6px 22px rgba(0, 0, 0, 0.35),
+            inset 0 1px 0 rgba(226, 201, 126, 0.07);
+        }
+        .logical-fallacies-wrap .logical-fallacies-item.arg-card:hover {
+          border-color: rgba(245, 158, 11, 0.48);
+          box-shadow:
+            0 8px 28px rgba(0, 0, 0, 0.4),
+            0 0 0 1px rgba(240, 207, 74, 0.08);
+        }
+        .logical-fallacies-item-text {
+          line-height: 1.58;
+          color: rgba(253, 246, 232, 0.96);
+        }
+        .logical-fallacies-wrap .arg-card-author {
+          color: rgba(226, 201, 126, 0.9);
+          border-top: 1px solid rgba(245, 158, 11, 0.15);
+          padding-top: 10px;
+          margin-top: 10px;
+        }
+        .logical-fallacies-wrap .badge-rabbi {
+          background: rgba(245, 158, 11, 0.2);
+          color: #fde68a;
+          border-color: rgba(245, 158, 11, 0.4);
+        }
+        .logical-fallacies-wrap .badge-scientist {
+          background: rgba(200, 169, 110, 0.22);
+          color: #fef3c7;
+          border-color: rgba(226, 201, 126, 0.35);
+        }
+        .logical-fallacies-add {
+          margin-top: 22px;
+        }
+        .logical-fallacies-wrap .args-special {
+          border-top-color: rgba(245, 158, 11, 0.28);
+        }
+        .logical-fallacies-wrap .args-special-title {
+          color: rgba(240, 207, 74, 0.88);
+        }
+        .logical-fallacies-wrap .args-add-input {
+          background: rgba(0, 0, 0, 0.38);
+          border-color: rgba(245, 158, 11, 0.35);
+          color: #fdf6e3;
+        }
+        .logical-fallacies-wrap .args-add-input::placeholder {
+          color: rgba(226, 201, 126, 0.45);
+        }
+        .logical-fallacies-wrap .args-add-input:focus {
+          border-color: rgba(240, 207, 74, 0.55);
+          outline: none;
+          box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.15);
+        }
+        .logical-fallacies-wrap .args-add-btn.btn-pro {
+          color: #1a1208;
+          background: linear-gradient(135deg, #c8a96e 0%, #e2c97e 52%, #d4b86a 100%);
+          border: 1px solid rgba(120, 53, 15, 0.35);
+          box-shadow: 0 4px 18px rgba(245, 158, 11, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+        }
+        .logical-fallacies-wrap .args-add-btn.btn-pro:hover {
+          filter: brightness(1.05);
+        }
+        /* בעד אמונה — פלטה: כחול-סגול עמוק */
+        .pro-faith-wrap {
+          --pf-blue: #818cf8;
+          --pf-indigo: #6366f1;
+          --pf-deep: #06060e;
+          max-width: 760px;
+          margin: 0 auto 32px;
+          padding: 22px 18px 26px;
+          box-sizing: border-box;
+          border-radius: 18px;
+          border: 1px solid rgba(99, 102, 241, 0.32);
+          background: linear-gradient(
+            160deg,
+            var(--pf-deep) 0%,
+            rgba(99, 102, 241, 0.11) 44%,
+            rgba(79, 70, 229, 0.08) 56%,
+            var(--pf-deep) 100%
+          );
+          box-shadow:
+            0 18px 50px rgba(0, 0, 0, 0.48),
+            inset 0 1px 0 rgba(129, 140, 248, 0.1);
+        }
+        .pro-faith-subtitle {
+          margin: 0 0 18px;
+          text-align: right;
+          font-size: clamp(0.82rem, 2.4vw, 0.95rem);
+          line-height: 1.7;
+          font-weight: 600;
+          color: rgba(199, 210, 254, 0.88);
+          direction: rtl;
+          padding: 12px 14px;
+          background: rgba(99, 102, 241, 0.09);
+          border-radius: 10px;
+          border-right: 3px solid var(--pf-indigo, #6366f1);
+        }
+        .pro-faith-list {
+          margin: 0;
+          padding: 0 1.15em 0 0;
+          list-style: decimal;
+          list-style-position: outside;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          direction: rtl;
+        }
+        .pro-faith-list .pro-faith-item::marker {
+          color: var(--pf-blue, #818cf8);
+          font-weight: 900;
+        }
+        .pro-faith-item {
+          display: list-item;
+          text-align: right;
+          padding: 14px 16px 12px;
+          border-radius: 14px;
+          border: 1px solid rgba(99, 102, 241, 0.28);
+          background: linear-gradient(155deg, rgba(10, 9, 20, 0.94) 0%, rgba(22, 20, 40, 0.92) 100%);
+          color: #eef0ff;
+          box-shadow: 0 6px 22px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(129, 140, 248, 0.06);
+          transition: border-color 0.13s;
+        }
+        .pro-faith-item:hover {
+          border-color: rgba(99, 102, 241, 0.5);
+        }
+        .pro-faith-item-title {
+          font-weight: 800;
+          font-size: 0.9rem;
+          color: var(--pf-blue, #818cf8);
+          margin-bottom: 6px;
+        }
+        .pro-faith-item-text {
+          line-height: 1.65;
+          font-size: 0.92rem;
+          color: rgba(238, 240, 255, 0.93);
         }
         .args-columns {
           display: grid;
@@ -1854,7 +2273,9 @@ export default function ArgumentsPage({
           max-width: 760px;
           margin: 24px auto 0;
         }
-        .knowledge-bible-panel .bm-sheet-embedded {
+        .knowledge-bible-panel .bm-sheet-embedded,
+        .knowledge-bible-panel .zh-sheet-embedded,
+        .knowledge-bible-panel .km-sheet-embedded {
           max-width: none;
           max-height: none;
           min-height: 620px;
@@ -2474,7 +2895,10 @@ export default function ArgumentsPage({
 
         {categories.length > 0 && (
           <div className="args-cats-wrap">
-            <button type="button" className="args-cat-scroll-btn left" onClick={() => scrollCategories(-1)} aria-label="הזז קטגוריות שמאלה">‹</button>
+            <div className="args-cats-arrows-row">
+              <button type="button" className="args-cat-scroll-btn left" onClick={() => scrollCategories(-1)} aria-label="הזז קטגוריות שמאלה">‹</button>
+              <button type="button" className="args-cat-scroll-btn right" onClick={() => scrollCategories(1)} aria-label="הזז קטגוריות ימינה">›</button>
+            </div>
             <div className="args-cats" ref={categoriesRef}>
               {categories.map(cat =>
                 cat === LEADERBOARD_NAV_LABEL ? (
@@ -2495,7 +2919,6 @@ export default function ArgumentsPage({
                 ),
               )}
             </div>
-            <button type="button" className="args-cat-scroll-btn right" onClick={() => scrollCategories(1)} aria-label="הזז קטגוריות ימינה">›</button>
           </div>
         )}
 
@@ -2507,6 +2930,65 @@ export default function ArgumentsPage({
           <>
             <div className="knowledge-bible-panel">
               <BiblePanel embedded />
+            </div>
+          </>
+        ) : activeCategory === ZOHAR_CATEGORY ? (
+          <>
+            <div className="knowledge-bible-panel">
+              <ZoharPanel embedded onClose={() => setActiveCategory(null)} />
+            </div>
+          </>
+        ) : activeCategory === KABBALAH_CATEGORY ? (
+          <>
+            <div className="knowledge-bible-panel">
+              <KabbalachPanel embedded onClose={() => setActiveCategory(null)} />
+            </div>
+          </>
+        ) : activeCategory === PRO_FAITH_CATEGORY ? (
+          <div className="pro-faith-wrap" dir="rtl">
+            <p className="pro-faith-subtitle">
+              הטיעונים המרכזיים שמעלים מאמינים להוכחת אלוהים, התורה והיות עם ישראל עם נבחר מבוססים על שילוב של עדויות היסטוריות-מסורתיות, טיעונים לוגיים ותצפיות על המציאות. להלן רשימה מסודרת של הטענות העיקריות:
+            </p>
+            <ol className="pro-faith-list">
+              {[
+                { title: 'עדות מעמד הר סיני (הוכחה המונית)', text: 'הטיעון החזק ביותר הוא שכל עם ישראל (מיליונים) חווה התגלות אלוהית. בשונה מדתות אחרות המבוססות על נביא יחיד, כאן מדובר בעדות של אומה שלמה, מה שהופך את האירוע להיסטורי ולא מיתולוגי.' },
+                { title: 'שרשרת המסורת (מאב לבן)', text: 'העברת התורה והסיפור ההיסטורי לאורך הדורות באופן רציף, ללא הפסקות, מעידה על אמיתות המאורעות. הטיעון גורס כי לא ניתן להנחיל לדורות שלמים "כזב" היסטורי מבלי שמישהו יערער עליו.' },
+                { title: 'טיעון התכנון התבוני (הטיעון הטלאולוגי)', text: 'המורכבות, הסדר והדיוק בטבע (ממבנה התא ועד הגלקסיות) מחייבים קיומו של מתכנן תבוני (אלוהים) ולא יכולים להיווצר באקראי.' },
+                { title: 'נבואות שהתגשמו', text: 'התנ"ך מכיל נבואות מדויקות על עתיד עם ישראל והעולם, שחלקן הגדול התגשם (כגון פיזור העם, הישרדותו נגד כל הסיכויים, והשיבה לארץ), מה שמעיד על מקור אלוהי לטקסט.' },
+                { title: 'ייחודיות הישרדות עם ישראל', text: 'קיומו של עם ישראל לאורך אלפי שנים, למרות רדיפות, גלויות והיותו עם קטן, בניגוד לכל חוקי ההיסטוריה, מהווה עדות להשגחה אלוהית מיוחדת.' },
+                { title: 'ייחודיות התורה והחוק המקראי', text: 'התורה מציגה מוסר חסר תקדים לזמנה (ערך החיים, צדק חברתי), שמקורו אינו יכול להיות באדם פשוט באותה תקופה.' },
+                { title: 'העדות המשפטית-היסטורית (חוק עדים)', text: 'הטיעון שעדים שמסרו את עדותם על מעמד הר סיני לא היו בעלי אינטרסים אישיים, אלא אומה שלמה שחוותה זאת יחד. [1, 2, 3, 4, 5, 6]' },
+              ].map((item, i) => (
+                <li key={i} className="pro-faith-item">
+                  <div className="pro-faith-item-title">{item.title}</div>
+                  <div className="pro-faith-item-text">{item.text}</div>
+                </li>
+              ))}
+            </ol>
+          </div>
+        ) : activeCategory === LOGICAL_FALLACIES_CATEGORY ? (
+          <>
+            <div className="logical-fallacies-wrap">
+              <h2 className="logical-fallacies-main-title">כשלים לוגיים נפוצים</h2>
+              <ol className="logical-fallacies-list" dir="rtl">
+                {getLogicalFallaciesList().map((arg, i) => (
+                  <li key={`${arg.text}-${i}`} className="logical-fallacies-item arg-card">
+                    <div className="logical-fallacies-item-text">{arg.text}</div>
+                  </li>
+                ))}
+              </ol>
+              {isSpecial && (
+                <div className="args-special logical-fallacies-add">
+                  <div className="args-special-title">הוספת כשל לוגי לרשימה (עורכים מורשים)</div>
+                  <textarea
+                    className="args-add-input"
+                    placeholder="כתוב כאן…"
+                    value={newPro}
+                    onChange={e => setNewPro(e.target.value)}
+                  />
+                  <button type="button" className="args-add-btn btn-pro" onClick={addLogicalFallacy}>➕ הוסף לרשימה</button>
+                </div>
+              )}
             </div>
           </>
         ) : (
