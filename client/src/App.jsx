@@ -25,6 +25,7 @@ import PodcastPage from './pages/PodcastPage.jsx';
 import VideoLivePage from './pages/VideoLivePage.jsx';
 import RadioPage from './pages/RadioPage.jsx';
 import AiVoicePage from './pages/AiVoicePage.jsx';
+import AdminPage from './pages/AdminPage.jsx';
 import { RadioAudioProvider } from './context/RadioAudioContext.jsx';
 import MiniRadioBar from './components/layout/MiniRadioBar.jsx';
 import HomeLivePodcastPanel from './components/HomeLivePodcastPanel.jsx';
@@ -190,6 +191,7 @@ export default function App() {
             <Route path="/ai-voice" element={<RequireSession><AiVoicePage /></RequireSession>} />
             <Route path="/livr" element={<RequireAuth><LivrPage /></RequireAuth>} />
             <Route path="/settings" element={<RequireSession><SettingsPage /></RequireSession>} />
+            <Route path="/admin" element={<AdminPage />} />
             <Route path="/terms" element={<StaticInfoPage pageId="terms" />} />
             <Route path="/contact" element={<StaticInfoPage pageId="contact" />} />
             <Route path="*" element={<Navigate to="/" replace />} />

@@ -221,13 +221,69 @@ function mergePasswordsIntoRegisteredSet() {
 
 export function getAdminUserList() {
   return [...allRegisteredNorms()]
-    .map(norm => ({
-      username: norm === RESERVED_ADMIN_NORM ? 'OMG' : norm,
-      normalized: norm,
-      blocked: store.blockedNormUsernames.has(norm),
-      note: store.adminNotesByNorm.get(norm) || '',
-    }))
-    .sort((a, b) => a.normalized.localeCompare(b.normalized, 'he'));
+    .map(norm => {
+      const scores = store.userScores.get(norm) || {};
+      return {
+        username: norm === RESERVED_ADMIN_NORM ? 'OMG' : norm,
+        normalized: norm,
+        blocked: store.blockedNormUsernames.has(norm),
+        note: store.adminNotesByNorm.get(norm) || '',
+        score: scores.score || 0,
+        voiceDebates: scores.voiceDebates || 0,
+        giftsReceived: scores.giftsReceived || 0,
+        side: scores.side || '',
+      };
+    })
+    .sort((a, b) => (b.score - a.score) || a.normalized.localeCompare(b.normalized, 'he'));
+}
+
+export function deleteUser(username) {
+  const norm = normalizeUsername(username);
+  if (!norm || norm === RESERVED_ADMIN_NORM) return false;
+  store.registeredUsernames.delete(norm);
+  store.registeredPasswords.delete(norm);
+  store.userScores.delete(norm);
+  store.adminNotesByNorm.delete(norm);
+  store.blockedNormUsernames.delete(norm);
+  store.permanentOnlineUsernames.delete(norm);
+  store.registeredCount = Math.max(store.registeredUsernames.size, store.registeredPasswords.size);
+  saveSnapshot();
+  return true;
+}
+
+export function resetUserScore(username) {
+  const norm = normalizeUsername(username);
+  if (!norm || norm === RESERVED_ADMIN_NORM) return false;
+  if (store.userScores.has(norm)) {
+    const profile = store.userScores.get(norm);
+    profile.score = 0;
+    profile.voiceDebates = 0;
+    profile.giftsReceived = 0;
+    saveSnapshot();
+  }
+  return true;
+}
+
+export function deleteArchivedDebate(debateId) {
+  const idx = store.archivedDebates.findIndex(d => d.id === debateId);
+  if (idx === -1) return false;
+  store.archivedDebates.splice(idx, 1);
+  saveSnapshot();
+  return true;
+}
+
+export function getArchivedDebatesAdmin() {
+  return [...store.archivedDebates].reverse().slice(0, 200).map(d => ({
+    id: d.id,
+    believer: d.believer?.username || '',
+    atheist: d.atheist?.username || '',
+    isAI: d.isAI || false,
+    startedAt: d.startedAt || 0,
+    finishedAt: d.finishedAt || 0,
+    messageCount: (d.textMessages?.length || 0) + (d.voiceMessages?.length || 0),
+    summary: d.summary || '',
+    tags: d.tags || [],
+  }));
 }
 
 /** רישום דרך סוקט בלבד — מעלה ספירה בלי אימות סיסמה (הרשמה המלאה דרך /api/register) */

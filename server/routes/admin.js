@@ -11,6 +11,10 @@ import {
   unblockBlogAuthorFromPublicFeed,
   getBlogFeedModerationPayload,
   setBlogAuthorModerationNotice,
+  deleteUser,
+  resetUserScore,
+  deleteArchivedDebate,
+  getArchivedDebatesAdmin,
 } from '../store/memory.js';
 import { createAdminToken, verifyAdminToken, adminAuthMiddleware } from '../lib/adminToken.js';
 import { getOmgAdminPassword, isOmgAdminConfigured } from '../lib/adminConfig.js';
@@ -57,6 +61,35 @@ router.post('/note', adminAuthMiddleware, express.json(), (req, res) => {
   res.json({ ok: true, users: getAdminUserList() });
 });
 
+router.delete('/users/:username', adminAuthMiddleware, (req, res) => {
+  const username = String(req.params.username || '').trim();
+  if (!username) return res.status(400).json({ error: 'חסר שם משתמש' });
+  if (!deleteUser(username)) {
+    return res.status(400).json({ error: 'לא ניתן למחוק משתמש זה' });
+  }
+  res.json({ ok: true, users: getAdminUserList() });
+});
+
+router.post('/reset-score', adminAuthMiddleware, express.json(), (req, res) => {
+  const username = String(req.body?.username || '').trim();
+  if (!username) return res.status(400).json({ error: 'חסר שם משתמש' });
+  resetUserScore(username);
+  res.json({ ok: true, users: getAdminUserList() });
+});
+
+router.get('/debates', adminAuthMiddleware, (_req, res) => {
+  res.json({ debates: getArchivedDebatesAdmin() });
+});
+
+router.delete('/debates/:id', adminAuthMiddleware, (req, res) => {
+  const debateId = String(req.params.id || '').trim();
+  if (!debateId) return res.status(400).json({ error: 'חסר מזהה דיון' });
+  if (!deleteArchivedDebate(debateId)) {
+    return res.status(404).json({ error: 'דיון לא נמצא' });
+  }
+  res.json({ ok: true });
+});
+
 router.get('/verify', (req, res) => {
   const h = req.headers.authorization || '';
   const m = h.match(/^Bearer\s+(.+)$/i);
@@ -67,6 +100,10 @@ router.get('/verify', (req, res) => {
 });
 
 /** בלוג ציבורי — מודרציה (אגרגט מ־localStorage בלקוח + סינון לפי כללים אלה בשרת) */
+router.get('/blog-feed/status', adminAuthMiddleware, (_req, res) => {
+  res.json(getBlogFeedModerationPayload());
+});
+
 router.post('/blog-feed/hide', adminAuthMiddleware, express.json(), (req, res) => {
   const author = String(req.body?.author || '').trim();
   const postId = String(req.body?.postId || '').trim();

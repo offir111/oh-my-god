@@ -9,11 +9,10 @@ let devFallbackWarned = false;
 export function getOmgAdminPassword() {
   const raw = process.env.OMG_ADMIN_PASSWORD;
   if (typeof raw === 'string' && raw.length === 8) return raw;
-  if (process.env.NODE_ENV === 'production') return '';
   if (!devFallbackWarned) {
     devFallbackWarned = true;
     console.warn(
-      `[admin] OMG_ADMIN_PASSWORD לא מוגדר או לא 8 תווים — משתמשים בסיסמת פיתוח זמנית (${DEV_FALLBACK_PASSWORD}). בייצור חובה להגדיר ב־.env`,
+      `[admin] OMG_ADMIN_PASSWORD לא מוגדר או לא 8 תווים — משתמשים בסיסמת ברירת מחדל (${DEV_FALLBACK_PASSWORD}). מומלץ להגדיר OMG_ADMIN_PASSWORD ב-Railway`,
     );
   }
   return DEV_FALLBACK_PASSWORD;

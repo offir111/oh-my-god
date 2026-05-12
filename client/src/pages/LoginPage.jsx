@@ -102,7 +102,7 @@ const EINSTEIN_SPARKLES = [
 
 const TITLE_WAVE_CHARS = ['o', 'h', ' ', 'm', 'y', ' ', 'G', 'O', 'D'];
 /** שורת משנה מונפשת מתחת לכותרת */
-const SUBTITLE_WAVE_CHARS = Array.from('אמונה ודת VS אתאיזם ומדע');
+const SUBTITLE_WAVE_CHARS = Array.from('אמונה ודת  SV  אתאיזם ומדע');
 
 /** עוצמת כתום עד ~90% — 10% ערבוב עם לבן (דף כניסה + צור קשר) */
 const ORANGE_STRENGTH = 0.9;
@@ -322,9 +322,30 @@ export default function LoginPage() {
       return;
     }
 
-    const pending = { username: name };
     persistLoginUsername(name);
     persistLoginPassword(name, password);
+
+    // OMG admin: get admin token and navigate directly to admin panel
+    if (name.toLowerCase() === 'omg') {
+      try {
+        const adminRes = await fetch(`${BASE}/api/admin/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password }),
+        });
+        const adminData = await adminRes.json().catch(() => null);
+        if (adminRes.ok && adminData?.token) {
+          localStorage.setItem('omg_admin_token', adminData.token);
+          setUser({ username: 'OMG', side: 'admin', score: 0, voiceDebates: 0, giftsReceived: 0, humanDebates: 0, aiDebates: 0 });
+          navigate('/admin');
+          return;
+        }
+      } catch {
+        // fallthrough to normal flow if admin login fails
+      }
+    }
+
+    const pending = { username: name };
     setRegistered(pending);
     /** מונע מ־Enter (אחרי כניסה) „ליפול” על כפתור מעל */
     requestAnimationFrame(() => {
@@ -915,10 +936,45 @@ export default function LoginPage() {
         }
         .login-quicknav {
           display: flex;
-          gap: 10px;
+          gap: 7px;
           justify-content: center;
           margin-top: 1cm;
           direction: rtl;
+        }
+        .login-quicknav.secondary {
+          margin-top: 10px;
+        }
+        .login-quicknav.secondary .login-qn-btn {
+          width: calc(56px * 0.9);
+          height: calc(56px * 0.9);
+          border-radius: calc(14px * 0.9);
+          gap: 2px;
+        }
+        .login-quicknav.secondary .login-qn-label {
+          font-size: calc(0.6rem * 0.9);
+        }
+        .login-quicknav.secondary .login-qn-icon.num {
+          font-size: calc(1.18rem * 0.9);
+        }
+        .login-quicknav.secondary .login-qn-btn--logical-fallacies {
+          min-height: calc(56px * 0.9);
+          height: auto;
+          padding: 5px 5px 4px;
+        }
+        .login-qn-label-stack {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 0;
+          text-align: center;
+          line-height: 1.08;
+        }
+        .login-qn-label-line {
+          display: block;
+          font-size: calc(0.54rem * 0.9);
+          font-weight: 800;
+          letter-spacing: 0.02em;
         }
         .login-qn-btn {
           display: flex;
@@ -936,12 +992,27 @@ export default function LoginPage() {
           touch-action: manipulation;
           transition: background 0.15s, border-color 0.15s, transform 0.1s;
         }
+        .login-qn-btn[disabled] {
+          cursor: default;
+          opacity: 0.92;
+        }
+        .login-qn-btn[disabled]:hover {
+          background: rgba(255,255,255,0.06);
+          border-color: rgba(255,255,255,0.13);
+        }
+        .login-qn-btn[disabled]:active { transform: none; }
         .login-qn-btn:hover {
           background: rgba(255,255,255,0.11);
           border-color: rgba(255,255,255,0.25);
         }
         .login-qn-btn:active { transform: scale(0.94); }
         .login-qn-icon { font-size: 1.35rem; line-height: 1; }
+        .login-qn-icon.num {
+          font-size: 1.18rem;
+          font-weight: 950;
+          letter-spacing: 0.02em;
+          text-shadow: 0 0 10px rgba(255,255,255,0.35);
+        }
         .login-qn-label {
           font-size: 0.6rem;
           font-weight: 700;
@@ -995,11 +1066,7 @@ export default function LoginPage() {
 
         <section className="login-hero-card" aria-label="דף הבית והרשמה">
           <div className="login-brand-block">
-            {(registered || currentUser) ? (
-              <span className="login-status-pill">
-                {currentUser ? `מחובר כ-${currentUser.username}` : `שלום ${registered.username}`}
-              </span>
-            ) : null}
+            {null}
             <h1 className="login-title" dir="ltr">
               <Link
                 to={{ pathname: '/login', search: location.search }}
@@ -1267,24 +1334,53 @@ export default function LoginPage() {
 
         {/* 4 quick-nav squares — מחוץ לכרטיס, 3 ס"מ מתחת לכפתור AI */}
         {!selectedSide && (
-          <div className="login-quicknav">
-            <button className="login-qn-btn" onClick={() => navigate('/knowledge?tab=התנך')}>
-              <span className="login-qn-icon">📖</span>
-              <span className="login-qn-label">תנ״ך</span>
-            </button>
-            <button className="login-qn-btn" onClick={() => navigate('/knowledge?tab=אבולוציה')}>
-              <span className="login-qn-icon">🧬</span>
-              <span className="login-qn-label">אבולוציה</span>
-            </button>
-            <button className="login-qn-btn" onClick={() => navigate('/faith')}>
-              <span className="login-qn-icon">💬</span>
-              <span className="login-qn-label">צ׳אט</span>
-            </button>
-            <button className="login-qn-btn" onClick={() => navigate('/lobby?ai=1')}>
-              <span className="login-qn-icon">🤖</span>
-              <span className="login-qn-label">AI</span>
-            </button>
-          </div>
+          <>
+            <div className="login-quicknav">
+              <button className="login-qn-btn" onClick={() => navigate('/knowledge?tab=התנך')}>
+                <span className="login-qn-icon">📖</span>
+                <span className="login-qn-label">תנ״ך</span>
+              </button>
+              <button className="login-qn-btn" onClick={() => navigate('/knowledge?tab=אבולוציה')}>
+                <span className="login-qn-icon">🧬</span>
+                <span className="login-qn-label">אבולוציה</span>
+              </button>
+              <button className="login-qn-btn" onClick={() => navigate('/ai-voice?simulator=1')}>
+                <span className="login-qn-icon">🎙️</span>
+                <span className="login-qn-label">סימולטור</span>
+              </button>
+              <button className="login-qn-btn" onClick={() => navigate('/faith')}>
+                <span className="login-qn-icon">💬</span>
+                <span className="login-qn-label">צ׳אט</span>
+              </button>
+              <button className="login-qn-btn" onClick={() => navigate('/lobby?ai=1')}>
+                <span className="login-qn-icon">🤖</span>
+                <span className="login-qn-label">AI</span>
+              </button>
+            </div>
+
+            <div className="login-quicknav secondary" aria-label="קיצורים נוספים">
+              <button className="login-qn-btn" type="button" aria-label="מאגר ידע" onClick={() => navigate('/knowledge')}>
+                <span className="login-qn-label">מאגר ידע</span>
+              </button>
+              <button className="login-qn-btn" type="button" aria-label="רדיו" onClick={() => navigate('/radio?play=1')}>
+                <span className="login-qn-label">רדיו</span>
+              </button>
+              <button className="login-qn-btn" type="button" aria-label="TV" onClick={() => navigate('/video-live')}>
+                <span className="login-qn-label">TV</span>
+              </button>
+              <button
+                className="login-qn-btn login-qn-btn--logical-fallacies"
+                type="button"
+                aria-label="כשלים לוגיים — מאגר ידע"
+                onClick={() => navigate('/knowledge?tab=כשלים לוגיים')}
+              >
+                <span className="login-qn-label-stack">
+                  <span className="login-qn-label-line">כשלים</span>
+                  <span className="login-qn-label-line">לוגיים</span>
+                </span>
+              </button>
+            </div>
+          </>
         )}
 
       </div>
