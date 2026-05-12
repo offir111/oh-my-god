@@ -719,6 +719,32 @@ app.post('/api/zohar-search', async (req, res) => {
   }
 });
 
+// Sefaria text proxy — avoids CORS, normalises ref format
+app.get('/api/sefaria-text', async (req, res) => {
+  const { ref } = req.query;
+  if (!ref?.trim()) return res.status(400).json({ error: 'missing ref' });
+  try {
+    const encoded = encodeURIComponent(ref.trim());
+    // Try Hebrew first, then fall back to no lang filter (returns both langs)
+    for (const langParam of ['lang=he&commentary=0', 'commentary=0']) {
+      try {
+        const r = await fetch(`https://www.sefaria.org/api/texts/${encoded}?${langParam}`, {
+          headers: { 'Accept': 'application/json' },
+          signal: AbortSignal.timeout(8000),
+        });
+        if (r.ok) {
+          const data = await r.json();
+          return res.json(data);
+        }
+      } catch { /* try next */ }
+    }
+    res.status(404).json({ error: 'not found' });
+  } catch (e) {
+    console.error('[sefaria-text] error:', e?.message);
+    res.status(500).json({ error: 'fetch failed' });
+  }
+});
+
 // Science / Evolution search — returns { explanation, results }
 app.post('/api/science-search', async (req, res) => {
   const { query } = req.body;

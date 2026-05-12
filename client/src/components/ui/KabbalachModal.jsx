@@ -205,23 +205,33 @@ export function KabbalachPanel({ embedded = false, onClose }) {
     setVersesLoading(true);
     setVerses(null);
     setChapter(ch);
+
+    function extractStrings(val) {
+      if (!val) return [];
+      if (typeof val === 'string') return val.trim() ? [val] : [];
+      if (Array.isArray(val)) return val.flatMap(extractStrings);
+      if (typeof val === 'object') return extractStrings(Object.values(val));
+      return [];
+    }
+
+    // Sefaria expects spaces, not underscores
+    const sefariaBook = book.en.replace(/_/g, ' ');
+    const ref = `${sefariaBook}.${ch}`;
+
     try {
-      const ref = `${book.en}.${ch}`;
-      const res = await fetch(
-        `https://www.sefaria.org/api/texts/${encodeURIComponent(ref)}?lang=he&commentary=0`
-      );
+      const BASE = import.meta.env.VITE_API_URL || '';
+      const res = await fetch(`${BASE}/api/sefaria-text?ref=${encodeURIComponent(ref)}`);
       if (!res.ok) throw new Error('sefaria load failed');
       const data = await res.json();
 
-      function extractStrings(val) {
-        if (!val) return [];
-        if (typeof val === 'string') return val.trim() ? [val] : [];
-        if (Array.isArray(val)) return val.flatMap(extractStrings);
-        return [];
-      }
-
       let heArr = extractStrings(data.he);
       if (!heArr.length) heArr = extractStrings(data.text);
+      if (!heArr.length && Array.isArray(data.versions)) {
+        for (const v of data.versions) {
+          const t = extractStrings(v.text);
+          if (t.length) { heArr = t; break; }
+        }
+      }
       setVerses(heArr);
     } catch {
       setVerses([]);
@@ -713,7 +723,7 @@ export function KabbalachPanel({ embedded = false, onClose }) {
 
       <div className="km-header">
         <span className="km-title">✡ ספרי הקבלה</span>
-        {!embedded && onClose && (
+        {onClose && (
           <button type="button" className="km-close" onClick={onClose} aria-label="סגור">✕</button>
         )}
       </div>
@@ -837,7 +847,25 @@ export function KabbalachPanel({ embedded = false, onClose }) {
               </div>
             )}
             {verses && verses.length === 0 && !versesLoading && (
-              <div className="km-empty">הטקסט אינו זמין כרגע מ-Sefaria</div>
+              <div className="km-empty" style={{ lineHeight: 1.7 }}>
+                <div style={{ marginBottom: 12 }}>הטקסט לפרק זה אינו זמין — חפש הסבר מעמיק:</div>
+                <button
+                  type="button"
+                  className="km-search-btn"
+                  style={{ fontSize: '0.82rem', padding: '8px 16px' }}
+                  onClick={() => {
+                    setSelectedBook(null);
+                    setChapter(null);
+                    setVerses(null);
+                    const q = selectedBook.he;
+                    setQuery(q);
+                    setSearchedQuery(q);
+                    handleSearch(q);
+                  }}
+                >
+                  🔍 חפש עם AI
+                </button>
+              </div>
             )}
             {verses && verses.map((v, i) => (
               <div key={i} className="km-verse-card">
