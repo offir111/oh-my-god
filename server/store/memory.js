@@ -37,6 +37,10 @@ export const store = {
   blogFeedBlockedAuthors: new Set(),
   /** נירמול שם → { text, ts } — התראת עורך על תוכן פוגעני (מוצג בפרופיל של הכותב) */
   blogAuthorNoticesByNorm: new Map(),
+  /** פוסטים שנוצרו על-ידי יוזרים וירטואלים — נשמרים בסנאפשוט */
+  virtualPosts: [],          // [{id, author, displayName, side, title, body, ts, readMoreUrl, isVirtual}]
+  /** אינדקס round-robin — מי מפרסם הבא */
+  virtualFeedNextIndex: 0,
 };
 
 export function createDebateState(debateId, believer, atheist, isAI = false, aiSide = null) {
@@ -413,6 +417,8 @@ export function saveSnapshot() {
       blogFeedPendingReviewKeys: [...store.blogFeedPendingReviewKeys],
       blogFeedBlockedAuthors: [...store.blogFeedBlockedAuthors],
       blogAuthorNoticesByNorm: Object.fromEntries(store.blogAuthorNoticesByNorm),
+      virtualPosts: store.virtualPosts,
+      virtualFeedNextIndex: store.virtualFeedNextIndex,
       savedAt: new Date().toISOString(),
     };
     fs.writeFileSync(SNAPSHOT_PATH, JSON.stringify(data, null, 2), 'utf8');
@@ -473,6 +479,13 @@ export function loadSnapshot() {
         }
       }
       store.blogAuthorNoticesByNorm = m;
+    }
+
+    if (Array.isArray(data.virtualPosts)) {
+      store.virtualPosts = data.virtualPosts.filter(p => p && p.id && p.author);
+    }
+    if (typeof data.virtualFeedNextIndex === 'number') {
+      store.virtualFeedNextIndex = data.virtualFeedNextIndex;
     }
 
     const nu = new Set(

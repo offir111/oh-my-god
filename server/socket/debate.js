@@ -143,7 +143,7 @@ async function handleAITextTurn(io, debate) {
 
     let chunkCount = 0;
     const text = await streamAIResponse(
-      { side: debate.aiSide, history: debate.textMessages, phase: 'text' },
+      { side: debate.aiSide, history: debate.textMessages, phase: 'text', virtualUser: debate.virtualOpponent || null },
       async (chunk) => {
         chunkCount++;
         console.log(`[ai-turn] CHUNK #${chunkCount} callback — emitting to ${debate.id} and spec:${debate.id}`);
@@ -188,6 +188,7 @@ async function handleAIVoiceTurn(io, debate) {
       side: debate.aiSide,
       history: [...debate.textMessages, ...debate.voiceMessages],
       phase: 'voice',
+      virtualUser: debate.virtualOpponent || null,
     });
     recordMessageTopics(store, text);
     const msg = { side: debate.aiSide, isAIText: true, content: text, duration: 0, timestamp: Date.now() };

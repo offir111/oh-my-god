@@ -13,30 +13,49 @@ function getClient() {
   return client;
 }
 
-function buildSystemPrompt(side) {
-  const topic = side === 'believer'
-    ? 'קיום אלוהים — הצג את הטיעונים המרכזיים התומכים באמונה'
-    : 'קיום אלוהים — הצג את הטיעונים המרכזיים הסוקרים את הספקנות והאתאיזם';
+/**
+ * Builds the system prompt for the AI opponent.
+ * @param {string} side - 'believer' | 'atheist'
+ * @param {object|null} virtualUser - optional virtual user persona from virtualUsers.js
+ * @param {boolean} isIntro - if true, ask the AI to introduce itself first
+ */
+function buildSystemPrompt(side, virtualUser = null, isIntro = false) {
+  if (virtualUser?.systemPrompt) {
+    const introLine = isIntro
+      ? '\nבהודעה הראשונה: הצג את עצמך בחמימות (שם, גיל, עיר, עיסוק) ואז פתח את הדיון. עד 65 מילים.'
+      : '';
+    return `${virtualUser.systemPrompt}${introLine}
 
-  return `אתה AI שמנחה דיון פילוסופי בעברית בנושא: ${topic}.
+חוקי דיון:
+1. כתוב בעברית טבעית
+2. התייחס לדברי המשתמש ישירות
+3. עד 60 מילים — תשובה תמציתית, סיים משפט שלם
+4. ללא markdown, ללא כותרות
+5. אל תפתח ב"הנה" או "בוודאי"`;
+  }
 
-חוקים מחייבים:
-1. כתוב אך ורק בעברית
-2. כתוב מנקודת מבט ניטרלית ואנליטית — לא בגוף ראשון, לא "אני מאמין" או "אני חושב"
-3. הצג טיעונים עובדתיים, פילוסופיים והיסטוריים בצורה מעמיקה ומפורטת
-4. התייחס לדברי המשתמש וסתור או הרחב אותם בצורה ענינית
-5. עד 50 מילים בלבד — תשובה תמציתית ומנומקת, סיים משפט שלם
-6. ללא markdown, ללא כותרות, ללא נקודות — פסקאות רציפות בלבד
-7. אל תפתח ב"הנה" או "בוודאי" — קפוץ ישירות לטיעון המנומק
+  const persona = side === 'believer'
+    ? 'אתה בן שיח מאמין — מגן על ערכי אמונה ודת בשיחה'
+    : 'אתה בן שיח חילוני — מגן על השקפת עולם מדעית ורציונלית בשיחה';
 
-דוגמה לסגנון: "הטיעון האונטולוגי קורס כי קיום אינו תכונה לוגית — כך הפריך קאנט את אנסלם במאה ה-18. הפילוסוף הגרמני טען שמהעובדה שניתן להעלות על הדעת ישות מושלמת, אין להסיק שהיא בהכרח קיימת במציאות, שכן קיום הוא עובדה אמפירית ולא הכרחיות לוגית."`;
+  return `${persona}.
+
+הנחיות:
+1. כתוב בעברית
+2. התייחס לדברי המשתמש בצורה ענינית וישירה
+3. ענה על כל שאלה או נושא שהמשתמש מעלה — שיחה חופשית
+4. עד 50 מילים בלבד — תשובה תמציתית, סיים משפט שלם
+5. ללא markdown, ללא כותרות — טקסט רציף בלבד
+6. אל תפתח ב"הנה" או "בוודאי" — קפוץ ישירות לתגובה`;
 }
 
-export async function getAIResponse({ side, history, phase }) {
-  const systemPrompt = buildSystemPrompt(side);
+export async function getAIResponse({ side, history, phase, virtualUser = null }) {
+  const isIntro = history.length === 0 && !!virtualUser;
+  const systemPrompt = buildSystemPrompt(side, virtualUser, isIntro);
   const messages = formatHistory(history, side);
 
-  console.log(`[groq] calling API — side=${side} phase=${phase} historyLen=${history.length}`);
+  const logName = virtualUser ? virtualUser.username : side;
+  console.log(`[groq] calling API — persona=${logName} phase=${phase} historyLen=${history.length}`);
   try {
     const response = await chatCompletionWithFallback(
       getClient(),
@@ -58,11 +77,13 @@ export async function getAIResponse({ side, history, phase }) {
   }
 }
 
-export async function streamAIResponse({ side, history, phase }, onChunk) {
-  const systemPrompt = buildSystemPrompt(side);
+export async function streamAIResponse({ side, history, phase, virtualUser = null }, onChunk) {
+  const isIntro = history.length === 0 && !!virtualUser;
+  const systemPrompt = buildSystemPrompt(side, virtualUser, isIntro);
   const messages = formatHistory(history, side);
 
-  console.log(`[groq] STREAM START — side=${side} phase=${phase} historyLen=${history.length}`);
+  const logName = virtualUser ? virtualUser.username : side;
+  console.log(`[groq] STREAM START — persona=${logName} phase=${phase} historyLen=${history.length}`);
   const stream = await streamCompletionWithFallback(
     getClient(),
     {

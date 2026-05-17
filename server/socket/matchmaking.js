@@ -1,5 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import { store, createDebateState, registerUserFromSocket, isUsernameBlocked } from '../store/memory.js';
+import { getRandomVirtualOpponent } from '../data/virtualUsers.js';
 
 export function registerMatchmaking(io) {
   io.on('connection', (socket) => {
@@ -84,17 +85,23 @@ export function registerMatchmaking(io) {
       const aiSide = side === 'believer' ? 'atheist' : 'believer';
       const debateId = uuid();
 
+      // Pick a virtual persona for the AI opponent
+      const virtualOpponent = getRandomVirtualOpponent(side);
+      const aiDisplayName = virtualOpponent ? virtualOpponent.displayName : 'AI';
+
       const believerInfo = side === 'believer'
         ? { socketId: socket.id, username }
-        : { socketId: 'ai', username: 'AI' };
+        : { socketId: 'ai', username: aiDisplayName };
       const atheistInfo = side === 'atheist'
         ? { socketId: socket.id, username }
-        : { socketId: 'ai', username: 'AI' };
+        : { socketId: 'ai', username: aiDisplayName };
 
       const debate = createDebateState(debateId, believerInfo, atheistInfo, true, aiSide);
       // User always speaks first — set turn to the user's side regardless of believer/atheist
       debate.turn = side;
       debate.isAITurn = false;
+      // Attach the virtual persona so debate.js can use it for richer responses
+      debate.virtualOpponent = virtualOpponent || null;
       store.debates.set(debateId, debate);
       store.spectators.set(debateId, new Set());
       socket.join(debateId);
@@ -106,9 +113,19 @@ export function registerMatchmaking(io) {
         turn: side, // user starts
         believer: believerInfo,
         atheist:  atheistInfo,
+        virtualOpponent: virtualOpponent
+          ? {
+              displayName: virtualOpponent.displayName,
+              age:          virtualOpponent.age,
+              city:         virtualOpponent.city,
+              occupation:   virtualOpponent.occupation,
+              bio:          virtualOpponent.bio,
+              side:         virtualOpponent.side,
+            }
+          : null,
       });
 
-      console.log(`[ai-match] ${username} (${side}) vs AI (${aiSide}) → ${debateId} — debate.turn=${debate.turn}, isAITurn=${debate.isAITurn}, user starts`);
+      console.log(`[ai-match] ${username} (${side}) vs ${aiDisplayName} (${aiSide}) → ${debateId} — user starts`);
     });
 
     socket.on('LEAVE_QUEUE', () => {
@@ -142,7 +159,13 @@ async function triggerAIFirstMessage(io, debate) {
   io.to(debate.id).emit('AI_TYPING');
   await new Promise(r => setTimeout(r, 1500));
   try {
-    const text = await getAIResponse({ side: debate.aiSide, history: [], phase: 'text' });
+    // Pass virtualOpponent so the AI introduces itself and uses the persona
+    const text = await getAIResponse({
+      side: debate.aiSide,
+      history: [],
+      phase: 'text',
+      virtualUser: debate.virtualOpponent || null,
+    });
     const msg = { side: debate.aiSide, content: text, timestamp: Date.now(), isAI: true };
     debate.textMessages.push(msg);
     debate.textCount[debate.aiSide]++;

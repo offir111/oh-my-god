@@ -152,15 +152,17 @@ function PostCard({
 
   const editorDisabled = actionBusy || !chiefEditorVerified;
   const editorBtn = {
-    padding: '5px 10px',
+    padding: '9px 14px',
+    minHeight: 40,
     borderRadius: 6,
     border: '1px solid var(--border-strong)',
     background: 'var(--card2)',
     color: 'var(--text-secondary)',
-    fontSize: '0.7rem',
+    fontSize: '0.82rem',
     fontWeight: 700,
     cursor: editorDisabled ? 'not-allowed' : 'pointer',
     fontFamily: 'inherit',
+    touchAction: 'manipulation',
     opacity: editorDisabled ? 0.5 : 1,
   };
 
@@ -219,7 +221,7 @@ function PostCard({
             fontSize: '0.72rem', fontWeight: 800, color: 'var(--gold)',
             background: 'rgba(234,179,8,0.1)', padding: '2px 8px', borderRadius: 4,
           }}>
-            {p.author}
+            {p.displayName || p.author}
           </span>
           <span style={{ fontSize: '0.68rem', color: 'var(--muted)' }}>{fmtDate(p.ts)}</span>
         </div>
@@ -234,6 +236,34 @@ function PostCard({
         }}>
           {p.body}
         </p>
+        {p.readMoreUrl ? (
+          <div style={{ marginTop: 8 }}>
+            <span
+              role="link"
+              tabIndex={0}
+              onClick={e => { e.stopPropagation(); navigate(p.readMoreUrl); }}
+              onKeyDown={e => e.key === 'Enter' && navigate(p.readMoreUrl)}
+              style={{
+                fontSize: '0.78rem', color: 'var(--accent)',
+                cursor: 'pointer', textDecoration: 'underline',
+                fontWeight: 700,
+              }}
+            >
+              קרא עוד ←
+            </span>
+          </div>
+        ) : null}
+        {p.isVirtual ? (
+          <div style={{ marginTop: 5 }}>
+            <span style={{
+              fontSize: '0.65rem', color: 'var(--muted)',
+              background: 'rgba(99,102,241,0.08)', padding: '2px 7px',
+              borderRadius: 4, fontWeight: 700,
+            }}>
+              {p.side === 'believer' ? '🙏 מאמין' : '🔬 חילוני'}
+            </span>
+          </div>
+        ) : null}
       </div>
 
       {/* Reaction bar */}
@@ -390,6 +420,7 @@ export default function BlogPage() {
   const pendingUser = useAppStore(s => s.pendingUser);
   const blogWriterName = String(user?.username || pendingUser?.username || '').trim();
 
+  const [virtualPosts, setVirtualPosts] = useState([]);
   const [moderation, setModeration] = useState({ hiddenKeys: [], pendingKeys: [], blockedAuthors: [] });
   const [hasAdminToken, setHasAdminToken] = useState(
     () => typeof window !== 'undefined' && Boolean(readStoredAdminToken()),
@@ -409,12 +440,36 @@ export default function BlogPage() {
     return () => window.removeEventListener('focus', onFocus);
   }, [refreshAdminTokenPresence]);
 
+  // Fetch virtual posts from server
+  useEffect(() => {
+    let cancelled = false;
+    const BASE = getApiBaseUrl();
+    fetch(`${BASE}/api/virtual-feed?limit=30`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        if (cancelled || !d) return;
+        setVirtualPosts(Array.isArray(d.posts) ? d.posts : []);
+      })
+      .catch(() => {
+        if (!cancelled) setVirtualPosts([]);
+      });
+    return () => { cancelled = true; };
+  }, [location.key]);
+
   /** נטען מחדש בכל כניסה ל־/blog — אחרי פרסום בפרופיל יופיעו פוסטים מעודכנים */
   const allPosts = useMemo(() => {
     const real = loadAllPosts();
     const demosToShow = DEMO_POSTS.filter(d => !real.some(r => r.id === d.id));
-    return [...real, ...demosToShow].sort((a, b) => b.ts - a.ts);
-  }, [location.key]);
+    // Merge virtual posts, dedupe by id, sort newest first
+    const combined = [...real, ...demosToShow, ...virtualPosts];
+    const seen = new Set();
+    const deduped = combined.filter(p => {
+      if (seen.has(p.id)) return false;
+      seen.add(p.id);
+      return true;
+    });
+    return deduped.sort((a, b) => b.ts - a.ts);
+  }, [location.key, virtualPosts]);
 
   useEffect(() => {
     let cancelled = false;
@@ -557,9 +612,24 @@ export default function BlogPage() {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
         flexDirection: 'row', direction: 'rtl',
         background: 'var(--surface)', borderBottom: '1px solid var(--border-strong)',
-        padding: '11px 14px',
+        padding: '11px 14px', position: 'relative',
       }}>
         <span style={{ fontWeight: 900, fontSize: '1rem', color: 'var(--text)' }}>בלוג</span>
+        <button
+          type="button"
+          onClick={() => navigate('/lobby')}
+          aria-label="סגירת הבלוג וחזרה ללובי"
+          style={{
+            position: 'absolute', top: '50%', left: 12, transform: 'translateY(-50%)',
+            width: 36, height: 36, borderRadius: 10,
+            border: '1px solid var(--border)', background: 'var(--card2)',
+            color: 'var(--text-secondary)', fontSize: '1.1rem', fontWeight: 700,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 0, transition: 'background 0.2s, color 0.2s, border-color 0.2s',
+          }}
+        >
+          ✕
+        </button>
         {blogWriterName.length >= 2 ? (
           <button
             type="button"
@@ -571,6 +641,7 @@ export default function BlogPage() {
               color: 'var(--accent)', fontWeight: 800,
               fontSize: '0.8rem', cursor: 'pointer',
               flexShrink: 0,
+              marginLeft: '1cm',
             }}
           >
             כתוב לבלוג

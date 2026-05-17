@@ -36,6 +36,9 @@ import { registerFaithChat } from './socket/faithChat.js';
 import debatesRouter from './routes/debates.js';
 import leaderboardRouter from './routes/leaderboard.js';
 import adminRouter from './routes/admin.js';
+import virtualFeedRouter from './routes/virtualFeed.js';
+import { startFeedScheduler } from './lib/feedScheduler.js';
+import { VIRTUAL_USERS } from './data/virtualUsers.js';
 import Groq from 'groq-sdk';
 import { chatCompletionWithFallback, groqErrorForClient } from './lib/groqChat.js';
 
@@ -65,6 +68,7 @@ app.use(express.json());
 app.use('/api/debates', debatesRouter);
 app.use('/api/leaderboard', leaderboardRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/virtual-feed', virtualFeedRouter);
 
 app.get('/api/health', (_, res) =>
   res.json({ ok: true, provider: 'groq', version: 8, tts: !!process.env.OPENAI_API_KEY, elevenlabs: !!process.env.ELEVENLABS_API_KEY }));
@@ -873,6 +877,25 @@ const DEMO_USERS = [
   if (changed) saveSnapshot();
 })();
 
+// Seed virtual users — always show as permanently online (no password needed)
+(function seedVirtualUsers() {
+  let changed = false;
+  for (const vu of VIRTUAL_USERS) {
+    const norm = normalizeUsername(vu.username);
+    if (!store.registeredUsernames.has(norm)) {
+      store.registeredUsernames.add(norm);
+      store.registeredCount = Math.max(store.registeredCount + 1, store.registeredUsernames.size);
+      changed = true;
+    }
+    if (!store.permanentOnlineUsernames.has(norm)) {
+      store.permanentOnlineUsernames.add(norm);
+      changed = true;
+    }
+  }
+  if (changed) saveSnapshot();
+  console.log(`[boot] virtual users seeded (${VIRTUAL_USERS.length} personas)`);
+})();
+
 registerMatchmaking(io);
 registerDebate(io);
 registerSpectator(io);
@@ -894,5 +917,7 @@ httpServer.listen(PORT, '0.0.0.0', () => {
     console.warn('[server] ⚠️  GROQ_API_KEY not set — AI debates will fail');
   } else {
     console.log('[server] ✅ GROQ_API_KEY is set');
+    // Start virtual feed scheduler after server is listening
+    startFeedScheduler().catch(e => console.error('[virtual-feed] scheduler startup error:', e.message));
   }
 });
