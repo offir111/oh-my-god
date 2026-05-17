@@ -1,3 +1,8 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// ⚠️  פרויקט: OH MY GOD (debate-app) — client-offir1.vercel.app
+// ⚠️  אין לערבב עם פרויקט BEEP BEEP (stb-src) — שני פרויקטים נפרדים לחלוטין!
+// ⚠️  לוגו: כדור + טבעות (header-logo-mark) + "O M G" — לא לשנות לטקסט אחר!
+// ═══════════════════════════════════════════════════════════════════════════
 import React, { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
@@ -669,38 +674,7 @@ export default function AppHeader() {
           padding-inline-start: 0.34em;
           margin: 0;
         }
-        .header-brand-title {
-          font-size: 1.15rem;
-          font-weight: 900;
-          letter-spacing: 0.08em;
-          color: #fff;
-          text-shadow:
-            0 1px 3px rgba(0, 0, 0, 0.6),
-            0 0 18px rgba(255, 255, 255, 0.22);
-          user-select: none;
-          pointer-events: none;
-          line-height: 1.1;
-          direction: ltr;
-          unicode-bidi: isolate;
-          text-transform: uppercase;
-          margin: 0;
-          white-space: nowrap;
-        }
-        .header-brand-subtitle {
-          font-size: 0.55rem;
-          font-weight: 600;
-          letter-spacing: 0.12em;
-          color: rgba(255, 255, 255, 0.65);
-          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-          user-select: none;
-          pointer-events: none;
-          line-height: 1;
-          direction: ltr;
-          unicode-bidi: isolate;
-          text-transform: uppercase;
-          margin: 0;
-          white-space: nowrap;
-        }
+        /* .header-brand-title / .header-brand-subtitle — REMOVED (belonged to BEEP BEEP project, do NOT re-add) */
         .header-app-brand:hover {
           opacity: 0.95;
           filter: brightness(1.08);
