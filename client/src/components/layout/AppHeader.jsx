@@ -58,6 +58,7 @@ export default function AppHeader() {
   const openMiniMediaBar = useAppStore(s => s.openMiniMediaBar);
   const headerPodcastPanelOpen = useAppStore(s => s.headerPodcastPanelOpen);
   const toggleHeaderPodcastPanel = useAppStore(s => s.toggleHeaderPodcastPanel);
+  const toggleYoutubePanel = useAppStore(s => s.toggleYoutubePanel);
   const debate = useAppStore(s => s.debate);
   const setUser = useAppStore(s => s.setUser);
   const setPendingUser = useAppStore(s => s.setPendingUser);
@@ -123,6 +124,11 @@ export default function AppHeader() {
       })
       .catch(() => setStats(localStats()));
   }, []);
+
+  useEffect(() => {
+    if (bibleOpen) setBibleOpen(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
 
   useEffect(() => {
     loadStats();
@@ -450,7 +456,7 @@ export default function AppHeader() {
           top: 0;
           left: 0;
           right: 0;
-          z-index: 1000;
+          z-index: 10000;
           display: flex;
           flex-direction: column;
           align-items: stretch;
@@ -508,7 +514,7 @@ export default function AppHeader() {
           padding: 0 2px;
           line-height: 1.2;
           font-family: var(--font-sans, 'Rubik', 'Segoe UI', system-ui, sans-serif);
-          font-size: 0.78rem;
+          font-size: 0.83rem;
         }
         .app-header-ticker-inner {
           display: inline-block;
@@ -533,7 +539,7 @@ export default function AppHeader() {
         }
         .app-header-ticker-sep {
           color: var(--muted, #8a8a9a);
-          font-size: 0.65rem;
+          font-size: 0.72rem;
           opacity: 0.7;
           font-family: inherit;
         }
@@ -647,7 +653,7 @@ export default function AppHeader() {
           touch-action: manipulation;
         }
         .header-logo-watermark {
-          font-size: 0.62rem;
+          font-size: 0.68rem;
           font-weight: 700;
           letter-spacing: 0.34em;
           color: rgba(255, 255, 255, 0.52);
@@ -662,6 +668,38 @@ export default function AppHeader() {
           text-transform: uppercase;
           padding-inline-start: 0.34em;
           margin: 0;
+        }
+        .header-brand-title {
+          font-size: 1.15rem;
+          font-weight: 900;
+          letter-spacing: 0.08em;
+          color: #fff;
+          text-shadow:
+            0 1px 3px rgba(0, 0, 0, 0.6),
+            0 0 18px rgba(255, 255, 255, 0.22);
+          user-select: none;
+          pointer-events: none;
+          line-height: 1.1;
+          direction: ltr;
+          unicode-bidi: isolate;
+          text-transform: uppercase;
+          margin: 0;
+          white-space: nowrap;
+        }
+        .header-brand-subtitle {
+          font-size: 0.55rem;
+          font-weight: 600;
+          letter-spacing: 0.12em;
+          color: rgba(255, 255, 255, 0.65);
+          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+          user-select: none;
+          pointer-events: none;
+          line-height: 1;
+          direction: ltr;
+          unicode-bidi: isolate;
+          text-transform: uppercase;
+          margin: 0;
+          white-space: nowrap;
         }
         .header-app-brand:hover {
           opacity: 0.95;
@@ -1023,7 +1061,7 @@ export default function AppHeader() {
           flex-direction: column;
           box-sizing: border-box;
           font-family: var(--font-sans);
-          font-size: 0.78rem;
+          font-size: 0.86rem;
           font-weight: 400;
         }
         .header-grid-menu__scroll {
@@ -1094,12 +1132,19 @@ export default function AppHeader() {
         }
         .header-menu-ai-call-sim-text {
           font-family: var(--font-sans, Rubik, sans-serif);
-          font-size: 0.72rem;
+          font-size: 0.85rem;
           font-weight: 800;
           color: rgba(244, 244, 248, 0.9);
           letter-spacing: 0.03em;
           white-space: nowrap;
           line-height: 1.1;
+          background: none;
+          border: none;
+          padding: 0;
+          margin: 0;
+          cursor: pointer;
+          -webkit-appearance: none;
+          appearance: none;
         }
         .header-grid-menu__cell--online {
           font: inherit;
@@ -1140,18 +1185,19 @@ export default function AppHeader() {
           align-items: center;
           justify-content: flex-end;
           text-align: right;
-          padding: 7px 12px;
-          min-height: 38px;
+          padding: 10px 14px;
+          min-height: 44px;
           border: 0.5px solid rgba(255, 255, 255, 0.28);
           margin: 0 0 -0.5px -0.5px;
           color: #f4f4f8;
           font-family: var(--font-sans);
-          font-size: 0.78rem;
+          font-size: 0.86rem;
           font-weight: 400;
           text-decoration: none;
           background: #000;
           cursor: pointer;
           transition: background 0.12s, color 0.12s;
+          touch-action: manipulation;
         }
         .header-grid-menu__cell:hover {
           background: rgba(255, 255, 255, 0.06);
@@ -1206,7 +1252,7 @@ export default function AppHeader() {
           box-sizing: border-box;
           margin: 0;
           margin-top: 1px;
-          padding: 13px 14px calc(13px + env(safe-area-inset-bottom, 0px));
+          padding: 14px 14px calc(14px + env(safe-area-inset-bottom, 0px));
           border: none;
           border-radius: 0;
           border-top: 1px solid rgba(255, 255, 255, 0.12);
@@ -1214,8 +1260,9 @@ export default function AppHeader() {
           background-image: linear-gradient(180deg, #f87171 0%, #dc2626 38%, #b91c1c 100%);
           color: #fff;
           font-family: var(--font-sans);
-          font-size: 0.78rem;
+          font-size: 0.88rem;
           font-weight: 700;
+          touch-action: manipulation;
           line-height: 1.3;
           letter-spacing: 0.02em;
           cursor: pointer;
@@ -1534,7 +1581,7 @@ export default function AppHeader() {
           font-variant-numeric: tabular-nums;
         }
         .header-stat-label {
-          font-size: 0.62rem;
+          font-size: 0.72rem;
           font-weight: 600;
           color: var(--muted, #8a8a9a);
           text-transform: uppercase;
@@ -1865,7 +1912,12 @@ export default function AppHeader() {
                     </svg>
                     <span className="header-ai-call-btn__label" aria-hidden="true">AI</span>
                   </button>
-                  <span className="header-menu-ai-call-sim-text" aria-hidden="true">סימולטור</span>
+                  <button
+                    type="button"
+                    className="header-menu-ai-call-sim-text"
+                    onClick={() => { toggleAiVoice(); setMenuOpen(false); }}
+                    aria-label="פתח סימולטור שיחה קולית"
+                  >סימולטור</button>
                 </div>
               </div>
               <div className="header-grid-menu__nav">
@@ -1970,7 +2022,7 @@ export default function AppHeader() {
                   type="button"
                   className={`header-grid-menu__cell${menuYtSectionActive ? ' header-grid-menu__cell--active' : ''}`}
                   onClick={() => {
-                    openMiniMediaBar('youtube', { play: true });
+                    toggleYoutubePanel();
                     setMenuOpen(false);
                   }}
                 >
