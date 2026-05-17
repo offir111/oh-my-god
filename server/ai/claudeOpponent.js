@@ -22,16 +22,10 @@ function getClient() {
 function buildSystemPrompt(side, virtualUser = null, isIntro = false) {
   if (virtualUser?.systemPrompt) {
     const introLine = isIntro
-      ? '\nבהודעה הראשונה: הצג את עצמך בחמימות (שם, גיל, עיר, עיסוק) ואז פתח את הדיון. עד 65 מילים.'
+      ? '\nבהודעה הראשונה: הצג את עצמך בחמימות — שם, גיל, עיר ועיסוק — ואז שאל על מה רוצים לדבר היום.'
       : '';
-    return `${virtualUser.systemPrompt}${introLine}
-
-חוקי דיון:
-1. כתוב בעברית טבעית
-2. התייחס לדברי המשתמש ישירות
-3. עד 60 מילים — תשובה תמציתית, סיים משפט שלם
-4. ללא markdown, ללא כותרות
-5. אל תפתח ב"הנה" או "בוודאי"`;
+    // הנחיות הסגנון כבר כלולות ב-ADVISOR_BASE בתוך virtualUser.systemPrompt
+    return `${virtualUser.systemPrompt}${introLine}`;
   }
 
   const persona = side === 'believer'
@@ -55,15 +49,17 @@ export async function getAIResponse({ side, history, phase, virtualUser = null }
   const messages = formatHistory(history, side);
 
   const logName = virtualUser ? virtualUser.username : side;
-  console.log(`[groq] calling API — persona=${logName} phase=${phase} historyLen=${history.length}`);
+  // דמויות וירטואליות — יועץ/חבר: אפשר תשובות עשירות יותר
+  const maxTok = virtualUser ? 600 : 200;
+  console.log(`[groq] calling API — persona=${logName} phase=${phase} historyLen=${history.length} max_tokens=${maxTok}`);
   try {
     const response = await chatCompletionWithFallback(
       getClient(),
       {
-        max_tokens: 200,
+        max_tokens: maxTok,
         messages: [
           { role: 'system', content: systemPrompt },
-          ...(messages.length > 0 ? messages : [{ role: 'user', content: 'פתח את הדיון.' }]),
+          ...(messages.length > 0 ? messages : [{ role: 'user', content: 'שלום, ספר לי על עצמך.' }]),
         ],
       },
       'groq-turn',
@@ -83,14 +79,15 @@ export async function streamAIResponse({ side, history, phase, virtualUser = nul
   const messages = formatHistory(history, side);
 
   const logName = virtualUser ? virtualUser.username : side;
-  console.log(`[groq] STREAM START — persona=${logName} phase=${phase} historyLen=${history.length}`);
+  const maxTokStream = virtualUser ? 600 : 200;
+  console.log(`[groq] STREAM START — persona=${logName} phase=${phase} historyLen=${history.length} max_tokens=${maxTokStream}`);
   const stream = await streamCompletionWithFallback(
     getClient(),
     {
-      max_tokens: 200,
+      max_tokens: maxTokStream,
       messages: [
         { role: 'system', content: systemPrompt },
-        ...(messages.length > 0 ? messages : [{ role: 'user', content: 'פתח את הדיון.' }]),
+        ...(messages.length > 0 ? messages : [{ role: 'user', content: 'שלום, ספר לי על עצמך.' }]),
       ],
     },
     'groq-stream',
