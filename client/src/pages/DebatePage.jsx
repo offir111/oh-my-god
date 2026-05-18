@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/appStore.js';
 import { useDebate } from '../hooks/useDebate.js';
@@ -24,6 +24,10 @@ export default function DebatePage() {
   const [scoreToast, setScoreToast] = useState(null);
   const [shareToast, setShareToast] = useState('');
   const [loadingDebate, setLoadingDebate] = useState(() => !debate || debate.id !== debateId);
+  const [humanAvailable, setHumanAvailable] = useState(false);
+
+  const myDebateSide = user?.side;
+  const oppDebateSide = myDebateSide === 'believer' ? 'atheist' : 'believer';
 
   /** סטרימינג גלובלי בזוטסטנד — ננקה בכניסה לדיון; לא ב-unmount של ההוק (מפריע ל־Strict Mode ומזריק צ׳אנקים). */
   useEffect(() => {
@@ -79,6 +83,45 @@ export default function DebatePage() {
       setTimeout(() => setScoreToast(null), 3000);
     }
   }, [finished]);
+
+  /** כפתור מעבר לאנושי — בדיון AI בלבד */
+  useEffect(() => {
+    if (!debate?.isAI) return;
+
+    const onHumanInQueue = () => setHumanAvailable(true);
+    socket.on('HUMAN_IN_QUEUE', onHumanInQueue);
+
+    const onHumanQueueStatus = ({ available }) => setHumanAvailable(available);
+    socket.on('HUMAN_QUEUE_STATUS', onHumanQueueStatus);
+
+    // Initial + periodic poll
+    socket.emit('CHECK_HUMAN_QUEUE', { side: oppDebateSide });
+    const poll = setInterval(() => {
+      socket.emit('CHECK_HUMAN_QUEUE', { side: oppDebateSide });
+    }, 5000);
+
+    // Handle the new human match arriving
+    const onSwitchMatchFound = ({ debateId: newId, isAI, believer, atheist, aiSide, turn }) => {
+      setDebate({
+        id: newId, isAI, aiSide,
+        believer, atheist,
+        phase: 'text', turn: turn || 'believer',
+        textMessages: [], voiceMessages: [],
+        textCount: { believer: 0, atheist: 0 },
+        voiceCount: { believer: 0, atheist: 0 },
+        giftsReceived: { believer: 0, atheist: 0 },
+      });
+      setTimeout(() => navigate(`/debate/${newId}`), 200);
+    };
+    socket.on('MATCH_FOUND', onSwitchMatchFound);
+
+    return () => {
+      socket.off('HUMAN_IN_QUEUE', onHumanInQueue);
+      socket.off('HUMAN_QUEUE_STATUS', onHumanQueueStatus);
+      socket.off('MATCH_FOUND', onSwitchMatchFound);
+      clearInterval(poll);
+    };
+  }, [debate?.isAI, oppDebateSide]);
 
   if (!debate || debate.id !== debateId) {
     return loadingDebate ? (
@@ -181,6 +224,53 @@ export default function DebatePage() {
 
   return (
     <div style={styles.page}>
+      {/* ── X לסגירת דיון AI — fixed, מיושר לקצה שמאל של פאנל התוכן ── */}
+      {debate.isAI && (
+        <>
+          <button
+            type="button"
+            aria-label="סגירה וחזרה לדף הקודם"
+            onClick={() => navigate('/login?logo=1')}
+            style={{
+              position: 'fixed',
+              left: 'max(12px, calc(50vw - 448px))',
+              top: 'calc(var(--shell-top, 62px) + 8px)',
+              width: 36, height: 36, borderRadius: 10,
+              border: '1px solid var(--border)',
+              background: 'var(--card2)',
+              color: 'var(--text-secondary)',
+              fontSize: '1.1rem', fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              zIndex: 9999,
+            }}
+          >✕</button>
+          {/* ── כפתור מעבר לאנושי — ירוק כשיש יוזר בתור ── */}
+          <button
+            type="button"
+            aria-label={humanAvailable ? 'עבור לדיון עם יוזר אנושי' : 'ממתין לאנושי בתור'}
+            title={humanAvailable ? 'יוזר אנושי זמין — לחץ למעבר' : 'ממתין ליוזר אנושי…'}
+            onClick={() => {
+              if (!humanAvailable) return;
+              socket.emit('SWITCH_TO_HUMAN', { debateId, username: user?.username, side: user?.side });
+            }}
+            style={{
+              position: 'fixed',
+              left: 'max(56px, calc(50vw - 404px))',
+              top: 'calc(var(--shell-top, 62px) + 8px)',
+              width: 36, height: 36, borderRadius: 10,
+              border: humanAvailable ? '1px solid #22c55e' : '1px solid var(--border)',
+              background: humanAvailable ? 'rgba(34,197,94,0.15)' : 'var(--card2)',
+              color: humanAvailable ? '#22c55e' : 'var(--text-secondary)',
+              fontSize: '1rem', fontWeight: 700,
+              cursor: humanAvailable ? 'pointer' : 'default',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              zIndex: 9999,
+              transition: 'background 0.3s, border-color 0.3s, color 0.3s',
+            }}
+          >👤</button>
+        </>
+      )}
       <div style={styles.body}>
         {debate.isAI ? (
           <div className="debate-chat-frame">

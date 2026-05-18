@@ -66,10 +66,62 @@ export function registerMatchmaking(io) {
         store.queue[side] = socket;
         socket.emit('WAITING_FOR_OPPONENT');
         console.log(`[queue] ${username} (${side}) waiting`);
+        // הודע לכל דיוני-וירטואלי שמחכים ליוזר מהצד הזה
+        for (const [, d] of store.debates) {
+          if (d.isAI && d.fromHumanQueue && d.aiSide === side && d.phase !== 'finished') {
+            io.to(d.id).emit('HUMAN_IN_QUEUE', { side });
+          }
+        }
       }
     });
 
-    socket.on('REQUEST_AI_DEBATE', ({ username, side }) => {
+    // ── בדיקה: האם יש יוזר אנושי בתור עבור צד מסוים ──
+    socket.on('CHECK_HUMAN_QUEUE', ({ side }) => {
+      socket.emit('HUMAN_QUEUE_STATUS', { available: !!store.queue[side] });
+    });
+
+    // ── מעבר מוירטואלי ליוזר אנושי ──
+    socket.on('SWITCH_TO_HUMAN', ({ debateId, username, side }) => {
+      const oppSide = side === 'believer' ? 'atheist' : 'believer';
+      const humanSocket = store.queue[oppSide];
+      if (!humanSocket) {
+        socket.emit('SWITCH_FAILED', { message: 'היריב כבר לא זמין, המשך עם הוירטואלי' });
+        return;
+      }
+      // הוצא אנושי מהתור
+      store.queue[oppSide] = null;
+
+      // צור דיון אנושי חדש
+      const newDebateId = uuid();
+      const humanUser = store.users.get(humanSocket.id);
+      if (!humanUser) { socket.emit('SWITCH_FAILED', { message: 'שגיאה בחיבור' }); return; }
+
+      store.users.set(socket.id, { username, side, score: 0, voiceDebates: 0, giftsReceived: 0 });
+      const believerSocket = side === 'believer' ? socket : humanSocket;
+      const atheistSocket  = side === 'atheist'  ? socket : humanSocket;
+      const believerUser   = store.users.get(believerSocket.id);
+      const atheistUser    = store.users.get(atheistSocket.id);
+
+      const debate = createDebateState(newDebateId,
+        { socketId: believerSocket.id, username: believerUser.username },
+        { socketId: atheistSocket.id,  username: atheistUser.username }
+      );
+      store.debates.set(newDebateId, debate);
+      store.spectators.set(newDebateId, new Set());
+
+      believerSocket.join(newDebateId);
+      atheistSocket.join(newDebateId);
+
+      io.to(newDebateId).emit('MATCH_FOUND', {
+        debateId: newDebateId,
+        isAI: false,
+        believer: { username: believerUser.username },
+        atheist:  { username: atheistUser.username },
+      });
+      console.log(`[switch-to-human] ${username} switched from virtual to ${humanUser.username} → ${newDebateId}`);
+    });
+
+    socket.on('REQUEST_AI_DEBATE', ({ username, side, firstMessage }) => {
       if (!isValidMatchUser(username, side)) {
         socket.emit('MATCH_ERROR', { message: 'פרטי משתמש לא תקינים' });
         return;
@@ -102,6 +154,8 @@ export function registerMatchmaking(io) {
       debate.isAITurn = false;
       // Attach the virtual persona so debate.js can use it for richer responses
       debate.virtualOpponent = virtualOpponent || null;
+      // Mark if started from human queue (for HUMAN_IN_QUEUE notifications)
+      debate.fromHumanQueue = !!firstMessage;
       store.debates.set(debateId, debate);
       store.spectators.set(debateId, new Set());
       socket.join(debateId);
@@ -110,7 +164,7 @@ export function registerMatchmaking(io) {
         debateId,
         isAI: true,
         aiSide,
-        turn: side, // user starts
+        turn: side,
         believer: believerInfo,
         atheist:  atheistInfo,
         virtualOpponent: virtualOpponent
@@ -125,7 +179,19 @@ export function registerMatchmaking(io) {
           : null,
       });
 
-      console.log(`[ai-match] ${username} (${side}) vs ${aiDisplayName} (${aiSide}) → ${debateId} — user starts`);
+      // אם הגיע מתור אנושי — הוירטואלי פותח עם "היי" מיד
+      if (firstMessage) {
+        setTimeout(() => {
+          const hiMsg = { side: aiSide, content: firstMessage, timestamp: Date.now(), isAI: true };
+          debate.textMessages.push(hiMsg);
+          debate.textCount[aiSide]++;
+          debate.turn = side; // תור היוזר אחרי "היי"
+          io.to(debateId).emit('TEXT_MESSAGE_RECEIVED', hiMsg);
+          io.to(debateId).emit('TURN_CHANGED', { turn: side });
+        }, 1200);
+      }
+
+      console.log(`[ai-match] ${username} (${side}) vs ${aiDisplayName} (${aiSide}) → ${debateId} — user starts${firstMessage ? ' [fromHumanQueue]' : ''}`);
     });
 
     socket.on('LEAVE_QUEUE', () => {

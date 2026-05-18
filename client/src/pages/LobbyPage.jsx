@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+﻿import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppStore } from '../store/appStore.js';
 import { socket } from '../socket.js';
@@ -33,12 +33,15 @@ const humanMatchStyles = {
   },
 };
 
-function HumanMatchmakingShell({ user, humanOppLabel, status, onCancel }) {
+function HumanMatchmakingShell({ user, humanOppLabel, status, autoVirtualPhase, onCancel }) {
   const mySide = user?.side;
   const oppSide = mySide === 'believer' ? 'atheist' : 'believer';
   const oppColor = oppSide === 'believer' ? 'var(--believer)' : 'var(--atheist)';
+  const isConnecting = autoVirtualPhase === 'connecting' || autoVirtualPhase === 'done';
   const toolbarLine =
     status === 'found'
+      ? 'מתחבר לדיון…'
+      : isConnecting
       ? 'מתחבר לדיון…'
       : `מחפש יריב ${humanOppLabel} לצ׳אט חי`;
 
@@ -83,7 +86,7 @@ function HumanMatchmakingShell({ user, humanOppLabel, status, onCancel }) {
           <div className="debate-chat-frame-body debate-phase-stack">
             <div className="debate-feed-toolbar">
               <span className="toolbar-muted">{toolbarLine}</span>
-              <span className="debate-turn-pill debate-turn-pill--wait">ממתין ליריב אנושי</span>
+              <span className="debate-turn-pill debate-turn-pill--wait">{isConnecting ? 'מתחבר…' : 'ממתין ליריב אנושי'}</span>
             </div>
 
             <div
@@ -98,9 +101,13 @@ function HumanMatchmakingShell({ user, humanOppLabel, status, onCancel }) {
               }}
             >
               <div className="spinner" style={{ width: 44, height: 44 }} aria-hidden />
-              {status === 'found' ? (
+              {(status === 'found' || autoVirtualPhase === 'done') ? (
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: 18, fontWeight: 700 }}>
                   נמצא יריב! פותחים את הצ׳אט…
+                </p>
+              ) : isConnecting ? (
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: 18, fontWeight: 700 }}>
+                  מתחבר…
                 </p>
               ) : (
                 <p style={{ color: 'var(--muted)', fontSize: '0.88rem', marginTop: 18, textAlign: 'center', maxWidth: 300, lineHeight: 1.55 }}>
@@ -112,7 +119,7 @@ function HumanMatchmakingShell({ user, humanOppLabel, status, onCancel }) {
             <div className="debate-composer">
               <input
                 disabled
-                placeholder="ממתין ליריב אנושי…"
+                placeholder={isConnecting ? 'מתחבר…' : 'ממתין ליריב אנושי…'}
                 aria-label="שדה שליחה — יופעל כשנמצא יריב"
               />
               <button type="button" className={`btn btn-send btn-send--${mySide || 'believer'}`} disabled>
@@ -136,6 +143,7 @@ export default function LobbyPage() {
   const user = useAppStore(s => s.user);
   const setDebate = useAppStore(s => s.setDebate);
   const [status, setStatus] = useState('idle'); // idle | waiting | waiting-ai | found | error
+  const [autoVirtualPhase, setAutoVirtualPhase] = useState('idle'); // idle | connecting | done
   const [connected, setConnected] = useState(socket.connected);
   const [serverUrl, setServerUrl] = useState('');
   const [httpOk, setHttpOk] = useState(null);
@@ -233,6 +241,19 @@ export default function LobbyPage() {
     socket.emit('JOIN_QUEUE', { username: user.username, side: user.side });
   }, [quickHuman, user?.username, user?.side]);
 
+  /** אחרי 3 שניות בתור אנושי — הצג "מתחבר..." ואחרי 5 שניות עבור לוירטואלי */
+  useEffect(() => {
+    if (status !== 'waiting') { setAutoVirtualPhase('idle'); return; }
+    const t1 = setTimeout(() => setAutoVirtualPhase('connecting'), 3000);
+    const t2 = setTimeout(() => {
+      setAutoVirtualPhase('done');
+      socket.emit('LEAVE_QUEUE');
+      matchmakingActiveRef.current = true;
+      socket.emit('REQUEST_AI_DEBATE', { username: user?.username, side: user?.side, firstMessage: 'היי' });
+    }, 5000);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [status]);
+
   /** לחיצה על לוגו בראש המסך — מאפס התאמה / המתנה ל-AI גם כשנשארים ב־/lobby (?homeTap מאלץ עדכון URL) */
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -327,6 +348,7 @@ export default function LobbyPage() {
         user={user}
         humanOppLabel={humanOppLabel}
         status={status}
+        autoVirtualPhase={autoVirtualPhase}
         onCancel={quickHuman ? cancelHumanQuick : cancelQueue}
       />
     );
@@ -363,8 +385,8 @@ export default function LobbyPage() {
           <p style={{ color: 'var(--muted)', fontSize: '0.88rem', marginTop: 10, lineHeight: 1.5 }}>
             מעבירים אותך לצ׳אט
           </p>
-          <button type="button" className="btn btn-ghost" style={{ marginTop: 28 }} onClick={cancelQuickAi}>
-            ביטול
+          <button type="button" className="btn btn-ghost" style={{ marginTop: 28 }} onClick={() => { cancelQuickAi(); navigate('/login?logo=1'); }}>
+            ✕ ביטול וחזרה
           </button>
         </div>
       </div>
@@ -490,7 +512,7 @@ export default function LobbyPage() {
                     </span>
                     <span style={{ color: 'var(--muted)', fontSize: '0.8rem' }}>• 👁 {d.spectators}</span>
                   </div>
-                  <button className="btn btn-dark" style={{ padding: '6px 16px', fontSize: '0.85rem' }}
+                  <button className="btn btn-dark" style={{ padding: '10px 18px', fontSize: '0.88rem', minHeight: 44, touchAction: 'manipulation' }}
                     onClick={() => navigate(`/spectate/${d.id}`)}>
                     צפה
                   </button>
