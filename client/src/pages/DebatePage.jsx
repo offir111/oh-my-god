@@ -274,10 +274,13 @@ export default function DebatePage() {
       <div style={styles.body}>
         {debate.isAI ? (
           <div className="debate-chat-frame">
-            <header className="debate-chat-frame-header" aria-label="כותרת שיחת דיון עם AI">
-              <div style={styles.player}>
+            <header className="debate-chat-frame-header" aria-label="כותרת שיחת דיון עם AI"
+              style={{ flexWrap: 'nowrap', gap: 6 }}
+            >
+              {/* LEFT — המשתמש */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                 <SideTag side={mySide} />
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 700, fontSize: '0.88rem', whiteSpace: 'nowrap' }}>
                   <UserAvatarSlot
                     size="sm"
                     displayName={user?.username}
@@ -287,40 +290,26 @@ export default function DebatePage() {
                 </span>
                 {debate.turn === mySide && <span style={styles.turnDot} />}
               </div>
-              <div style={{ flex: 1, textAlign: 'center', minWidth: 0, paddingInline: 6 }}>
-                <p className="debate-chat-frame-title">
-                  <span dir="rtl">
-                    {mySide === 'believer' ? 'מאמין' : 'אתאיסט'} OMG{' '}
-                    <span className="pulse-anim" style={{ display: 'inline-block', marginInline: '2px 6px' }} aria-hidden>
-                      ●
-                    </span>
-                    : מול AI
-                  </span>
-                </p>
+
+              {/* CENTER — VS */}
+              <div style={{ flex: 1, textAlign: 'center', minWidth: 0 }}>
+                <span style={{ color: 'var(--muted)', fontSize: '0.72rem', fontWeight: 800 }}>
+                  VS
+                </span>
                 {spectatorCount > 0 && (
-                  <div style={{ color: 'var(--muted)', fontSize: '0.72rem', marginTop: 4 }}>
-                    👁 {spectatorCount} צופים
-                  </div>
+                  <span style={{ color: 'var(--muted)', fontSize: '0.7rem', marginRight: 6 }}>
+                    · 👁 {spectatorCount}
+                  </span>
                 )}
               </div>
-              <div style={{ ...styles.player, minWidth: 100, justifyContent: 'flex-end' }}>
-                <span
-                  dir="ltr"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    fontWeight: 800,
-                    fontSize: '0.84rem',
-                  }}
-                >
-                  <span aria-hidden style={{ fontSize: '1.05rem', lineHeight: 1 }}>
-                    🤖
-                  </span>
-                  <span style={{ letterSpacing: '0.07em', color: oppColor }}>
-                    AI
-                  </span>
+
+              {/* RIGHT — AI */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, justifyContent: 'flex-end' }}>
+                {debate.turn === oppSide && <span style={{ ...styles.turnDot, background: oppColor }} />}
+                <span style={{ fontWeight: 700, fontSize: '0.88rem', color: oppColor, whiteSpace: 'nowrap' }}>
+                  {opponent?.username || 'AI'}
                 </span>
+                <SideTag side={oppSide} />
               </div>
             </header>
             <div className="debate-chat-frame-body">

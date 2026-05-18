@@ -33,7 +33,33 @@ const humanMatchStyles = {
   },
 };
 
-function HumanMatchmakingShell({ user, humanOppLabel, status, autoVirtualPhase, onCancel }) {
+const VIRTUAL_FIRST_NAMES = ['דנה', 'נועה', 'יוסי', 'שירה', 'גיא', 'מרים', 'עידן', 'רחל'];
+
+function ConnectingDots() {
+  return (
+    <span style={{ display: 'inline-flex', gap: 7, alignItems: 'center', marginTop: 14 }}>
+      {[0, 1, 2, 3, 4].map(i => (
+        <span
+          key={i}
+          style={{
+            width: 10, height: 10, borderRadius: '50%',
+            background: 'var(--gold, #f59e0b)',
+            display: 'inline-block',
+            animation: `omgDotPulse 1.1s ease-in-out ${i * 0.18}s infinite`,
+          }}
+        />
+      ))}
+      <style>{`
+        @keyframes omgDotPulse {
+          0%, 70%, 100% { opacity: 0.18; transform: scale(0.72); }
+          35% { opacity: 1; transform: scale(1.25); }
+        }
+      `}</style>
+    </span>
+  );
+}
+
+function HumanMatchmakingShell({ user, humanOppLabel, status, autoVirtualPhase, virtualName, onCancel }) {
   const mySide = user?.side;
   const oppSide = mySide === 'believer' ? 'atheist' : 'believer';
   const oppColor = oppSide === 'believer' ? 'var(--believer)' : 'var(--atheist)';
@@ -100,15 +126,25 @@ function HumanMatchmakingShell({ user, humanOppLabel, status, autoVirtualPhase, 
                 minHeight: 0,
               }}
             >
-              <div className="spinner" style={{ width: 44, height: 44 }} aria-hidden />
+              {!isConnecting && <div className="spinner" style={{ width: 44, height: 44 }} aria-hidden />}
               {(status === 'found' || autoVirtualPhase === 'done') ? (
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: 18, fontWeight: 700 }}>
                   נמצא יריב! פותחים את הצ׳אט…
                 </p>
               ) : isConnecting ? (
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: 18, fontWeight: 700 }}>
-                  מתחבר…
-                </p>
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{
+                    color: 'var(--gold, #f59e0b)',
+                    fontSize: '1.35rem',
+                    fontWeight: 900,
+                    letterSpacing: '0.01em',
+                    margin: 0,
+                    lineHeight: 1.3,
+                  }}>
+                    נמצא {oppSide === 'believer' ? 'מאמין' : 'אתאיסט'} לשיחה — {virtualName}
+                  </p>
+                  <ConnectingDots />
+                </div>
               ) : (
                 <p style={{ color: 'var(--muted)', fontSize: '0.88rem', marginTop: 18, textAlign: 'center', maxWidth: 300, lineHeight: 1.55 }}>
                   מחפשים משתמש מתאים — כמו במסך שיחה עם AI, רגעים ספורים לפני תחילת הדיון
@@ -144,6 +180,7 @@ export default function LobbyPage() {
   const setDebate = useAppStore(s => s.setDebate);
   const [status, setStatus] = useState('idle'); // idle | waiting | waiting-ai | found | error
   const [autoVirtualPhase, setAutoVirtualPhase] = useState('idle'); // idle | connecting | done
+  const [virtualName, setVirtualName] = useState('');
   const [connected, setConnected] = useState(socket.connected);
   const [serverUrl, setServerUrl] = useState('');
   const [httpOk, setHttpOk] = useState(null);
@@ -244,7 +281,11 @@ export default function LobbyPage() {
   /** אחרי 3 שניות בתור אנושי — הצג "מתחבר..." ואחרי 5 שניות עבור לוירטואלי */
   useEffect(() => {
     if (status !== 'waiting') { setAutoVirtualPhase('idle'); return; }
-    const t1 = setTimeout(() => setAutoVirtualPhase('connecting'), 3000);
+    const t1 = setTimeout(() => {
+      const name = VIRTUAL_FIRST_NAMES[Math.floor(Math.random() * VIRTUAL_FIRST_NAMES.length)];
+      setVirtualName(name);
+      setAutoVirtualPhase('connecting');
+    }, 3000);
     const t2 = setTimeout(() => {
       setAutoVirtualPhase('done');
       socket.emit('LEAVE_QUEUE');
@@ -349,6 +390,7 @@ export default function LobbyPage() {
         humanOppLabel={humanOppLabel}
         status={status}
         autoVirtualPhase={autoVirtualPhase}
+        virtualName={virtualName}
         onCancel={quickHuman ? cancelHumanQuick : cancelQueue}
       />
     );

@@ -179,16 +179,21 @@ export function registerMatchmaking(io) {
           : null,
       });
 
-      // אם הגיע מתור אנושי — הוירטואלי פותח עם "היי" מיד
+      // אם הגיע מתור אנושי — הוירטואלי פותח עם 3 שניות typing ואז "היי"
       if (firstMessage) {
         setTimeout(() => {
-          const hiMsg = { side: aiSide, content: firstMessage, timestamp: Date.now(), isAI: true };
-          debate.textMessages.push(hiMsg);
-          debate.textCount[aiSide]++;
-          debate.turn = side; // תור היוזר אחרי "היי"
-          io.to(debateId).emit('TEXT_MESSAGE_RECEIVED', hiMsg);
-          io.to(debateId).emit('TURN_CHANGED', { turn: side });
-        }, 1200);
+          // הצג אינדיקטור כתיבה
+          io.to(debateId).emit('AI_TYPING');
+          // אחרי 3 שניות — שלח "היי"
+          setTimeout(() => {
+            const hiMsg = { side: aiSide, content: 'היי', timestamp: Date.now(), isAI: true };
+            debate.textMessages.push(hiMsg);
+            debate.textCount[aiSide]++;
+            debate.turn = side;
+            io.to(debateId).emit('TEXT_MESSAGE_RECEIVED', hiMsg);
+            io.to(debateId).emit('TURN_CHANGED', { turn: side });
+          }, 3000);
+        }, 800);
       }
 
       console.log(`[ai-match] ${username} (${side}) vs ${aiDisplayName} (${aiSide}) → ${debateId} — user starts${firstMessage ? ' [fromHumanQueue]' : ''}`);
