@@ -13,6 +13,7 @@ import {
   setBlogAuthorModerationNotice,
   deleteUser,
   resetUserScore,
+  resetUserLogin,
   deleteArchivedDebate,
   getArchivedDebatesAdmin,
 } from '../store/memory.js';
@@ -74,6 +75,15 @@ router.post('/reset-score', adminAuthMiddleware, express.json(), (req, res) => {
   const username = String(req.body?.username || '').trim();
   if (!username) return res.status(400).json({ error: 'חסר שם משתמש' });
   resetUserScore(username);
+  res.json({ ok: true, users: getAdminUserList() });
+});
+
+router.post('/reset-login', adminAuthMiddleware, express.json(), (req, res) => {
+  const username = String(req.body?.username || '').trim();
+  if (!username) return res.status(400).json({ error: 'חסר שם משתמש' });
+  if (!resetUserLogin(username)) {
+    return res.status(400).json({ error: 'לא ניתן לאפס כניסה למשתמש זה' });
+  }
   res.json({ ok: true, users: getAdminUserList() });
 });
 

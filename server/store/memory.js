@@ -255,6 +255,20 @@ export function deleteUser(username) {
   return true;
 }
 
+/**
+ * אפס כניסה של משתמש — מוחק סיסמה ומסיר מרשימת הרשומים.
+ * פותר בעיית כניסה כפולה (אפליקציה + דפדפן). הניקוד נשמר.
+ */
+export function resetUserLogin(username) {
+  const norm = normalizeUsername(username);
+  if (!norm || norm === RESERVED_ADMIN_NORM) return false;
+  store.registeredPasswords.delete(norm);
+  store.registeredUsernames.delete(norm);
+  store.registeredCount = Math.max(store.registeredUsernames.size, store.registeredPasswords.size);
+  saveSnapshot();
+  return true;
+}
+
 export function resetUserScore(username) {
   const norm = normalizeUsername(username);
   if (!norm || norm === RESERVED_ADMIN_NORM) return false;
