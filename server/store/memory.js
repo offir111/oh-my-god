@@ -14,6 +14,7 @@ export function normalizeUsername(username) {
 }
 
 const RESERVED_ADMIN_NORM = 'omg';
+const RESERVED_ADMIN_NORMS = new Set(['omg', 'beep']); // כל שמות המנהל השמורים
 
 export const store = {
   users: new Map(),        // socketId → { username, side, score, voiceDebates, giftsReceived, lastSeen }
@@ -105,7 +106,7 @@ export function isUsernameBlocked(username) {
 
 export function setUserBlocked(username, blocked) {
   const norm = normalizeUsername(username);
-  if (!norm || norm === RESERVED_ADMIN_NORM) return false;
+  if (!norm || RESERVED_ADMIN_NORMS.has(norm)) return false;
   if (blocked) store.blockedNormUsernames.add(norm);
   else store.blockedNormUsernames.delete(norm);
   saveSnapshot();
@@ -172,7 +173,7 @@ export function unblockBlogAuthorFromPublicFeed(author) {
 
 export function setBlogAuthorModerationNotice(author, text) {
   const norm = normalizeUsername(author);
-  if (!norm || norm === RESERVED_ADMIN_NORM) return false;
+  if (!norm || RESERVED_ADMIN_NORMS.has(norm)) return false;
   const t = String(text || '').trim().slice(0, 800);
   if (!t) {
     store.blogAuthorNoticesByNorm.delete(norm);
@@ -228,7 +229,7 @@ export function getAdminUserList() {
     .map(norm => {
       const scores = store.userScores.get(norm) || {};
       return {
-        username: norm === RESERVED_ADMIN_NORM ? 'OMG' : norm,
+        username: norm === 'omg' ? 'OMG' : norm === 'beep' ? 'BEEP' : norm,
         normalized: norm,
         blocked: store.blockedNormUsernames.has(norm),
         note: store.adminNotesByNorm.get(norm) || '',
@@ -243,7 +244,7 @@ export function getAdminUserList() {
 
 export function deleteUser(username) {
   const norm = normalizeUsername(username);
-  if (!norm || norm === RESERVED_ADMIN_NORM) return false;
+  if (!norm || RESERVED_ADMIN_NORMS.has(norm)) return false;
   store.registeredUsernames.delete(norm);
   store.registeredPasswords.delete(norm);
   store.userScores.delete(norm);
@@ -261,7 +262,7 @@ export function deleteUser(username) {
  */
 export function resetUserLogin(username) {
   const norm = normalizeUsername(username);
-  if (!norm || norm === RESERVED_ADMIN_NORM) return false;
+  if (!norm || RESERVED_ADMIN_NORMS.has(norm)) return false;
   store.registeredPasswords.delete(norm);
   store.registeredUsernames.delete(norm);
   store.registeredCount = Math.max(store.registeredUsernames.size, store.registeredPasswords.size);
@@ -271,7 +272,7 @@ export function resetUserLogin(username) {
 
 export function resetUserScore(username) {
   const norm = normalizeUsername(username);
-  if (!norm || norm === RESERVED_ADMIN_NORM) return false;
+  if (!norm || RESERVED_ADMIN_NORMS.has(norm)) return false;
   if (store.userScores.has(norm)) {
     const profile = store.userScores.get(norm);
     profile.score = 0;
@@ -334,7 +335,7 @@ export function registerUser(username, password = null, options = {}) {
 
   let shouldSave = false;
   const passwordText = String(password);
-  const isAdminAccount = norm === RESERVED_ADMIN_NORM;
+  const isAdminAccount = RESERVED_ADMIN_NORMS.has(norm);
 
   if (isAdminAccount) {
     if (!isOmgAdminConfigured()) {
@@ -378,7 +379,7 @@ const RETIRED_VIRTUAL_USER_NORMS = [normalizeUsername('דוד_אמסלם')].filt
 export function purgeRetiredVirtualUsers() {
   let changed = false;
   for (const norm of RETIRED_VIRTUAL_USER_NORMS) {
-    if (!norm || norm === RESERVED_ADMIN_NORM) continue;
+    if (!norm || RESERVED_ADMIN_NORMS.has(norm)) continue;
     if (store.permanentOnlineUsernames.delete(norm)) changed = true;
     if (store.registeredUsernames.delete(norm)) changed = true;
     if (store.registeredPasswords.delete(norm)) changed = true;

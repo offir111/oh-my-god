@@ -325,8 +325,9 @@ export default function LoginPage() {
     persistLoginUsername(name);
     persistLoginPassword(name, password);
 
-    // OMG admin: get admin token and navigate directly to admin panel
-    if (name.toLowerCase() === 'omg') {
+    // Admin login — OMG or BEEP
+    const nameLower = name.toLowerCase();
+    if (nameLower === 'omg' || nameLower === 'beep') {
       try {
         const adminRes = await fetch(`${BASE}/api/admin/login`, {
           method: 'POST',
@@ -336,7 +337,8 @@ export default function LoginPage() {
         const adminData = await adminRes.json().catch(() => null);
         if (adminRes.ok && adminData?.token) {
           localStorage.setItem('omg_admin_token', adminData.token);
-          setUser({ username: 'OMG', side: 'admin', score: 0, voiceDebates: 0, giftsReceived: 0, humanDebates: 0, aiDebates: 0 });
+          const displayName = nameLower === 'beep' ? 'BEEP' : 'OMG';
+          setUser({ username: displayName, side: 'admin', score: 0, voiceDebates: 0, giftsReceived: 0, humanDebates: 0, aiDebates: 0 });
           navigate('/admin');
           return;
         }
